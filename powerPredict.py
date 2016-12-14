@@ -44,6 +44,12 @@ class Vehicle:
         self.Tb = Tb
         self.Tc = Tc
         self.eff = eff
+
+class Drivecycle:
+    def __init__(self, distance):
+        v = []
+        
+
         
 class Journey:
     def __init__(self, vehicle):
@@ -55,7 +61,28 @@ class Journey:
         self.regionType = ''
         self.region = ''
 
-    def getEnergy()
+    def getEnergy(self):
+        if self.region == '' and self.regionType == '':
+            # panic
+        else:
+            array = []
+            with open('FINALregionTypePurposeLength.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    array.append(row)
+            for i in range(0,len(array[0])):
+                if array[0][i] == self.regionType:
+                    c = i
+                    break
+            for i in range(0,len(array)):
+                if array[i][0] == self.purpose:
+                    r = i
+                    break
+            self.distance = float(array[r][c])*1609.34 # in m
+
+            v = Drivecycle(self.distance)
+            
+            
         
         
 NE = Region(100)
