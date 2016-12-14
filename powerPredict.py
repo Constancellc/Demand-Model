@@ -46,13 +46,16 @@ class Vehicle:
         self.eff = eff
         
 class Journey:
-    def __init__(self):
+    def __init__(self, vehicle):
+        self.vehicle = vehicle
         self.purpose = ''
         self.month = ''
         self.day = ''
         self.hour = ''
         self.regionType = ''
         self.region = ''
+
+    def getEnergy()
         
         
 NE = Region(100)
