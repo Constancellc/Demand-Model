@@ -13,6 +13,7 @@ class Region:
     def __init__(self, n):
         # n is the number of points per hour
 
+        self.n = n
         n = n*24
 
         running = {'January':{'Monday':[0]*n,'Tuesday':[0]*n,'Wednesday':[0]*n,
@@ -92,8 +93,12 @@ class Region:
         self.running = running
         self.charging = charging
 
-    def plot():
+    def plot(self,month,day):
         # hi
+        x = np.linspace(0,24,num=24*self.n)
+        plt.plot(x,self.running[month][day])
+        plt.show()
+        
         print "you should probably finish this"
         
 class Drivecycle:
@@ -153,36 +158,36 @@ class Vehicle:
         # first we're going to want to get the region specific lengths, then
         # scale the drive cycle and finally work out the energies
         energy = {'Urban Conurbation':{'Commute':0,'Education':0,'Business':0,
-                               'Shopping':0,'Other escort':0,
+                               'Shopping':0,'Other escort + personal':0,
                                'Entertainment':0,'Other':0},
           'Urban City and Town':{'Commute':0,'Education':0,'Business':0,
-                                 'Shopping':0,'Other escort':0,
+                                 'Shopping':0,'Other escort + personal':0,
                                  'Entertainment':0,'Other':0},
           'Rural Town and Fringe':{'Commute':0,'Education':0,'Business':0,
-                                   'Shopping':0,'Other escort':0,
+                                   'Shopping':0,'Other escort + personal':0,
                                    'Entertainment':0,'Other':0},
           'Rural Village, Hamlet and Isolated Dwelling':{'Commute':0,
                                                          'Education':0,
                                                          'Business':0,
                                                          'Shopping':0,
-                                                         'Other escort':0,
+                                                         'Other escort + personal':0,
                                                          'Entertainment':0,
                                                          'Other':0}}
         
         times = {'Urban Conurbation':{'Commute':0,'Education':0,'Business':0,
-                               'Shopping':0,'Other escort':0,
+                               'Shopping':0,'Other escort + personal':0,
                                'Entertainment':0,'Other':0},
           'Urban City and Town':{'Commute':0,'Education':0,'Business':0,
-                                 'Shopping':0,'Other escort':0,
+                                 'Shopping':0,'Other escort + personal':0,
                                  'Entertainment':0,'Other':0},
           'Rural Town and Fringe':{'Commute':0,'Education':0,'Business':0,
-                                   'Shopping':0,'Other escort':0,
+                                   'Shopping':0,'Other escort + personal':0,
                                    'Entertainment':0,'Other':0},
           'Rural Village, Hamlet and Isolated Dwelling':{'Commute':0,
                                                          'Education':0,
                                                          'Business':0,
                                                          'Shopping':0,
-                                                         'Other escort':0,
+                                                         'Other escort + personal':0,
                                                          'Entertainment':0,
                                                          'Other':0}}
 
@@ -194,6 +199,7 @@ class Vehicle:
                 array.append(row)
 
             regions = array[0]
+            
             array = array[1:]
 
             for row in array:
@@ -220,7 +226,7 @@ class Vehicle:
                             E += F[j]*v[j]*self.eff
 
                     energy[regions[i]][purpose] = E*2.77778e-7 # kWh
-                    times[regions[i]][purpose] = len(v)#/3600 # hours
+                    times[regions[i]][purpose] = float(len(v))/3600 # hours
 
         self.energy = energy
         self.times = times
@@ -276,7 +282,7 @@ class Journey:
 
         self.month = months[c]
         self.purpose = purposes[r]
-        print self.purpose
+
 
         # now sampling to find region day and start hour
         
@@ -286,6 +292,7 @@ class Journey:
 
         for i in range(0,3):
             with open(files[i],'rU') as csvfile:
+                pdf = []
                 reader = csv.reader(csvfile)
                 variables = next(reader)
                 variables.remove("")
@@ -301,26 +308,25 @@ class Journey:
             for value in pdf:
                 normalised.append(float(value)/c)
 
-            pdf = normalised
             cdf = []
+            c = 0
 
-            for value in pdf:
+            for value in normalised:
                 c += float(value)
                 cdf.append(c)
 
             ran = random.random()
-            print ran
             i = 0
             while cdf[i]<=ran and i < len(variables):
                 i = i+1
 
             out.append(variables[i])
-        print out
+
         self.regionType = out[0]
         self.day = out[1]
         self.hour = out[2]
 
-    def addToDataset(self,regions,n):
+    def addToDataset(self,regions):
         if self.region == '' and self.regionType == '':
             print 'help'
         else:
@@ -328,29 +334,19 @@ class Journey:
             e = self.vehicle.energy[self.regionType][self.purpose] 
             t = self.vehicle.times[self.regionType][self.purpose]
 
-            print self.vehicle.energy[self.regionType][self.purpose]
-            
+            n = len(regions[self.regionType].running['July']['Monday'])/24
+            # n should be the number of points per hour
+
             l = int(t*n)
+
+            offset = int(random.random()*(n+1))
             
             for i in range(0,l):
-                j = int(n*float(self.hour)+i)
+                j = int(n*float(self.hour)+i+offset)
                 if j >= 24*n:
                     j -= 24*n
                 regions[self.regionType].running[self.month][self.day][j] += e/t
             
-                  
-
-
-# ------------------------------------------------------------------------------
-# FUNCTION DEFINITION SECTION
-# ------------------------------------------------------------------------------
-
-# Ok, let's forget classes for now and just go free style with the sampling
-
-
-
-    
-
 
 # ------------------------------------------------------------------------------
 # INITIALIZATION SECTION
@@ -358,7 +354,6 @@ class Journey:
 
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
 nissanLeaf.loadEnergies()
-print nissanLeaf.times
 
 UC = Region(60)
 UT = Region(60)
@@ -368,6 +363,9 @@ regions = {'Urban Conurbation':UC,'Urban City and Town':UT,
            'Rural Town and Fringe':RT,
            'Rural Village, Hamlet and Isolated Dwelling':RV}
 
-trip = Journey(nissanLeaf)
-trip.generate()
-trip.addToDataset(regions,60)
+for i in range(0,50000):
+    trip = Journey(nissanLeaf)
+    trip.generate()
+    trip.addToDataset(regions)
+
+UT.plot('June','Monday')
