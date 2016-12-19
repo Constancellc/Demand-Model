@@ -93,10 +93,19 @@ class Region:
         self.running = running
         self.charging = charging
 
-    def plot(self,month,day):
+    def plot(self,month):
         # hi
+        days = ['Monday','Tuesday','Saturday']#'Wednesday','Thursday','Friday','Saturday',
+                #'Sunday']
+        
         x = np.linspace(0,24,num=24*self.n)
-        plt.plot(x,self.running[month][day])
+
+        figure = plt.figure(1)
+        i = 1
+        for day in days:
+            fig.add_subplot(4,2,i)
+            plt.plot(x,self.running[month][day])
+            i += 1
         plt.show()
         
         print "you should probably finish this"
@@ -363,9 +372,25 @@ regions = {'Urban Conurbation':UC,'Urban City and Town':UT,
            'Rural Town and Fringe':RT,
            'Rural Village, Hamlet and Isolated Dwelling':RV}
 
-for i in range(0,50000):
+
+for i in range(0,1000000):
     trip = Journey(nissanLeaf)
     trip.generate()
     trip.addToDataset(regions)
 
-UT.plot('June','Monday')
+days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+
+regionz = [UC,UT,RT,RV]
+x = np.linspace(0,24,num=24*60)
+
+fig = plt.figure(1)
+i = 1
+for day in days:
+    fig.add_subplot(4,2,i)
+    for region in regionz:
+        plt.plot(x,region.running['June'][day])
+    i += 1
+plt.show()
+
+
+
