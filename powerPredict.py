@@ -373,22 +373,37 @@ regions = {'Urban Conurbation':UC,'Urban City and Town':UT,
            'Rural Village, Hamlet and Isolated Dwelling':RV}
 
 
-for i in range(0,1000000):
+for i in range(0,10000):
     trip = Journey(nissanLeaf)
     trip.generate()
     trip.addToDataset(regions)
 
 days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-
+months = ['January','February','March','April','May','June','July','August',
+          'September','October','November','December']
 regionz = [UC,UT,RT,RV]
 x = np.linspace(0,24,num=24*60)
+
+monthPlot = raw_input("Please enter a month to plot: ")
+
+with open('uc.csv', 'w') as csvfile:
+    fieldnames = ['time', 'Monday','Tuesday','Wednesday','Thursday','Friday',
+                  'Saturday','Sunday']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    j = 0
+    for j in range(0,len(UC.running[monthPlot]['Monday'])):
+        row = {'time': j}
+        for day in days:
+            row[day] = UC.running[monthPlot][day][j]
+        writer.writerow(row)
 
 fig = plt.figure(1)
 i = 1
 for day in days:
     fig.add_subplot(4,2,i)
     for region in regionz:
-        plt.plot(x,region.running['June'][day])
+        plt.plot(x,region.running[monthPlot][day])
     i += 1
 plt.show()
 
