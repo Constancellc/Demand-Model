@@ -109,6 +109,20 @@ class Region:
         plt.show()
         
         print "you should probably finish this"
+
+    def scale(self,value):
+
+        days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+        months = ['January','February','March','April','May','June','July','August',
+                  'September','October','November','December']
+        
+        for month in months:
+            for day in days:
+                for item in self.charging[month][day]:
+                    item = float(item)/value
+        
+                for item in self.running[month][day]:
+                    item = float(item)/value
         
 class Drivecycle:
     def __init__(self, distance):
@@ -360,52 +374,84 @@ class Journey:
 # ------------------------------------------------------------------------------
 # INITIALIZATION SECTION
 # ------------------------------------------------------------------------------
-
+fleet = [1]
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
 nissanLeaf.loadEnergies()
 
-UC = Region(60)
-UT = Region(60)
-RT = Region(60)
-RV = Region(60)
+vehicleFleet = {1.0:nissanLeaf}
+pointsPerHour = 60
+
+UC = Region(pointsPerHour)
+UT = Region(pointsPerHour)
+RT = Region(pointsPerHour)
+RV = Region(pointsPerHour)
 regions = {'Urban Conurbation':UC,'Urban City and Town':UT,
            'Rural Town and Fringe':RT,
            'Rural Village, Hamlet and Isolated Dwelling':RV}
 
+populations = [12938,13829,2982,2934] 
+s = sum(populations)
+for item in populations:
+    item = float(item)/s
 
-for i in range(0,10000):
-    trip = Journey(nissanLeaf)
-    trip.generate()
-    trip.addToDataset(regions)
+tripsPerPersonPerYear = 590
+numberResidents = 10000
+
+numberJourneys = numberResidents*tripsPerPersonPerYear
+
+#numberSimulatedJourneys = 100000
+
+print "PROGRESS:",
+for i in range(0,numberJourneys):
+    if i <= numberJourneys/fleet[0]:
+        trip = Journey(nissanLeaf)
+        trip.generate()
+        trip.addToDataset(regions)
+    # elif i <= numberJourneys/(fleet[0]+fleet[1])
+    if i%(numberJourneys/34) == 0:
+        print "X",
+
+UC.scale(numberResidents*populations[0])
+UT.scale(numberResidents*populations[1])
+RT.scale(numberResidents*populations[2])
+RV.scale(numberResidents*populations[3])
 
 days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 months = ['January','February','March','April','May','June','July','August',
           'September','October','November','December']
 regionz = [UC,UT,RT,RV]
-x = np.linspace(0,24,num=24*60)
+#x = np.linspace(0,24,num=24*pointsPerHour)
 
-monthPlot = raw_input("Please enter a month to plot: ")
+uc = {'ucJAN.csv':'January','ucFEB.csv':'February','ucMAR.csv':'March',
+      'ucMAY.csv':'May','ucJUN.csv':'June','ucJUL.csv':'July',
+      'ucAUG.csv':'August','ucSEP.csv':'September','ucOCT.csv':'October',
+      'ucNOV.csv':'November','ucDEC.csv':'December'}
+ut = {'utJAN.csv':'January','utFEB.csv':'February','utMAR.csv':'March',
+      'utMAY.csv':'May','utJUN.csv':'June','utJUL.csv':'July',
+      'utAUG.csv':'August','utSEP.csv':'September','utOCT.csv':'October',
+      'utNOV.csv':'November','utDEC.csv':'December'}
+rt = {'rtJAN.csv':'January','rtFEB.csv':'February','rtMAR.csv':'March',
+      'rtMAY.csv':'May','rtJUN.csv':'June','rtJUL.csv':'July',
+      'rtAUG.csv':'August','rtSEP.csv':'September','rtOCT.csv':'October',
+      'rtNOV.csv':'November','rtDEC.csv':'December'}
+rv = {'rvJAN.csv':'January','rvFEB.csv':'February','rvMAR.csv':'March',
+      'rvMAY.csv':'May','rvJUN.csv':'June','rvJUL.csv':'July',
+      'rvAUG.csv':'August','rvSEP.csv':'September','rvOCT.csv':'October',
+      'rvNOV.csv':'November','rvDEC.csv':'December'}
 
-with open('uc.csv', 'w') as csvfile:
-    fieldnames = ['time', 'Monday','Tuesday','Wednesday','Thursday','Friday',
-                  'Saturday','Sunday']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
-    j = 0
-    for j in range(0,len(UC.running[monthPlot]['Monday'])):
-        row = {'time': j}
-        for day in days:
-            row[day] = UC.running[monthPlot][day][j]
-        writer.writerow(row)
+fieldnames = ['time', 'Monday','Tuesday','Wednesday','Thursday','Friday',
+              'Saturday','Sunday']
+files = [uc,ut,rt,rv]
 
-fig = plt.figure(1)
-i = 1
-for day in days:
-    fig.add_subplot(4,2,i)
-    for region in regionz:
-        plt.plot(x,region.running[monthPlot][day])
-    i += 1
-plt.show()
-
-
-
+for i in range(0,4):
+    for key in files[i]:
+        with open(key,'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for j in range(0,24*pointsPerHour):
+                row = {'time': j}
+                for day in days:
+                    month = files[i][key]
+                    row[day] = regionz[i].running[month][day][j]
+                    #row[day] = UC.running[monthPlot][day][j]
+                writer.writerow(row)
