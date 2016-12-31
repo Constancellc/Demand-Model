@@ -1,6 +1,5 @@
-import numpy as np
+import datetime
 
-step = 1/60
-x = np.linspace(0,24,num=24*60)
+d = datetime.time(12,12)
 
-print len(x)
+print d

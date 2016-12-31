@@ -1,5 +1,3 @@
-# install matplot
-
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
@@ -89,6 +87,45 @@ class Region:
                   'December':{'Monday':[0]*n,'Tuesday':[0]*n,'Wednesday':[0]*n,
                              'Thursday':[0]*n,'Friday':[0]*n,'Saturday':[0]*n,
                              'Sunday':[0]*n},}
+        
+        number = {'January':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'February':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'March':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'April':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'May':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'June':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'July':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'August':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'September':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'October':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'November':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0},
+                  'December':{'Monday':0.0,'Tuesday':0.0,'Wednesday':0.0,
+                             'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
+                             'Sunday':0.0}
+
+
 
         self.running = running
         self.charging = charging
@@ -123,6 +160,8 @@ class Region:
         
                 for item in self.running[month][day]:
                     item = float(item)/value
+
+                self.number[month][day] = self.number[month][day]/value
         
 class Drivecycle:
     def __init__(self, distance):
@@ -369,7 +408,8 @@ class Journey:
                 if j >= 24*n:
                     j -= 24*n
                 regions[self.regionType].running[self.month][self.day][j] += e/t
-            
+
+            regions[self.regionType].number[self.month][self.day] += 1
 
 # ------------------------------------------------------------------------------
 # INITIALIZATION SECTION
@@ -389,7 +429,10 @@ regions = {'Urban Conurbation':UC,'Urban City and Town':UT,
            'Rural Town and Fringe':RT,
            'Rural Village, Hamlet and Isolated Dwelling':RV}
 
-populations = [12938,13829,2982,2934] 
+populations = [12938,
+13829,
+2982,
+2934] 
 s = sum(populations)
 for item in populations:
     item = float(item)/s
