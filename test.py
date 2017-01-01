@@ -1,5 +1,10 @@
 import datetime
 
-d = datetime.time(12,12)
 
-print d
+times = []
+
+for hour in range(0,24):
+    for minute in range(0,60):
+        times.append(datetime.time(hour,minute))
+
+print times

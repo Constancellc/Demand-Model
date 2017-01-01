@@ -4,139 +4,20 @@ import csv
 import random
 import datetime
 
+from vehicleModel import Drivecycle, Vehicle
+"""
+THIS FILE TAKES A SPECIFIC DAY OF THE WEEK, MONTH, REGION TYPE AND POPULATION
+THEN RANDOMLY GENERATES A PREDICTED NUMBER OF JOURNEYS FOR THE AREA.
+
+THE FINISH TIME AND ENERGY EXPENDITURE IN KWH OF EACH JOURNEY IS RECORDED AND
+THE RESULTS WRITTEN INTO A CSV FILE
+
+THE IDEA IS THAT THE DATA IN THIS CSV FILE CAN BE USED TO SIMULATE VARIOUS
+CHARGING SENARIOS FOR LOCAL REGIONS.
+"""
 # ------------------------------------------------------------------------------
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
-
-class Drivecycle:
-    def __init__(self, distance):
-        
-        # First, import artemis
-        v0 = []
-        with open('artemis_urban.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                v0.append(float(row[0])*0.277778)
-
-        # Then, calculate distance covered by one cycle
-        s0 = 0
-        for value in v0:
-            s0 += value
-
-        v = []
-        if s0 >= distance:
-            # If the distance covered by one cycle is greater than the trip
-            s = 0
-            i = 0
-            while s <= distance:
-                v.append(v0[i])
-                s += v0[i]
-                i += 1
-
-        else:
-            for i in range(0,int(distance/s0)):
-                for value in v0:
-                    v.append(value)
-            s = int(distance/s0)*s0
-            
-            while s <= distance:
-                v.append(v0[i])
-                s += v0[i]
-                i += 1
-
-        self.velocity = v
-
-        a = [0]
-
-        for i in range(0,len(v)-1):
-            a.append(v[i+1]-v[i])
-
-        self.acceleration = a
-
-class Vehicle:
-    def __init__(self,mass,Ta,Tb,Tc,eff):
-        self.mass = mass
-        self.Ta = Ta
-        self.Tb = Tb
-        self.Tc = Tc
-        self.eff = eff
-
-    def loadEnergies(self):
-        # first we're going to want to get the region specific lengths, then
-        # scale the drive cycle and finally work out the energies
-        energy = {'Urban Conurbation':{'Commute':0,'Education':0,'Business':0,
-                               'Shopping':0,'Other escort + personal':0,
-                               'Entertainment':0,'Other':0},
-          'Urban City and Town':{'Commute':0,'Education':0,'Business':0,
-                                 'Shopping':0,'Other escort + personal':0,
-                                 'Entertainment':0,'Other':0},
-          'Rural Town and Fringe':{'Commute':0,'Education':0,'Business':0,
-                                   'Shopping':0,'Other escort + personal':0,
-                                   'Entertainment':0,'Other':0},
-          'Rural Village, Hamlet and Isolated Dwelling':{'Commute':0,
-                                                         'Education':0,
-                                                         'Business':0,
-                                                         'Shopping':0,
-                                                         'Other escort + personal':0,
-                                                         'Entertainment':0,
-                                                         'Other':0}}
-        
-        times = {'Urban Conurbation':{'Commute':0,'Education':0,'Business':0,
-                               'Shopping':0,'Other escort + personal':0,
-                               'Entertainment':0,'Other':0},
-          'Urban City and Town':{'Commute':0,'Education':0,'Business':0,
-                                 'Shopping':0,'Other escort + personal':0,
-                                 'Entertainment':0,'Other':0},
-          'Rural Town and Fringe':{'Commute':0,'Education':0,'Business':0,
-                                   'Shopping':0,'Other escort + personal':0,
-                                   'Entertainment':0,'Other':0},
-          'Rural Village, Hamlet and Isolated Dwelling':{'Commute':0,
-                                                         'Education':0,
-                                                         'Business':0,
-                                                         'Shopping':0,
-                                                         'Other escort + personal':0,
-                                                         'Entertainment':0,
-                                                         'Other':0}}
-
-        array = []
-        
-        with open('FINALregionTypePurposeLength.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                array.append(row)
-
-            regions = array[0]
-            
-            array = array[1:]
-
-            for row in array:
-                purpose = row[0]
-
-                for i in range(1,len(regions)):
-                    distance = float(row[i])*1609.34 # in m
-                    cycle = Drivecycle(distance)
-                    v = cycle.velocity 
-                    a = cycle.acceleration
-
-                    F = []
-                    for value in v:
-                        F.append(self.Ta + self.Tb*value + self.Tc*value*value)
-
-                    for j in range(0,len(a)):
-                        F[j] += self.mass*a[j]
-
-                    E = 0
-                    for j in range(0,len(a)):
-                        if a[j] >= 0:
-                            E += F[j]*v[j]/self.eff
-                        else:
-                            E += F[j]*v[j]*self.eff
-
-                    energy[regions[i]][purpose] = E*2.77778e-7 # kWh
-                    times[regions[i]][purpose] = float(len(v))/3600 # hours
-
-        self.energy = energy
-        self.times = times
 
 class Journey:
     def __init__(self, vehicle):
@@ -163,9 +44,6 @@ class Journey:
                         pdf.append(float(row[i]))
                         purposes.append(row[0])
 
-#            purposes.remove('')
-#            pdf.remove(month)
-            
         sumPdf = sum(pdf)
 
         cdf = [0,0,0,0,0,0,0]
@@ -228,6 +106,7 @@ class Journey:
         # now randomly assign a minute offset
 
         self.minutes = int(60*random.random())
+        self.seconds = int(60*random.random())
 
         # but we actually want the finish time
 
@@ -237,6 +116,10 @@ class Journey:
             self.hour += 1
             self.minutes -= 60
 
+        # health warning: this is a hack
+        if self.hour > 23:
+            self.hour -= 24
+
 
 # this is the doing stuff section
 
@@ -245,23 +128,41 @@ class Journey:
 regionType = 'Urban Conurbation'
 month = 'September'
 day = 'Monday'
+population = 1000
 
 data = []
 
+# still always using the nissan leaf
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
 nissanLeaf.loadEnergies()
 
-for i in range(0,100):
-    trip = Journey(nissanLeaf)
-    trip.generate(regionType, month, day)
-    data.append([trip.hour, trip.minutes, trip.energy])
 
-fieldnames = ['time','energy expended']
+journeysPerPerson = 0
+
+with open('number.csv') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        if row['day'] == day:
+            if row['month'] == month:
+                if row['region'] == regionType:
+                    journeysPerPerson = float(row['number'])
+
+if journeysPerPerson == 0:
+    print 'Details for region / day / month not found'
+else:
+    for i in range(0,int(journeysPerPerson*population)):
+        trip = Journey(nissanLeaf)
+        trip.generate(regionType, month, day)
+        data.append([trip.hour, trip.minutes, trip.seconds, trip.energy])
+    
+fieldnames = ['time','index','energy expended']
 
 with open('journeysModel.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    for row in data:
-        time = datetime.time(row[0],row[1])
-        writer.writerow([time,row[2]])
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
 
-                
+    for entry in data:
+        row = {'time': datetime.time(entry[0],entry[1],entry[2])}
+        row['index'] = (entry[0]*60+entry[1])*60+entry[2]
+        row['energy expended'] = entry[3]
+        writer.writerow(row)   
