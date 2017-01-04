@@ -128,7 +128,7 @@ class Journey:
 regionType = 'Urban Conurbation'
 month = 'September'
 day = 'Monday'
-population = 1000
+population = 150200
 
 data = []
 

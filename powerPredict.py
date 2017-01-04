@@ -5,6 +5,14 @@ import random
 
 from vehicleModel import Drivecycle, Vehicle
 
+"""
+THIS IS AN OVERARCHING PREDICTION FILE. IT WILL SIMULATE JOURNEYS RANDOMLY
+DISTRIBUTED IN BOTH SPACE (REGIONS) AND TIME (MONTH, DAY ETC.)
+
+THE RESULTS ARE SCALED TO REPRESENT THE POWER DEMAND PER PERSON DUE TO EV
+DRIVING.
+"""
+
 # ------------------------------------------------------------------------------
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
