@@ -1,3 +1,4 @@
+
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
@@ -166,19 +167,25 @@ class Region:
         
         for month in months:
             for day in days:
-                for item in self.charging[month][day]:
-                    item = float(item)/value
-        
-                for item in self.running[month][day]:
-                    item = float(item)/value
 
                 if month in ['January', 'March', 'May', 'July', 'August', 'October',
                              'December']:
                     self.number[month][day] = self.number[month][day]/(value*31/7)
+                    for j in range(0,len(self.charging[month][day])):
+                        self.charging[month][day][j] = float(self.charging[month][day][j])/(value*31/7)
+                        self.running[month][day][j] = float(self.running[month][day][j])/(value*31/7)
+                    
                 if month in ['April','June','September','November']:
                     self.number[month][day] = self.number[month][day]/(value*30/7)
+                    for j in range(0,len(self.charging[month][day])):
+                        self.charging[month][day][j] = float(self.charging[month][day][j])/(value*30/7)
+                        self.running[month][day][j] = float(self.running[month][day][j])/(value*30/7)
+                        
                 if month == 'February':
                     self.number[month][day] = self.number[month][day]/(value*28/7)
+                    for j in range(0,len(self.charging[month][day])):
+                        self.charging[month][day][j] = float(self.charging[month][day][j])/(value*28/7)
+                        self.running[month][day][j] = float(self.running[month][day][j])/(value*28/7)
 
         
                     
@@ -331,21 +338,21 @@ for item in populations:
 
 
 tripsPerPersonPerYear = int(590/1.6) # not sure about 1.6 - passengers vs drivers
-numberResidents = 1000
+numberResidents = 10000
 
 numberJourneys = numberResidents*tripsPerPersonPerYear
 
 #numberSimulatedJourneys = 100000
 
-print "PROGRESS:",
+#print "PROGRESS:",
 for i in range(0,numberJourneys):
     if i <= numberJourneys/fleet[0]:
         trip = Journey(nissanLeaf)
         trip.generate()
         trip.addToDataset(regions)
     # elif i <= numberJourneys/(fleet[0]+fleet[1])
-    if i%(numberJourneys/34) == 0:
-        print "X",
+    if i%(numberJourneys/10) == 0:
+        print str(10*i/(numberJourneys/10))+"% COMPLETE"
 
 UC.scale(numberResidents*scaledPopulations[0])
 UT.scale(numberResidents*scaledPopulations[1])
@@ -358,22 +365,34 @@ months = ['January','February','March','April','May','June','July','August',
 regionz = [UC,UT,RT,RV]
 #x = np.linspace(0,24,num=24*pointsPerHour)
 
-uc = {'ucJAN.csv':'January','ucFEB.csv':'February','ucMAR.csv':'March',
-      'ucMAY.csv':'May','ucJUN.csv':'June','ucJUL.csv':'July',
-      'ucAUG.csv':'August','ucSEP.csv':'September','ucOCT.csv':'October',
-      'ucNOV.csv':'November','ucDEC.csv':'December'}
-ut = {'utJAN.csv':'January','utFEB.csv':'February','utMAR.csv':'March',
-      'utMAY.csv':'May','utJUN.csv':'June','utJUL.csv':'July',
-      'utAUG.csv':'August','utSEP.csv':'September','utOCT.csv':'October',
-      'utNOV.csv':'November','utDEC.csv':'December'}
-rt = {'rtJAN.csv':'January','rtFEB.csv':'February','rtMAR.csv':'March',
-      'rtMAY.csv':'May','rtJUN.csv':'June','rtJUL.csv':'July',
-      'rtAUG.csv':'August','rtSEP.csv':'September','rtOCT.csv':'October',
-      'rtNOV.csv':'November','rtDEC.csv':'December'}
-rv = {'rvJAN.csv':'January','rvFEB.csv':'February','rvMAR.csv':'March',
-      'rvMAY.csv':'May','rvJUN.csv':'June','rvJUL.csv':'July',
-      'rvAUG.csv':'August','rvSEP.csv':'September','rvOCT.csv':'October',
-      'rvNOV.csv':'November','rvDEC.csv':'December'}
+uc = {'uk-wide/ucJAN.csv':'January','uk-wide/ucFEB.csv':'February',
+      'uk-wide/ucMAR.csv':'March','uk-wide/ucAPR.csv':'April',
+      'uk-wide/ucMAY.csv':'May','uk-wide/ucJUN.csv':'June',
+      'uk-wide/ucJUL.csv':'July','uk-wide/ucAUG.csv':'August',
+      'uk-wide/ucSEP.csv':'September','uk-wide/ucOCT.csv':'October',
+      'uk-wide/ucNOV.csv':'November','uk-wide/ucDEC.csv':'December'}
+
+ut = {'uk-wide/utJAN.csv':'January','uk-wide/utFEB.csv':'February',
+      'uk-wide/utMAR.csv':'March','uk-wide/utAPR.csv':'April',
+      'uk-wide/utMAY.csv':'May','uk-wide/utJUN.csv':'June',
+      'uk-wide/utJUL.csv':'July','uk-wide/utAUG.csv':'August',
+      'uk-wide/utSEP.csv':'September','uk-wide/utOCT.csv':'October',
+      'uk-wide/utNOV.csv':'November','uk-wide/utDEC.csv':'December'}
+
+rt = {'uk-wide/rtJAN.csv':'January','uk-wide/rtFEB.csv':'February',
+      'uk-wide/rtMAR.csv':'March','uk-wide/rtAPR.csv':'April',
+      'uk-wide/rtMAY.csv':'May','uk-wide/rtJUN.csv':'June',
+      'uk-wide/rtJUL.csv':'July','uk-wide/rtAUG.csv':'August',
+      'uk-wide/rtSEP.csv':'September','uk-wide/rtOCT.csv':'October',
+      'uk-wide/rtNOV.csv':'November','uk-wide/rtDEC.csv':'December'}
+
+rv = {'uk-wide/rvJAN.csv':'January','uk-wide/rvFEB.csv':'February',
+      'uk-wide/rvMAR.csv':'March','uk-wide/rvAPR.csv':'April',
+      'uk-wide/rvMAY.csv':'May','uk-wide/rvJUN.csv':'June',
+      'uk-wide/rvJUL.csv':'July','uk-wide/rvAUG.csv':'August',
+      'uk-wide/rvSEP.csv':'September','uk-wide/rvOCT.csv':'October',
+      'uk-wide/rvNOV.csv':'November','uk-wide/rvDEC.csv':'December'}
+
 
 fieldnames = ['time', 'Monday','Tuesday','Wednesday','Thursday','Friday',
               'Saturday','Sunday']
