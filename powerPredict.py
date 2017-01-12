@@ -338,7 +338,7 @@ for item in populations:
 
 
 tripsPerPersonPerYear = int(590/1.6) # not sure about 1.6 - passengers vs drivers
-numberResidents = 10000
+numberResidents = 100000
 
 numberJourneys = numberResidents*tripsPerPersonPerYear
 
