@@ -37,44 +37,68 @@ class JourneyPool:
         files = ['nts-data/purposeDay.csv','nts-data/purposeMonth.csv',
                  'nts-data/regionTypePurpose.csv']
         fixed = [self.day, self.month, self.regionType]
-
-        purpose|day = [0]*7
-        purpose|month = [0]*7
-        purpose|region = [0]*7
         
         out = []
-        
-        # first, find the purpose given the regionType, or maybe day of week, or month... FUCK
-        with open('nts-data/purposeDay.csv') as csvfile:
-            reader = csv.reader(csvfile)
-            variables = next(reader)
-            for i in range(0,len(days)):
-                if variables[i] == self.day:
-                    index = i
 
-            if index is False:
-                raise Error('pdf problems')
+        for j in range(0,3):
+            # first, find the purpose given the regionType, or maybe day of week, or month... FUCK
+            with open(file[j]) as csvfile:
+                reader = csv.reader(csvfile)
+                variables = next(reader)
+                for i in range(0,len(days)):
+                    if variables[i] == fixed[j]:
+                        index = i
 
-            purposes = []
-            pdf = []
-            
-            for row in reader:
-                if row == days:
-                    continue
-                else:
-                    purposes.append(row[0])
-                    pdf.append(row[dayIndex])
-        sumPdf = 0
+                if index is False:
+                    raise Error('pdf problems')
 
-        for number in pdf:
-           sumPdf += float(pdf)
+                purposes = []
+                pdf = []
+                
+                for row in reader:
+                    if row == days:
+                        continue
+                    else:
+                        purposes.append(row[0])
+                        pdf.append(row[dayIndex])
+            sumPdf = 0
 
-        distribution = [0]*7
+            for number in pdf:
+               sumPdf += float(pdf)
+
+            distribution = [0]*7
+
+            for i in range(0,7):
+               distribution[i] = float(pdf[i])/sumPdf
+
+            out.append(distribution)
+
+        purpose|day = out[0]
+        purpose|month = out[1]
+        purpose|region = out[2]
+
+        pdf = [0]*7
 
         for i in range(0,7):
-           distribution[i] = float(pdf[i])/sumPdf
+            pdf[i] = purpose|day[i]*purpose|month[i]*purpose|region[i]
 
-        out.append(distribution)
+        sumPdf = sum(pdf)
+
+        # This should be the cdf of purpose given all of day, month and region
+        cdf = [pdf[0]/sumPdf]
+
+        for i in range(1,7):
+            cdf.append(cdf[i-1]+pdf[i]/sumPdf)
+
+        ran = random.random()
+
+        j = 0
+
+        for i in range(0,7):
+            if cdf[i] <= ran:
+                j += 1
+
+        purpose = purposes[j]
         
 class Agent:
     def __init__(vehicle, regionType):
