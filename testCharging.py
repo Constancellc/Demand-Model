@@ -32,7 +32,7 @@ class Journey:
 
         array = []
 
-        with open('FINALpurposeMonth.csv','rU') as csvfile:
+        with open('nts-data/purposeMonth.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
             months = next(reader)
 
@@ -65,7 +65,7 @@ class Journey:
         
         # now sampling to find region day and start hour
         
-        files = ['FINALpurposeDay.csv','FINALpurposeStartHour.csv']
+        files = ['nts-data/purposeDay.csv','nts-data/purposeStartHour.csv']
         out =  []
 
         for i in range(0,2):

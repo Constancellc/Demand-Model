@@ -45,9 +45,14 @@ regions = {'Urban Conurbation':uc,'Urban City and Town':ut,
            'Rural Town and Fringe':rt,
            'Rural Village, Hamlet and Isolated Dwelling':rv}
 
-#fig = plt.figure(1)
+fig = plt.figure()
+
 for i in range(0,12):
-    plt.subplot(3,4,i+1)
+    if i == 0:
+        ax1 = fig.add_subplot(3,4,i+1)
+    else:
+        ax2 = fig.add_subplot(3,4,i+1, sharey=ax1)
+    #plt.subplot(3,4,i+1)
     # first find the relevant data set
     with open(regions[regionType][months[i]]) as csvfile:
         mon = []
@@ -66,13 +71,25 @@ for i in range(0,12):
             fri.append(float(row['Friday'])*population)
             sat.append(float(row['Saturday'])*population)
             sun.append(float(row['Sunday'])*population)
-        plt.plot(np.linspace(0,24,num=24*60),mon,label='Monday')
-        plt.plot(np.linspace(0,24,num=24*60),tue,label='Tuesday')
-        plt.plot(np.linspace(0,24,num=24*60),wed,label='Wednesday')
-        plt.plot(np.linspace(0,24,num=24*60),thu,label='Thursday')
-        plt.plot(np.linspace(0,24,num=24*60),fri,label='Friday')
-        plt.plot(np.linspace(0,24,num=24*60),sat,label='Saturday')
-        plt.plot(np.linspace(0,24,num=24*60),sun,label='Sunday')
+
+        if False: # if you want to plot cumulative
+            for j in range(1,len(mon)):
+                mon[j] = mon[j-1] + mon[j]
+                tue[j] = tue[j-1] + tue[j]
+                wed[j] = wed[j-1] + wed[j]
+                thu[j] = thu[j-1] + thu[j]
+                fri[j] = fri[j-1] + fri[j]
+                sat[j] = sat[j-1] + sat[j]
+                sun[j] = sun[j-1] + sun[j]
+        
+        x = np.linspace(5,29,num=24*60)
+        plt.plot(x,mon,label='Monday')
+        plt.plot(x,tue,label='Tuesday')
+        plt.plot(x,wed,label='Wednesday')
+        plt.plot(x,thu,label='Thursday')
+        plt.plot(x,fri,label='Friday')
+        plt.plot(x,sat,label='Saturday')
+        plt.plot(x,sun,label='Sunday')
         if i == 1:
             plt.legend(loc=[-1,-2.7],ncol=7)
         plt.xlabel('time /hour')

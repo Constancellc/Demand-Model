@@ -3,14 +3,25 @@ import csv
 import random
 
 class Drivecycle:
-    def __init__(self, distance):
+    def __init__(self, distance, version):
         
         # First, import artemis
         v0 = []
-        with open('artemis_urban.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                v0.append(float(row[0])*0.277778)
+
+        if version == 'urban':
+            with open('drivecycles/artemis_urban.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    v0.append(float(row[0])*0.277778)
+
+        elif version == 'rural':
+            with open('drivecycles/artemis_rural.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    v0.append(float(row[0])*0.277778)
+
+        else:
+            raise InputError('please enter a valid version of artemis')
 
         # Then, calculate distance covered by one cycle
         s0 = 0
@@ -95,7 +106,7 @@ class Vehicle:
 
         array = []
         
-        with open('FINALregionTypePurposeLength.csv','rU') as csvfile:
+        with open('nts-data/regionTypePurposeLength.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
                 array.append(row)
@@ -114,8 +125,13 @@ class Vehicle:
 
                 for i in range(1,len(regions)):
                     distance = float(row[i])*1609.34 # in m
-                    cycle = Drivecycle(distance)
-                    v = cycle.velocity 
+                    if regions[i][0] == 'U':
+                        cycle = Drivecycle(distance,'urban')
+                    elif regions[i][0] == 'R':
+                        cycle = Drivecycle(distance,'rural')
+                    else:
+                        raise Error('region not recognised')
+                    v = cycle.velocity
                     a = cycle.acceleration
 
                     F = []
@@ -137,3 +153,4 @@ class Vehicle:
 
         self.energy = energy
         self.times = times
+

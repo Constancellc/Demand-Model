@@ -186,9 +186,7 @@ class Region:
                     for j in range(0,len(self.charging[month][day])):
                         self.charging[month][day][j] = float(self.charging[month][day][j])/(value*28/7)
                         self.running[month][day][j] = float(self.running[month][day][j])/(value*28/7)
-
-        
-                    
+                   
 class Journey:
     def __init__(self, vehicle):
         self.vehicle = vehicle
@@ -202,7 +200,7 @@ class Journey:
     def generate(self):
         array = []
                
-        with open('FINALpurposeMonth.csv','rU') as csvfile:
+        with open('nts-data/purposeMonth.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
             months = next(reader)
             purposes = []
@@ -244,8 +242,8 @@ class Journey:
 
         # now sampling to find region day and start hour
         
-        files = ['FINALregionTypePurpose.csv','FINALpurposeDay.csv',
-                 'FINALpurposeStartHour.csv']
+        files = ['nts-data/regionTypePurpose.csv','nts-data/purposeDay.csv',
+                 'nts-data/purposeStartHour.csv']
         out =  []
 
         for i in range(0,3):
@@ -282,7 +280,7 @@ class Journey:
 
         self.regionType = out[0]
         self.day = out[1]
-        self.hour = out[2]
+        self.hour = str(int(out[2])-5)
 
     def addToDataset(self,regions):
         if self.region == '' and self.regionType == '':
@@ -338,7 +336,7 @@ for item in populations:
 
 
 tripsPerPersonPerYear = int(590/1.6) # not sure about 1.6 - passengers vs drivers
-numberResidents = 100000
+numberResidents = 1000
 
 numberJourneys = numberResidents*tripsPerPersonPerYear
 
