@@ -23,6 +23,9 @@ class JourneyPool:
         self.numEscort = 0
         self.numEntertainment = 0
         self.numOther = 0
+
+        self.morningCommutes = 0
+        self.eveningCommutes = 0
         # and start times
         self.commute = [0]*60*24
         self.education = [0]*60*24
@@ -138,6 +141,10 @@ class JourneyPool:
         minutes = int(60*random.random())
 
         if purpose == 'Commute':
+            if startHour <= 10 and startHour >= 4:
+                self.morningCommutes += 1
+            if startHour <= 21 and startHour >= 15:
+                self.eveningCommutes += 1
             self.commute[startHour*60+minutes] += 1
             self.numCommute += 1
         elif purpose == 'Education':
@@ -159,7 +166,7 @@ class JourneyPool:
             self.other[startHour*60+minutes] += 1
             self.numOther += 1
         else:
-            raise Error('constance there is a bug! (add to dataset)')
+            raise Error('constance there is a bug in the add to dataset')
 
     def pickOutJourney(self):
         # first select the purpose
@@ -351,9 +358,11 @@ class JourneyPool:
         print self.numOther
     
 class Agent:
-    def __init__(vehicle, regionType):
+    def __init__(self, vehicle, regionType):
         # vehicle - a loaded instance of the Vehicle class, regionType - string
-        return 'please finish this'
+        self.vehicle = vehicle
+        self.regionType = regionType
+        
 
 # ------------------------------------------------------------------------------
 # INITIALIZATION SECTION
@@ -378,7 +387,7 @@ with open('number.csv') as csvfile:
 if journeysPerPerson == 0:
     raise Error('data for that region type / day / month not found')
 
-numberJourneys = journeysPerPerson*population
+numberJourneys = int(journeysPerPerson*population)
 
 if region == '':
     region = 'United Kingdom'
@@ -387,25 +396,35 @@ with open('vehiclesPerHead.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         if row[0] == region:
-            carsPerPerson = row[1]
+            carsPerPerson = float(row[1])
 
 if carsPerPerson == 0:
     raise Error('are you sure that is a valid region?')
 
-numberAgents = carsPerPerson*population
+numberAgents = int(carsPerPerson*population)
 
 # ok, now we know how much of everything we need let's start generating
 
 # first the pool
 pool = JourneyPool(day, month, regionType)
 
-for i in range(0,100):
+for i in range(0,10000):
     pool.addJourney()
 pool.displayCounters()
 
-for i in range(0,100):
-    pool.pickOutJourney()
-pool.displayCounters()
+print 'Morning Commutes:',
+print pool.morningCommutes
+print 'Evening Commutes:',
+print pool.eveningCommutes
 
+fleet = {}
+nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
+nissanLeaf.loadEnergies()
+
+print numberAgents
+print numberJourneys
+
+for i in range(0,numberAgents):
+    fleet['vehicle'+str(i)] = Agent(nissanLeaf,regionType)
 #plt.plot(np.linspace(0,24,num=24*60),pool.commute)
 #plt.show()
