@@ -168,7 +168,54 @@ class JourneyPool:
         else:
             raise Error('constance there is a bug in the add to dataset')
 
-    def pickOutJourney(self):
+    def listTrips(self):
+
+        for data in [self.commute, self.education, self.business, self.shopping,
+                     self.escort, self.entertainment, self.other]:
+            lst = []
+
+            for i in range(0,len(data)):
+                for j in range(0,data[i]):
+                    lst.append()
+    def pairTrips(self):
+
+        lst = []
+        
+        for i in range(0,len(self.commute)):
+            for j in range(0,self.commute[i]):
+                lst.append(i)
+
+        self.numCommute = int(self.numCommute/2)
+
+        self.pairedCommutes = []
+        for i in range(0,self.numCommute):
+            self.pairedCommutes.append([lst[i],lst[i+self.numCommute]])
+
+        lst = []
+        
+        for i in range(0,len(self.education)):
+            for j in range(0,self.education[i]):
+                lst.append(i)
+
+        self.numEducation = int(self.numEducation/2)
+
+        self.pairedEducation = []
+        for i in range(0,self.numEducation):
+            self.pairedEducation.append([lst[i],lst[i+self.numEducation]])
+
+        lst = []
+        
+        for i in range(0,len(self.shopping)):
+            for j in range(0,self.shopping[i]):
+                lst.append(i)
+
+        self.numShopping = int(self.numShopping/2)
+
+        self.pairedShopping = []
+        for i in range(0,self.numShopping):
+            self.pairedShopping.append([lst[i],lst[i+self.numShopping]])
+
+    def pickOutJourney(self,agent):
         # first select the purpose
         pdf = [float(self.numCommute),float(self.numEducation),
                float(self.numBusiness),float(self.numShopping),
@@ -195,43 +242,22 @@ class JourneyPool:
 
         if purposes[i] == 'Commute':
             # generate up to date distribution and sample
-            sumPdf = sum(self.commute)
-            normalised = []
-            for value in self.commute:
-                normalised.append(value/sumPdf)
 
-            cdf = [normalised[0]]
+            # ok this is different now
+            i = int(random.random()*len(self.pairedCommutes))
+            agent.journeys.append(['Commute',self.pairedCommutes[i][0]])
+            agent.journeys.append(['Commute',self.pairedCommutes[i][1]])
 
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-
-            self.commute[j] -= 1
+            self.pairedCommutes.remove(self.pairedCommutes[i])
             self.numCommute -= 1
             
         elif purposes[i] == 'Education':
-            sumPdf = sum(self.education)
-            normalised = []
-            for value in self.education:
-                normalised.append(value/sumPdf)
-
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
+            i = int(random.random()*len(self.pairedEducation))
             
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-                
-            self.education[j] -= 1
+            agent.journeys.append(['Education',self.pairedEducation[i][0]])
+            agent.journeys.append(['Education',self.pairedEducation[i][1]])
+
+            self.pairedEducation.remove(self.pairedEducation[i])
             self.numEducation -= 1
 
         elif purposes[i] == 'Business':
@@ -254,24 +280,14 @@ class JourneyPool:
             self.business[j] -= 1
             self.numBusiness -= 1
 
+            agent.journeys.append([purposes[i],j])
+
         elif purposes[i] == 'Shopping':
-            sumPdf = sum(self.shopping)
-            normalised = []
-            for value in self.shopping:
-                normalised.append(value/sumPdf)
+            i = int(random.random()*len(self.pairedShopping))
+            agent.journeys.append(['Shopping',self.pairedShopping[i][0]])
+            agent.journeys.append(['Shopping',self.pairedShopping[i][1]])
 
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-                
-            self.shopping[j] -= 1
+            self.pairedShopping.remove(self.pairedShopping[i])
             self.numShopping -= 1
 
         elif purposes[i] == 'Other escort + personal':
@@ -291,7 +307,7 @@ class JourneyPool:
             while cdf[j] <= ran and j < 1439:
                 j += 1
 
-                
+            agent.journeys.append([purposes[i],j])
             self.escort[j] -= 1
             self.numEscort -= 1
 
@@ -311,7 +327,8 @@ class JourneyPool:
             
             while cdf[j] <= ran and j < 1439:
                 j += 1
-                
+
+            agent.journeys.append([purposes[i],j])
             self.entertainment[j] -= 1
             self.numEntertainment -= 1
 
@@ -332,14 +349,14 @@ class JourneyPool:
             
             while cdf[j] <= ran and j < 1439:
                 j += 1
-                
+
+            agent.journeys.append([purposes[i],j])
             self.other[j] -= 1
             self.numOther -= 1
 
         else:
             raise Error('purpose index bug')
 
-        startTime = j
         
     def displayCounters(self):
         print 'Commute:',
@@ -356,12 +373,19 @@ class JourneyPool:
         print self.numEntertainment
         print 'Other:',
         print self.numOther
+
+    def getTotal(self):
+        total = self.numCommute + self.numEducation + self.numBusiness + \
+                self.numShopping + self.numEscort + self.numEntertainment + \
+                self.numOther
+        return total 
     
 class Agent:
     def __init__(self, vehicle, regionType):
         # vehicle - a loaded instance of the Vehicle class, regionType - string
         self.vehicle = vehicle
         self.regionType = regionType
+        self.journeys = []
         
 
 # ------------------------------------------------------------------------------
@@ -408,15 +432,15 @@ numberAgents = int(carsPerPerson*population)
 # first the pool
 pool = JourneyPool(day, month, regionType)
 
-for i in range(0,10000):
+#numberJourneys = int(numberJourneys*0.785) #roughly corrects 
+for i in range(0,numberJourneys):
     pool.addJourney()
 pool.displayCounters()
 
-print 'Morning Commutes:',
-print pool.morningCommutes
-print 'Evening Commutes:',
-print pool.eveningCommutes
+pool.pairTrips()
 
+pool.displayCounters()
+                                       
 fleet = {}
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
 nissanLeaf.loadEnergies()
@@ -425,6 +449,13 @@ print numberAgents
 print numberJourneys
 
 for i in range(0,numberAgents):
-    fleet['vehicle'+str(i)] = Agent(nissanLeaf,regionType)
+    fleet[i] = Agent(nissanLeaf,regionType)
+
+N = pool.getTotal()
+for i in range(0,N):
+    n = int(random.random()*numberAgents)
+    pool.pickOutJourney(fleet[n])
+
+print fleet[4].journeys
 #plt.plot(np.linspace(0,24,num=24*60),pool.commute)
 #plt.show()
