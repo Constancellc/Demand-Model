@@ -439,7 +439,7 @@ pool.displayCounters()
 
 pool.pairTrips()
 
-pool.displayCounters()
+
                                        
 fleet = {}
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
@@ -455,7 +455,7 @@ N = pool.getTotal()
 for i in range(0,N):
     n = int(random.random()*numberAgents)
     pool.pickOutJourney(fleet[n])
-
+pool.displayCounters()
 print fleet[4].journeys
 #plt.plot(np.linspace(0,24,num=24*60),pool.commute)
 #plt.show()
