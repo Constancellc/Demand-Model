@@ -136,8 +136,6 @@ class Region:
                              'Thursday':0.0,'Friday':0.0,'Saturday':0.0,
                              'Sunday':0.0}}
 
-
-
         self.running = running
         self.charging = charging
         self.number = number
