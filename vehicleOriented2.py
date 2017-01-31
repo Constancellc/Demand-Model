@@ -428,6 +428,10 @@ class HomeOnly(ChargingScheme):
     def allCharge(self,power,factor):
         for k in range(0,self.n):
             journeys = fleet.fleet[k].energyLog
+            #battery = fleet.fleet[k].battery
+            cap = fleet.fleet[k].vehicle.capacity
+            battery = cap
+            incomplete = []
 
             if len(journeys) != 0:
                 
@@ -435,7 +439,7 @@ class HomeOnly(ChargingScheme):
                     # first check there isn't a journey 
                     if len(journeys) != 0:
                         if l == journeys[0][0]:
-                            fleet.fleet[k].battery -= journeys[0][1]
+                            battery -= journeys[0][1]
 
                             # check you haven't run out of charge
                             if fleet.fleet[k].battery <= 0:
@@ -445,37 +449,30 @@ class HomeOnly(ChargingScheme):
                             journeys.remove(journeys[0])
 
                     # now check if the vehicle needs to charge
-                    if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
+                    if battery < cap:
                         # and if it's avaliable to charge
                         if fleet.fleet[k].location[l] == 0:
                             # then put it onto charge
-                            cap = fleet.fleet[k].vehicle.capacity
-                            if fleet.fleet[k].battery + float(power)/60 > cap:
-                                self.powerDemand[l] += (cap-fleet.fleet[k].battery)*60*factor
-                                fleet.fleet[k].battery = cap
+                            
+                            if battery + float(power)/60 > cap:
+                                self.powerDemand[l] += (cap-battery)*60*factor
+                                battery = cap
                             else:
-                                fleet.fleet[k].battery += float(power)/60
+                                battery += float(power)/60
                                 fleet.fleet[k].location[l] = 4
                                 self.powerDemand[l] += power*factor
-
-        return self.powerDemand
-
-    def checkBatteryStates(self):
-        incomplete = []
-        for k in range(0,self.n):
-            if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
-                SOC = fleet.fleet[k].battery/fleet.fleet[k].vehicle.capacity
-                incomplete.append([fleet.fleet[k].name,SOC])
+            if battery < cap:
+                incomplete.append([fleet.fleet[k].name,battery/cap])
 
         if incomplete == []:
-            print 'all vehicles are fully charged'
+            print 'all vehicles fully charged'
         else:
             print str(len(incomplete)) + ' of ' + str(self.n),
             print 'vehicles did not reach full charge'
             for row in incomplete:
                 print 'agent#' + row[0] + ' is at ' + str(int(100*row[1])) + ' %'
 
-        return incomplete
+        return self.powerDemand
 
                 #print 'final battery: ' + str(fleet.fleet[k].battery),
                 #print ' / ' + str(fleet.fleet[k].vehicle.capacity)
@@ -486,7 +483,7 @@ class HomeOnly(ChargingScheme):
 regionType = 'Urban City and Town'
 region = ''
 month = 'February'
-day = 'Sunday'
+day = 'Wednesday'
 population = 150200
 
 if population > 4000:
@@ -568,36 +565,9 @@ print 'All logs sorted chronologically'
 test = ChargingScheme(fleet)
 homeOnly = HomeOnly(test)
 
-homeOnly.allCharge(8,factor)
-homeOnly.checkBatteryStates()
-"""
-for k in range(0,numberAgents):
-    journeys = fleet.fleet[k].energyLog
+homeOnly.allCharge(0.4,factor)
 
-    if len(journeys) != 0:
-        
-        for l in range(journeys[0][0],24*60):
-            # first check there isn't a journey 
-            if len(journeys) != 0:
-                if l == journeys[0][0]:
-                    fleet.fleet[k].battery -= journeys[0][1]
 
-                    # check you haven't run out of charge
-                    if fleet.fleet[k].battery <= 0:
-                        print 'agent #'+fleet.fleet[k].name+' has run out of charge'
-
-                    # once you've dealt with the journey remove it
-                    journeys.remove(journeys[0])
-
-            # now check if the vehicle needs to charge
-            if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
-                # and if it's avaliable to charge
-                if fleet.fleet[k].avaliability[l] == 0:
-                    # then put it onto charge
-                    fleet.fleet[k].battery += power/60
-
-        print 'final battery: ' + str(fleet.fleet[k].battery)
-        """
 # ------------------------------------------------------------------------------
 # PLOT FLEET LOCATION VARIATION WITH TIME
 # ------------------------------------------------------------------------------
