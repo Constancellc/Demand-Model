@@ -1,14 +1,17 @@
+# import the standard stuff
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import random
 
+# get the drivecycle class i wrote to run artemis for a given vehicle / distance
 from vehicleModel import Drivecycle
 
 # ------------------------------------------------------------------------------
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
 class Vehicle:
+    # Vehicle just stores the salient parameters of an individual agent
     def __init__(self,mass,Ta,Tb,Tc,eff,cap):
         self.mass = mass # kg
         self.load = 0 #kg
@@ -19,6 +22,7 @@ class Vehicle:
         self.capacity = cap # kWh
 
 class JourneyPool:
+    # Defines the 'pool' of randomly generated journeys in a given region
     def __init__(self, day, month, regionType):
         self.day = day
         self.month = month
@@ -229,8 +233,9 @@ class JourneyPool:
         return [purpose,journey[0],journey[1],journey[2]]
     
 class Agent:
+    # This stores all of the agents dynamic parameters, unlike the 'vehicle'
+    # class whose parameters do not change during the simulation
     def __init__(self, name, vehicle, regionType):
-        # vehicle - a loaded instance of the Vehicle class, regionType - string
         self.name = name
         self.vehicle = vehicle
         self.regionType = regionType
@@ -247,7 +252,7 @@ class Agent:
         timeOut = journey[1]
         timeBack = journey[2]
 
-        # hack to get around negative journey lengths
+        # hack to get around negative journey lengths - gaussian problems
         if journey[3] < 0:
             journey[3] = -journey[3]
         distance = journey[3]*1609.34 #convert from miles to m
@@ -353,22 +358,25 @@ class Fleet:
             ran = int(random.random()*len(avaliableAgents))
             return avaliableAgents[ran]
 
-    def getFleetLocations(self):
+    def getFleetLocations(self,factor):
         home = [0]*(24*60)
         work = [0]*(24*60)
         driving = [0]*(24*60)
         other = [0]*(24*60)
+        charging = [0]*(24*60)
         
         for i in range(0,self.n):
             for j in range(0,24*60):
                 if self.fleet[i].location[j] == 0:
-                    home[j] += 1
+                    home[j] += factor
                 elif self.fleet[i].location[j] == 1:
-                    driving[j] += 1
+                    driving[j] += factor
                 elif self.fleet[i].location[j] == 2:
-                    work[j] += 1
+                    work[j] += factor
                 elif self.fleet[i].location[j] == 3:
-                    other[j] += 1
+                    other[j] += factor
+                elif self.fleet[i].location[j] == 4:
+                    charging[j] += factor
                 else:
                     raise Exception('location problem')
 
@@ -377,6 +385,7 @@ class Fleet:
         output.append(work)
         output.append(driving)
         output.append(other)
+        output.append(charging)
         
         return output
 
@@ -411,31 +420,86 @@ class ChargingScheme:
 
     def __init__(self, fleet):
         self.fleet = fleet
-
-
+        self.n = fleet.n
+        self.powerDemand = [0]*(24*60)
 
 class HomeOnly(ChargingScheme):
 
-    def allCharge(self,power):
-        for i in range(0,self.fleet.n):
-            for j in range(0,24*60):
-                # first check if vehicle is at home
-                if self.fleet.fleet[i].location[j] == 0:
-                    # next check if vehicle needs charge
-                    return ''
+    def allCharge(self,power,factor):
+        for k in range(0,self.n):
+            journeys = fleet.fleet[k].energyLog
+
+            if len(journeys) != 0:
+                
+                for l in range(journeys[0][0],24*60):
+                    # first check there isn't a journey 
+                    if len(journeys) != 0:
+                        if l == journeys[0][0]:
+                            fleet.fleet[k].battery -= journeys[0][1]
+
+                            # check you haven't run out of charge
+                            if fleet.fleet[k].battery <= 0:
+                                print 'agent #'+fleet.fleet[k].name+' has run out of charge'
+
+                            # once you've dealt with the journey remove it
+                            journeys.remove(journeys[0])
+
+                    # now check if the vehicle needs to charge
+                    if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
+                        # and if it's avaliable to charge
+                        if fleet.fleet[k].location[l] == 0:
+                            # then put it onto charge
+                            cap = fleet.fleet[k].vehicle.capacity
+                            if fleet.fleet[k].battery + float(power)/60 > cap:
+                                self.powerDemand[l] += (cap-fleet.fleet[k].battery)*60*factor
+                                fleet.fleet[k].battery = cap
+                            else:
+                                fleet.fleet[k].battery += float(power)/60
+                                fleet.fleet[k].location[l] = 4
+                                self.powerDemand[l] += power*factor
+
+        return self.powerDemand
+
+    def checkBatteryStates(self):
+        incomplete = []
+        for k in range(0,self.n):
+            if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
+                SOC = fleet.fleet[k].battery/fleet.fleet[k].vehicle.capacity
+                incomplete.append([fleet.fleet[k].name,SOC])
+
+        if incomplete == []:
+            print 'all vehicles are fully charged'
+        else:
+            print str(len(incomplete)) + ' of ' + str(self.n),
+            print 'vehicles did not reach full charge'
+            for row in incomplete:
+                print 'agent#' + row[0] + ' is at ' + str(int(100*row[1])) + ' %'
+
+        return incomplete
+
+                #print 'final battery: ' + str(fleet.fleet[k].battery),
+                #print ' / ' + str(fleet.fleet[k].vehicle.capacity)
     
 # ------------------------------------------------------------------------------
 # INITIALIZATION SECTION
 # ------------------------------------------------------------------------------
 regionType = 'Urban City and Town'
 region = ''
-month = 'May'
-day = 'Wednesday'
-population = 1500
+month = 'February'
+day = 'Sunday'
+population = 150200
+
+if population > 4000:
+    i = 1
+    while population > 4000:
+        population = population/10
+        i += 1
+    factor = i*10
 
 journeysPerPerson = 0
 carsPerPerson = 0
 
+# Based on region specific figures, determine the numbers of agents and journeys
 with open('number.csv') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
@@ -467,6 +531,7 @@ numberAgents = int(carsPerPerson*population)
 
 nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7,32)
 
+# First we need to generate our fleet of vehicles
 fleet = Fleet()
 for k in range(0,numberAgents):
     agent = Agent(str(k), nissanLeaf, regionType)
@@ -474,39 +539,104 @@ for k in range(0,numberAgents):
 
 print str(numberAgents) + ' agents were initialised'
 
-# first the pool
-pool = JourneyPool(day, month, regionType)
 
+
+# Then we need to generate the pool of journeys
+pool = JourneyPool(day, month, regionType)
 for k in range(0,numberJourneys):
     pool.addJourney()
 
 print str(numberJourneys) + ' journeys were generated'
 
+print 'now assigning journeys'
+print 'PROGRESS:',
+# Now we need to assign the journeys to vehicles in the fleet
 for k in range(0,numberJourneys):
+    if k%(numberJourneys/33) == 0:
+        print 'X',
     journey = pool.pickOutJourney()
     agent = fleet.pickAvaliableAgent(journey[1],journey[2])
     agent.addJourney(journey)
-    #print 'A '+journey[0] + ' trip was given to agent#' + agent.name
-
+print ''
 print 'All journeys assigned!'
-t = np.linspace(4,28,num=24*60)
+
+
+# Sort the energy logs into chronological order
 fleet.sortFleetEnergyLogs()
-print 'All logs sorted, here is some proof:'
-print fleet.fleet[4].energyLog
-n = fleet.getFleetLocations()
+print 'All logs sorted chronologically'
+
+test = ChargingScheme(fleet)
+homeOnly = HomeOnly(test)
+
+homeOnly.allCharge(8,factor)
+homeOnly.checkBatteryStates()
+"""
+for k in range(0,numberAgents):
+    journeys = fleet.fleet[k].energyLog
+
+    if len(journeys) != 0:
+        
+        for l in range(journeys[0][0],24*60):
+            # first check there isn't a journey 
+            if len(journeys) != 0:
+                if l == journeys[0][0]:
+                    fleet.fleet[k].battery -= journeys[0][1]
+
+                    # check you haven't run out of charge
+                    if fleet.fleet[k].battery <= 0:
+                        print 'agent #'+fleet.fleet[k].name+' has run out of charge'
+
+                    # once you've dealt with the journey remove it
+                    journeys.remove(journeys[0])
+
+            # now check if the vehicle needs to charge
+            if fleet.fleet[k].battery < fleet.fleet[k].vehicle.capacity:
+                # and if it's avaliable to charge
+                if fleet.fleet[k].avaliability[l] == 0:
+                    # then put it onto charge
+                    fleet.fleet[k].battery += power/60
+
+        print 'final battery: ' + str(fleet.fleet[k].battery)
+        """
+# ------------------------------------------------------------------------------
+# PLOT FLEET LOCATION VARIATION WITH TIME
+# ------------------------------------------------------------------------------
+t = np.linspace(4,28,num=24*60)
+n = fleet.getFleetLocations(factor)
+
+# Generating figure and lines
 plt.figure(1)
 plt.plot(t,n[0],label='Home')
 plt.plot(t,n[2],label='Work')
 plt.plot(t,n[3],label='Other')
 plt.plot(t,n[1],label='In Transit')
-plt.ylim((0,fleet.n+1))
+plt.plot(t,n[4],label='Charging')
+
+# sort out the y axis
+plt.ylim((0,fleet.n*factor+1))
+plt.ylabel('number vehicles')
+
+# and x axis
+x = np.linspace(6,26,num=6)
+my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+plt.xticks(x, my_xticks)
 plt.xlim((4,28))
+plt.xlabel('time')
+
+# Finally, add legend
 plt.legend(loc=1)
 plt.show()
 
-totalPower = fleet.getFleetExpenditure()
+# For some reason i'm also plottong the total energy consumption with time
 plt.figure(2)
-plt.plot(t,totalPower)
+plt.plot(t,homeOnly.powerDemand)
+
+my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+plt.xticks(x, my_xticks)
+plt.xlim((4,28))
+plt.xlabel('time')
+plt.ylabel('power demand /kW')
+
 plt.show()
 """
 plt.figure(1)
