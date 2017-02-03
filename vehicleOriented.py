@@ -1,40 +1,38 @@
+# import the standard stuff
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import random
 
-from vehicleModel import Drivecycle, Vehicle
+# get the drivecycle class i wrote to run artemis for a given vehicle / distance
+from vehicleModel import Drivecycle
 
 # ------------------------------------------------------------------------------
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
+class Vehicle:
+    # Vehicle just stores the salient parameters of an individual agent
+    def __init__(self,mass,Ta,Tb,Tc,eff,cap):
+        self.mass = mass # kg
+        self.load = 0 #kg
+        self.Ta = Ta*4.44822 # convert lbf to N
+        self.Tb = Tb*9.9503 # lbf/mph -> N/mps
+        self.Tc = Tc*22.258 # lbf/mph2 -> N/(mps)^2 
+        self.eff = eff
+        self.capacity = cap # kWh
+        self.battery = cap
 
 class JourneyPool:
+    # Defines the 'pool' of randomly generated journeys in a given region
     def __init__(self, day, month, regionType):
         self.day = day
         self.month = month
         self.regionType = regionType
         
-        # initialising counters
-        self.numCommute = 0
-        self.numEducation = 0
-        self.numBusiness = 0
-        self.numShopping = 0
-        self.numEscort = 0
-        self.numEntertainment = 0
-        self.numOther = 0
-
-        self.morningCommutes = 0
-        self.eveningCommutes = 0
-        # and start times
-        self.commute = [0]*60*24
-        self.education = [0]*60*24
-        self.business = [0]*60*24
-        self.shopping = [0]*60*24
-        self.escort = [0]*60*24
-        self.entertainment = [0]*60*24
-        self.other = [0]*60*24
-
+        self.journeys = {'Commute':[],'Education':[],'Business':[],
+                         'Shopping':[],'Other escort + personal':[],
+                         'Entertainment':[],'Other':[]}
+        
     def addJourney(self):
 
         files = ['nts-data/purposeDay.csv','nts-data/purposeMonth.csv',
@@ -85,6 +83,8 @@ class JourneyPool:
         for i in range(0,7):
             pdf[i] = purposeday[i]*purposemonth[i]*purposeregion[i]
 
+        pdf[1] = 0.5*pdf[1] # Assume all education trips are round trips
+
         sumPdf = sum(pdf)
 
         # This should be the cdf of purpose given all of day, month and region
@@ -101,361 +101,616 @@ class JourneyPool:
             j += 1
 
         purpose = purposes[j]
+       
+        # we now have purpose, we now need time of day, ok this is where changes happen
 
-        # we now have purpose, we now need time of day
+        if purpose == 'Commute' or purpose == 'Education':
+            with open('nts-data/purposeStartAMPM.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                pdf = []
+                for row in reader:
+                    if row[0] == (purpose+'AM'):
+                        pdfAM = row[1:]
+                    elif row[0] == (purpose+'PM'):
+                        pdfPM = row[1:]
 
-        with open('nts-data/purposeStartHour.csv','rU') as csvfile:
-            pdf = []
+                # first get morning commmute
+                ran = 0.5*random.random()
+                i = 0
+                c = float(pdfAM[0])
+                while c <= ran:
+                    i += 1
+                    c += float(pdfAM[i])
+
+                outStartHour = i
+
+                ran = 0.5*random.random()
+                i = 0
+                c = float(pdfPM[0])
+                while c <= ran:
+                    i += 1
+                    c += float(pdfPM[i])
+
+                backStartHour = i
+                
+        else:
+            with open('nts-data/purposeStartHour.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                pdf = []
+                for row in reader:
+                    if row[0] == purpose:
+                        pdf = row[1:]
+
+                times = []
+
+                for j in range(0,2):
+                    ran = random.random()
+                    i = 0
+                    c = float(pdf[0])
+                    while c <= ran and i<23:
+                        i += 1
+                        c += float(pdf[i])
+
+                    # hack for shifting time
+                    if i > 3:
+                        i -= 4
+                    else:
+                        i += 20
+                    times.append(i)
+
+                if times[0] < times[1]:
+                    outStartHour = times[0]
+                    backStartHour = times[1]
+
+                else:
+                    outStartHour = times[1]
+                    backStartHour = times[0]
+
+
+
+        with open('nts-data/regionTypePurposeLength.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
-            hours = next(reader)
-            hours.remove("")
+            regions = next(reader)
+            for i in range(0,len(regions)):
+                if regions[i] == self.regionType:
+                    regionIndex = i
+                
             for row in reader:
                 if row[0] == purpose:
-                    pdf = row[1:]
+                    # generate distance in miles
+                    distance = np.random.normal(float(row[regionIndex]),1)
 
-        c = 0
-        for value in pdf:
-            c += float(value)
+                    # assume all education journeys are round trips
+                    if purpose == 'Education':
+                        distance = distance*2
 
-        normalised = []
-        for value in pdf:
-            normalised.append(float(value)/c)
+        if outStartHour == backStartHour:
+            time1 = 0
+            time2 = 0
+            while (time1-time2)*(time1-time2) <= 400:
+                time1 = outStartHour*60 + int(60*random.random())
+                time2 = outStartHour*60 + int(60*random.random())
 
-        cdf = []
-        c = 0
+            if time1 < time2:
+                outTime = time1
+                backTime = time2
+            else:
+                outTime = time2
+                backTime = time1
 
-        for value in normalised:
-            c += float(value)
-            cdf.append(c)
+        else:        
+            outTime = 60*outStartHour + int(60*random.random())
+            backTime = 60*backStartHour + int(60*random.random())
 
-        ran = random.random()
-        i = 0
-        while cdf[i]<=ran and i < len(hours):
-            i = i+1
+        self.journeys[purpose].append([outTime,backTime,distance])
 
-        startHour = int(hours[i])#-4
-        
-        #if startHour < 0:
-        #    startHour += 24
 
-        minutes = int(60*random.random())
-
-        if purpose == 'Commute':
-            if startHour <= 10 and startHour >= 4:
-                self.morningCommutes += 1
-            if startHour <= 21 and startHour >= 15:
-                self.eveningCommutes += 1
-            self.commute[startHour*60+minutes] += 1
-            self.numCommute += 1
-        elif purpose == 'Education':
-            self.education[startHour*60+minutes] += 1
-            self.numEducation += 1
-        elif purpose == 'Business':
-            self.business[startHour*60+minutes] += 1
-            self.numBusiness += 1
-        elif purpose == 'Shopping':
-            self.shopping[startHour*60+minutes] += 1
-            self.numShopping += 1
-        elif purpose == 'Other escort + personal':
-            self.escort[startHour*60+minutes] += 1
-            self.numEscort += 1
-        elif purpose == 'Entertainment':
-            self.entertainment[startHour*60+minutes] += 1
-            self.numEntertainment += 1
-        elif purpose == 'Other':
-            self.other[startHour*60+minutes] += 1
-            self.numOther += 1
-        else:
-            raise Error('constance there is a bug in the add to dataset')
-
-    def listTrips(self):
-
-        for data in [self.commute, self.education, self.business, self.shopping,
-                     self.escort, self.entertainment, self.other]:
-            lst = []
-
-            for i in range(0,len(data)):
-                for j in range(0,data[i]):
-                    lst.append()
-    def pairTrips(self):
-
-        lst = []
-        
-        for i in range(0,len(self.commute)):
-            for j in range(0,self.commute[i]):
-                lst.append(i)
-
-        self.numCommute = int(self.numCommute/2)
-
-        self.pairedCommutes = []
-        for i in range(0,self.numCommute):
-            self.pairedCommutes.append([lst[i],lst[i+self.numCommute]])
-
-        lst = []
-        
-        for i in range(0,len(self.education)):
-            for j in range(0,self.education[i]):
-                lst.append(i)
-
-        self.numEducation = int(self.numEducation/2)
-
-        self.pairedEducation = []
-        for i in range(0,self.numEducation):
-            self.pairedEducation.append([lst[i],lst[i+self.numEducation]])
-
-        lst = []
-        
-        for i in range(0,len(self.shopping)):
-            for j in range(0,self.shopping[i]):
-                lst.append(i)
-
-        self.numShopping = int(self.numShopping/2)
-
-        self.pairedShopping = []
-        for i in range(0,self.numShopping):
-            self.pairedShopping.append([lst[i],lst[i+self.numShopping]])
-
-    def pickOutJourney(self,agent):
+    def pickOutJourney(self):
+        # ah shit, did we mean to do the commutes and education first?
         # first select the purpose
-        pdf = [float(self.numCommute),float(self.numEducation),
-               float(self.numBusiness),float(self.numShopping),
-               float(self.numEscort),float(self.numEntertainment),
-               float(self.numOther)]
-
-        sumPdf = sum(pdf)
-
-        normalised = []
-        for value in pdf:
-            normalised.append(value/sumPdf)
-
-        cdf = [normalised[0]]
-        for j in range(1,len(normalised)):
-            cdf.append(cdf[j-1]+normalised[j])
-
-        ran = random.random()
-        i = 0
-        while cdf[i] <= ran and i < 6:
-            i += 1
-
         purposes = ['Commute','Education','Business','Shopping',
                     'Other escort + personal','Entertainment','Other']
-
-        if purposes[i] == 'Commute':
-            # generate up to date distribution and sample
-
-            # ok this is different now
-            i = int(random.random()*len(self.pairedCommutes))
-            agent.journeys.append(['Commute',self.pairedCommutes[i][0]])
-            agent.journeys.append(['Commute',self.pairedCommutes[i][1]])
-
-            self.pairedCommutes.remove(self.pairedCommutes[i])
-            self.numCommute -= 1
-            
-        elif purposes[i] == 'Education':
-            i = int(random.random()*len(self.pairedEducation))
-            
-            agent.journeys.append(['Education',self.pairedEducation[i][0]])
-            agent.journeys.append(['Education',self.pairedEducation[i][1]])
-
-            self.pairedEducation.remove(self.pairedEducation[i])
-            self.numEducation -= 1
-
-        elif purposes[i] == 'Business':
-            sumPdf = sum(self.business)
-            normalised = []
-            for value in self.business:
-                normalised.append(value/sumPdf)
-
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-                
-            self.business[j] -= 1
-            self.numBusiness -= 1
-
-            agent.journeys.append([purposes[i],j])
-
-        elif purposes[i] == 'Shopping':
-            i = int(random.random()*len(self.pairedShopping))
-            agent.journeys.append(['Shopping',self.pairedShopping[i][0]])
-            agent.journeys.append(['Shopping',self.pairedShopping[i][1]])
-
-            self.pairedShopping.remove(self.pairedShopping[i])
-            self.numShopping -= 1
-
-        elif purposes[i] == 'Other escort + personal':
-            sumPdf = sum(self.escort)
-            normalised = []
-            for value in self.escort:
-                normalised.append(value/sumPdf)
-
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-
-            agent.journeys.append([purposes[i],j])
-            self.escort[j] -= 1
-            self.numEscort -= 1
-
-        elif purposes[i] == 'Entertainment':
-            sumPdf = sum(self.entertainment)
-            normalised = []
-            for value in self.entertainment:
-                normalised.append(value/sumPdf)
-
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-
-            agent.journeys.append([purposes[i],j])
-            self.entertainment[j] -= 1
-            self.numEntertainment -= 1
-
-        elif purposes[i] == 'Other':
-            sumPdf = sum(self.other)
-            
-            normalised = []
-            for value in self.other:
-                normalised.append(value/sumPdf)
-
-            cdf = [normalised[0]]
-
-            for j in range(1,len(normalised)):
-                cdf.append(cdf[j-1]+normalised[j])
-
-            ran = random.random()
-            j = 0
-            
-            while cdf[j] <= ran and j < 1439:
-                j += 1
-
-            agent.journeys.append([purposes[i],j])
-            self.other[j] -= 1
-            self.numOther -= 1
-
-        else:
-            raise Error('purpose index bug')
-
         
-    def displayCounters(self):
-        print 'Commute:',
-        print self.numCommute
-        print 'Education:',
-        print self.numEducation
-        print 'Business:',
-        print self.numBusiness
-        print 'Shopping:',
-        print self.numShopping
-        print 'Escort:',
-        print self.numEscort
-        print 'Entertainment:',
-        print self.numEntertainment
-        print 'Other:',
-        print self.numOther
+        pdf = []
+        for key in purposes:
+            pdf.append(len(self.journeys[key]))
 
-    def getTotal(self):
-        total = self.numCommute + self.numEducation + self.numBusiness + \
-                self.numShopping + self.numEscort + self.numEntertainment + \
-                self.numOther
-        return total 
+        ran = random.random()*sum(pdf)
+
+        c = pdf[0]
+        i = 0
+        while c <= ran:
+            i += 1
+            c += pdf[i]
+
+        purpose = purposes[i]
+
+        # now pick journey pair
+        ran = int(len(self.journeys[purpose])*random.random())
+        journey = self.journeys[purpose][ran]
+
+        self.journeys[purpose].remove(journey)
+
+        return [purpose,journey[0],journey[1],journey[2]]
     
 class Agent:
-    def __init__(self, vehicle, regionType):
-        # vehicle - a loaded instance of the Vehicle class, regionType - string
+    # This stores all of the agents dynamic parameters, unlike the 'vehicle'
+    # class whose parameters do not change during the simulation
+    def __init__(self, name, vehicle, regionType):
+        self.name = name
         self.vehicle = vehicle
         self.regionType = regionType
-        self.journeys = []
+        self.avaliability = [1]*(24*60)
+        self.location = [0]*(24*60)
+        self.journeysLog = []
+        self.energyLog = []
+        self.battery = vehicle.capacity
+        self.energySpent = [0]*(24*60)
+
+    def addJourney(self,journey):
+        purpose = journey[0]
+        timeOut = journey[1]
+        timeBack = journey[2]
+
+        # hack to get around negative journey lengths - gaussian problems
+        if journey[3] < 0:
+            journey[3] = -journey[3]
+        distance = journey[3]*1609.34 #convert from miles to m
+
+        self.journeysLog.append(journey)
+
+        #self.mileage += distance*2
+
+        # calculate the energy expenditure
+        if self.regionType[0] == 'U':
+            cycle = Drivecycle(distance,'urban')
+        elif self.regionType[0] == 'R':
+            cycle = Drivecycle(distance,'rural')
+        else:
+            raise Exception('region not recognised')
+
+        v = cycle.velocity # m/s
+        a = cycle.acceleration # m/s2
+
+        F = []
+        for value in v:
+            F.append(self.vehicle.Ta + self.vehicle.Tb*value +
+                     self.vehicle.Tc*value*value)
+
+        E = 0
+        for i in range(0,len(a)):
+            F[i] += (self.vehicle.mass+self.vehicle.load)*a[i]
+
+            if a[i] >= 0:
+                E += F[i]*v[i]/self.vehicle.eff
+            else:
+                E += F[i]*v[i]*self.vehicle.eff
+
+        energy = E*2.77778e-7 # kWh
+        length = int(float(len(v))/60) # minutes
+
+        # first update details for outward journey
+
+        p = 0
+        for i in range(timeOut,timeOut+length):
+            if i >= 24*60:
+                i -= 24*60
+            p += 1/float(length)
+            self.avaliability[i] = 0
+            self.location[i] = 1
+            self.energySpent[i] += energy*p
+
+        for i in range(timeOut+length,timeBack):
+            if purpose == 'Commute':
+                self.location[i] = 2
+            elif purpose == 'Education':
+                self.location[i] = 0  #PANIC, ok might be sorted
+            else:
+                self.location[i] = 3
+            self.avaliability[i] = 0
+            self.energySpent[i] += energy
+
+        p = 0
+        for i in range(timeBack,timeBack+length):
+            if i >= 24*60:
+                i -= 24*60
+            p += 1/float(length)
+            self.avaliability[i] = 0
+            self.location[i] = 1
+            self.energySpent[i] += energy*(1+p)
+
+        if timeBack+length < 24*60:
+            for i in range(timeBack+length,24*60):
+                self.energySpent[i] += 2*energy
+
+        self.energyLog.append([timeOut+length,energy])
+        self.energyLog.append([timeBack+length,energy])
+
+    
+class Fleet:
+    def __init__(self):
+        self.n = 0
+        self.fleet = []
+
+    def addAgent(self,agent):
+        self.n += 1
+        self.fleet.append(agent)
+
+    def pickAvaliableAgent(self,timeA,timeB):
+        avaliableAgents = []
+        for i in range(0,self.n):
+            j = timeA
+            while self.fleet[i].avaliability[j] == 1 and j < timeB:
+                j += 1
+            if j == timeB:
+                avaliableAgents.append(self.fleet[i])
+
+        if avaliableAgents == []:
+            print timeA
+            print timeB
+            raise Exception('no avaliable agents between times ' + str(timeA) +
+                            ' and ' + str(timeB))
+        else:
+            ran = int(random.random()*len(avaliableAgents))
+            return avaliableAgents[ran]
+
+    def getFleetLocations(self,factor):
+        home = [0]*(24*60)
+        work = [0]*(24*60)
+        driving = [0]*(24*60)
+        other = [0]*(24*60)
+        charging = [0]*(24*60)
         
+        for i in range(0,self.n):
+            for j in range(0,24*60):
+                if self.fleet[i].location[j] == 0:
+                    home[j] += factor
+                elif self.fleet[i].location[j] == 1:
+                    driving[j] += factor
+                elif self.fleet[i].location[j] == 2:
+                    work[j] += factor
+                elif self.fleet[i].location[j] == 3:
+                    other[j] += factor
+                elif self.fleet[i].location[j] == 4:
+                    charging[j] += factor
+                else:
+                    raise Exception('location problem')
 
-# ------------------------------------------------------------------------------
-# INITIALIZATION SECTION
-# ------------------------------------------------------------------------------
+        output = []
+        output.append(home)
+        output.append(work)
+        output.append(driving)
+        output.append(other)
+        output.append(charging)
+        
+        return output
 
-regionType = 'Urban City and Town'
-region = ''
-month = 'July'
-day = 'Monday'
-population = 100
+    def sortFleetEnergyLogs(self):
 
-journeysPerPerson = 0
-carsPerPerson = 0
+        for i in range(0,self.n):
+            oldLog = self.fleet[i].energyLog
+            newLog = []
 
-with open('number.csv') as csvfile:
-    reader = csv.DictReader(csvfile)
-    for row in reader:
-        if row['day'] == day:
-            if row['month'] == month:
-                if row['region'] == regionType:
-                    journeysPerPerson = float(row['number'])
-if journeysPerPerson == 0:
-    raise Error('data for that region type / day / month not found')
+            while len(oldLog) > 0:
+                earliest = oldLog[0]
+                for j in range(1,len(oldLog)):
+                    if oldLog[j][0] < earliest[0]:
+                        earliest = oldLog[j]
 
-numberJourneys = int(journeysPerPerson*population)
+                newLog.append(earliest)
+                oldLog.remove(earliest)
 
-if region == '':
-    region = 'United Kingdom'
+            self.fleet[i].energyLog = newLog
+                    
+                    
+    def getFleetExpenditure(self,factor):
+        power = [0]*(24*60)
 
-with open('vehiclesPerHead.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        if row[0] == region:
-            carsPerPerson = float(row[1])
+        for i in range(0,self.n):
+            for j in range(0,24*60):
+                power[j] += factor*self.fleet[i].energySpent[j]
 
-if carsPerPerson == 0:
-    raise Error('are you sure that is a valid region?')
-
-numberAgents = int(carsPerPerson*population)
-
-# ok, now we know how much of everything we need let's start generating
-
-# first the pool
-pool = JourneyPool(day, month, regionType)
-
-#numberJourneys = int(numberJourneys*0.785) #roughly corrects 
-for i in range(0,numberJourneys):
-    pool.addJourney()
-pool.displayCounters()
-
-pool.pairTrips()
+        return power
 
 
-                                       
-fleet = {}
-nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7)
-nissanLeaf.loadEnergies()
 
-print numberAgents
-print numberJourneys
+class ChargingScheme:#HomeOnly:(ChargingScheme):
+    def __init__(self, fleet):
+        self.fleet = fleet
+        self.n = fleet.n
+        self.powerDemand = [0]*(24*60)
 
-for i in range(0,numberAgents):
-    fleet[i] = Agent(nissanLeaf,regionType)
+    def resetTest(self):
+        for i in range(0,len(self.powerDemand)):
+            self.powerDemand[i] = 0
+        for k in range(0,self.n):
+            self.fleet.fleet[k].vehicle.battery = self.fleet.fleet[k].vehicle.capacity
+            
 
-N = pool.getTotal()
-for i in range(0,N):
-    n = int(random.random()*numberAgents)
-    pool.pickOutJourney(fleet[n])
-pool.displayCounters()
-print fleet[4].journeys
-#plt.plot(np.linspace(0,24,num=24*60),pool.commute)
-#plt.show()
+            # also other stuff
+
+    def allHomeCharge(self,power,factor):
+        # locationCode = 0 --> home only =1 --> home or work
+        for k in range(0,self.n):
+
+            # Get the journeys the vehicle is required to complete
+            journeys = []
+
+            for journey in self.fleet.fleet[k].energyLog:
+                journeys.append(journey)
+            
+
+            # Get the capacity of the vehicle and intialise a battery variable
+            cap = self.fleet.fleet[k].vehicle.capacity
+            battery = self.fleet.fleet[k].vehicle.battery
+            incomplete = []
+
+            if len(journeys) != 0:
+                # Step through time, checking for journeys as you go
+                for l in range(journeys[0][0],24*60):
+                    if len(journeys) != 0:
+
+                        # If you find a journey, decrease the battery by the energy req
+                        if l == journeys[0][0]:
+                            battery -= journeys[0][1]
+
+                            # check you haven't run out of charge
+                            if battery <= 0:
+                                print 'agent #'+fleet.fleet[k].name+' has run out of charge'
+
+                            # once you've dealt with the journey remove it
+                            journeys.remove(journeys[0])
+
+                    # now check if the vehicle needs to and is avaliable to charge
+                    if battery < cap:
+                        if self.fleet.fleet[k].location[l] == 0:
+                            # put it onto charge
+
+                            # add the amount of energy which would be delivered in a minute
+                            if battery + float(power)/60 < cap:
+                                battery += float(power)/60
+                                self.fleet.fleet[k].location[l] = 4
+                                self.powerDemand[l] += power*factor
+
+                            # unless this would overfill the battery
+                            else:
+                                self.powerDemand[l] += (cap-battery)*60*factor
+                                battery = cap
+            if battery < cap:
+                incomplete.append([self.fleet.fleet[k].name,battery/cap])
+
+        if incomplete == []:
+            print 'all vehicles fully charged'
+        else:
+            print str(len(incomplete)) + ' of ' + str(self.n),
+            print 'vehicles did not reach full charge'
+            for row in incomplete:
+                print 'agent#' + row[0] + ' is at ' + str(int(100*row[1])) + ' %'
+
+        return self.powerDemand
+
+    def allHomeandWorkCharge(self,power,factor):
+        # locationCode = 0 --> home only =1 --> home or work
+        for k in range(0,self.n):
+            
+            # Get the journeys the vehicle is required to complete
+            journeys = []
+
+            for journey in self.fleet.fleet[k].energyLog:
+                journeys.append(journey)
+            
+
+            # Get the capacity of the vehicle and intialise a battery variable
+            cap = self.fleet.fleet[k].vehicle.capacity
+            battery = self.fleet.fleet[k].vehicle.battery
+            incomplete = []
+
+            if len(journeys) != 0:
+                # Step through time, checking for journeys as you go
+                for l in range(journeys[0][0],24*60):
+                    if len(journeys) != 0:
+
+                        # If you find a journey, decrease the battery by the energy req
+                        if l == journeys[0][0]:
+                            battery -= journeys[0][1]
+
+                            # check you haven't run out of charge
+                            if battery <= 0:
+                                print 'agent #'+fleet.fleet[k].name+' has run out of charge'
+
+                            # once you've dealt with the journey remove it
+                            journeys.remove(journeys[0])
+
+                    # now check if the vehicle needs to and is avaliable to charge
+                    if battery < cap:
+                        if self.fleet.fleet[k].location[l] == 0 or self.fleet.fleet[k].location[l] == 2:
+                            # put it onto charge
+
+                            # add the amount of energy which would be delivered in a minute
+                            if battery + float(power)/60 < cap:
+                                battery += float(power)/60
+                                self.fleet.fleet[k].location[l] = 4
+                                self.powerDemand[l] += power*factor
+
+                            # unless this would overfill the battery
+                            else:
+                                self.powerDemand[l] += (cap-battery)*60*factor
+                                battery = cap
+            if battery < cap:
+                incomplete.append([self.fleet.fleet[k].name,battery/cap])
+
+        if incomplete == []:
+            print 'all vehicles fully charged'
+        else:
+            print str(len(incomplete)) + ' of ' + str(self.n),
+            print 'vehicles did not reach full charge'
+            for row in incomplete:
+                print 'agent#' + row[0] + ' is at ' + str(int(100*row[1])) + ' %'
+
+        return self.powerDemand
+
+                #print 'final battery: ' + str(fleet.fleet[k].battery),
+                #print ' / ' + str(fleet.fleet[k].vehicle.capacity)
+
+class Simulation():
+    """
+    class variables: regionType (str), factor (float), numberJourneys (int),
+    numberAgents (int), fleet (Fleet)
+    """
+    def __init__(self, regionType, month, day, population, region=''):
+        self.regionType = regionType
+
+        self.factor = population/1000
+        population = 1000
+
+        # let's work out how many agents and journeys we're going to want
+        journeysPerPerson = 0
+        carsPerPerson = 0
+
+        with open('number.csv') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if row['day'] == day:
+                    if row['month'] == month:
+                        if row['region'] == regionType:
+                            journeysPerPerson = float(row['number'])
+        if journeysPerPerson == 0:
+            raise Error('data for that region type / day / month not found')
+
+        self.numberJourneys = int(journeysPerPerson*population/2)
+        # added divisor as generating journeys in pairs
+
+        if region == '':
+            region = 'United Kingdom'
+
+        with open('vehiclesPerHead.csv','rU') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if row[0] == region:
+                    carsPerPerson = float(row[1])
+
+        if carsPerPerson == 0:
+            raise Error('are you sure that is a valid region?')
+
+        self.numberAgents = int(carsPerPerson*population)
+
+        nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7,32)
+
+        # First we need to generate our fleet of vehicles
+        self.fleet = Fleet()
+        for k in range(0,self.numberAgents):
+            agent = Agent(str(k), nissanLeaf, regionType)
+            self.fleet.addAgent(agent)
+
+        print str(self.numberAgents) + ' agents were initialised, each representing ',
+        print str(self.factor) + ' vehicles'
+
+
+
+        # Then we need to generate the pool of journeys
+        pool = JourneyPool(day, month, regionType)
+        for k in range(0,self.numberJourneys):
+            pool.addJourney()
+
+        print str(self.numberJourneys) + ' journeys were generated'
+
+        print 'now assigning journeys'
+        print 'PROGRESS:',
+        # Now we need to assign the journeys to vehicles in the fleet
+        for k in range(0,self.numberJourneys):
+            if k%(self.numberJourneys/33) == 0:
+                print 'X',
+            journey = pool.pickOutJourney()
+            agent = self.fleet.pickAvaliableAgent(journey[1],journey[2])
+            agent.addJourney(journey)
+        print ''
+        print 'All journeys assigned!'
+
+        # Sort the energy logs into chronological order
+        self.fleet.sortFleetEnergyLogs()
+
+    def plotLocations():
+        t = np.linspace(4,28,num=24*60)
+        n = self.fleet.getFleetLocations(self.factor)
+
+        # Generating figure and lines
+        plt.figure(1)
+        plt.plot(t,n[0],label='Home')
+        plt.plot(t,n[2],label='Work')
+        plt.plot(t,n[3],label='Other')
+        plt.plot(t,n[1],label='In Transit')
+        plt.plot(t,n[4],label='Charging')
+
+        # sort out the y axis
+        plt.ylim((0,fleet.n*factor+1))
+        plt.ylabel('number vehicles')
+
+        # and x axis
+        x = np.linspace(6,26,num=6)
+        my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+        plt.xticks(x, my_xticks)
+        plt.xlim((4,28))
+        plt.xlabel('time')
+
+        # Finally, add legend
+        plt.legend(loc='upper left')
+        plt.show()
+
+
+class VariedPower:
+
+    def __init__(self,simulation):
+        self.fleet = simulation.fleet
+        self.factor = simulation.factor
+        
+    def atHomeCharge(self,powers):
+
+        test = ChargingScheme(self.fleet)
+
+        t = np.linspace(4,28,num=24*60)
+        plt.figure(1)
+        for power in powers:           
+            demand = test.allHomeCharge(power,self.factor)
+            
+            plt.plot(t,demand,label=str(power)+' kW')
+            test.resetTest()
+
+        x = np.linspace(6,26,num=6)
+        my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+        plt.xticks(x, my_xticks)
+        plt.xlim((4,28))
+        plt.xlabel('time')
+        plt.ylabel('power demand /kW')
+
+        plt.legend(loc=1)
+        plt.show()
+
+class VariedScheme:
+
+    def __init__(self,simulation):
+        self.fleet = simulation.fleet
+        self.factor = simulation.factor
+
+    def fixedPower(self,power):
+        test = ChargingScheme(self.fleet)
+
+        t = np.linspace(4,28,num=24*60)
+        plt.figure(1)
+        
+        homeOnly = test.allHomeCharge(power,self.factor)
+        plt.plot(t,homeOnly,label='Home Only')
+
+        test.resetTest()
+        homeAndWork = test.allHomeandWorkCharge(power,self.factor)
+        plt.plot(t,homeAndWork,label='Home and Work')
+        
+        x = np.linspace(6,26,num=6)
+        my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+        plt.xticks(x, my_xticks)
+        plt.xlim((4,28))
+        plt.xlabel('time')
+        plt.ylabel('power demand /kW')
+
+        plt.legend(loc='upper left')
+        plt.show()
+
