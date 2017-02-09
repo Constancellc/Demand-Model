@@ -1,3 +1,6 @@
+'''
+THIS FILE CONTAINS THE CLASSES NECESSARY TO RUN A DAILY CHARGE PROFILE SIMULATION
+'''
 # import the standard stuff
 import matplotlib.pyplot as plt
 import numpy as np
@@ -246,11 +249,15 @@ class Agent:
         self.energyLog = []
         self.battery = vehicle.capacity
         self.energySpent = [0]*(24*60)
+        self.accessoryLoad = 1.0 # kW
 
     def addJourney(self,journey):
         purpose = journey[0]
         timeOut = journey[1]
         timeBack = journey[2]
+
+        # add the driver and passenger load
+        self.vehicle.load += 75*1.6
 
         # hack to get around negative journey lengths - gaussian problems
         if journey[3] < 0:
@@ -287,7 +294,12 @@ class Agent:
                 E += F[i]*v[i]*self.vehicle.eff
 
         energy = E*2.77778e-7 # kWh
+
+
         length = int(float(len(v))/60) # minutes
+
+        # add accessory load
+        energy += length*(self.accessoryLoad+1.1171)/60
 
         # first update details for outward journey
 
@@ -325,6 +337,9 @@ class Agent:
 
         self.energyLog.append([timeOut+length,energy])
         self.energyLog.append([timeBack+length,energy])
+
+        # empty the vehicle
+        self.vehicle.load = 0.0
 
     
 class Fleet:
@@ -385,6 +400,37 @@ class Fleet:
         
         return output
 
+    def getWeeklyFleetLocations(self,factor):
+        home = [0]*(24*60*7)
+        work = [0]*(24*60*7)
+        driving = [0]*(24*60*7)
+        other = [0]*(24*60*7)
+        charging = [0]*(24*60*7)
+        
+        for i in range(0,self.n):
+            for j in range(0,24*60*7):
+                if self.fleet[i].location[j] == 0:
+                    home[j] += factor
+                elif self.fleet[i].location[j] == 1:
+                    driving[j] += factor
+                elif self.fleet[i].location[j] == 2:
+                    work[j] += factor
+                elif self.fleet[i].location[j] == 3:
+                    other[j] += factor
+                elif self.fleet[i].location[j] == 4:
+                    charging[j] += factor
+                else:
+                    raise Exception('location problem')
+
+        output = []
+        output.append(home)
+        output.append(work)
+        output.append(driving)
+        output.append(other)
+        output.append(charging)
+        
+        return output
+
     def sortFleetEnergyLogs(self):
 
         for i in range(0,self.n):
@@ -415,10 +461,11 @@ class Fleet:
 
 
 class ChargingScheme:#HomeOnly:(ChargingScheme):
-    def __init__(self, fleet):
+    def __init__(self, fleet, length):
         self.fleet = fleet
         self.n = fleet.n
-        self.powerDemand = [0]*(24*60)
+        self.length = length
+        self.powerDemand = [0]*(length)
 
     def resetTest(self):
         for i in range(0,len(self.powerDemand)):
@@ -447,7 +494,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
             if len(journeys) != 0:
                 # Step through time, checking for journeys as you go
-                for l in range(journeys[0][0],24*60):
+                for l in range(journeys[0][0],self.length):
                     if len(journeys) != 0:
 
                         # If you find a journey, decrease the battery by the energy req
@@ -456,7 +503,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
                             # check you haven't run out of charge
                             if battery <= 0:
-                                print 'agent #'+fleet.fleet[k].name+' has run out of charge'
+                                print 'agent #'+self.fleet.fleet[k].name+' has run out of charge'
 
                             # once you've dealt with the journey remove it
                             journeys.remove(journeys[0])
@@ -507,7 +554,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
             if len(journeys) != 0:
                 # Step through time, checking for journeys as you go
-                for l in range(journeys[0][0],24*60):
+                for l in range(journeys[0][0],length):
                     if len(journeys) != 0:
 
                         # If you find a journey, decrease the battery by the energy req
@@ -549,15 +596,23 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
         return self.powerDemand
 
-                #print 'final battery: ' + str(fleet.fleet[k].battery),
-                #print ' / ' + str(fleet.fleet[k].vehicle.capacity)
-
+    def getFleetSubset(self,m):
+        if m > self.fleet.n:
+            raise Exception('subset larger than whole fleet!')
+        else:
+            self.fleet.fleet = self.fleet.fleet[:m]
+            self.fleet.n = m
+            self.n = m
 class Simulation():
     """
     class variables: regionType (str), factor (float), numberJourneys (int),
     numberAgents (int), fleet (Fleet)
     """
-    def __init__(self, regionType, month, day, population, region=''):
+    def __init__(self, regionType, month, day, population, fleetCode,
+                 region=''):
+        # fleetCode is a code to determine the fleet composition
+        # 0 -> all nissanLeaf
+        # 2 -> all mitsuibishi (for ENWL comparison)
         self.regionType = regionType
 
         self.factor = population/1000
@@ -567,7 +622,7 @@ class Simulation():
         journeysPerPerson = 0
         carsPerPerson = 0
 
-        with open('number.csv') as csvfile:
+        with open('number.csv','rU') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 if row['day'] == day:
@@ -594,12 +649,22 @@ class Simulation():
 
         self.numberAgents = int(carsPerPerson*population)
 
-        nissanLeaf = Vehicle(1705,33.78,0.0618,0.02282,0.7,32)
+        nissanLeaf = Vehicle(1705,29.92,0.076,0.02195,0.86035,32)
+        bmwI3 = Vehicle(1420,22.9,0.346,0.01626,0.87785,22)
+        teslaS60D = Vehicle(2273,37.37,0.1842,0.01508,0.94957,60)
+        fiat500e = Vehicle(1477,24.91,0.2365,0.01816,0.80955,24)
+        mitsubishi = Vehicle(1307,19.484,0.43515,0.016133,0.77805,16)
 
         # First we need to generate our fleet of vehicles
         self.fleet = Fleet()
         for k in range(0,self.numberAgents):
-            agent = Agent(str(k), nissanLeaf, regionType)
+            if fleetCode == 0:
+                agent = Agent(str(k), nissanLeaf, regionType)
+            elif fleetCode == 2:
+                agent = Agent(str(k), mitsubishi, regionType)
+            else:
+                raise Exception('please check the fleet code')
+                
             self.fleet.addAgent(agent)
 
         print str(self.numberAgents) + ' agents were initialised, each representing ',
@@ -655,7 +720,6 @@ class Simulation():
         # Finally, add legend
         plt.legend(loc='upper left')
         plt.show()
-
 
 class VariedPower:
 
@@ -713,4 +777,208 @@ class VariedScheme:
 
         plt.legend(loc='upper left')
         plt.show()
+
+class WeekAgent:
+    # This stores all of the agents dynamic parameters, unlike the 'vehicle'
+    # class whose parameters do not change during the simulation
+    def __init__(self, name, vehicle, regionType):
+        self.name = name
+        self.vehicle = vehicle
+        self.regionType = regionType
+        self.avaliability = [1]*(24*60*7)
+        self.location = [0]*(24*60*7)
+        self.journeysLog = []
+        self.energyLog = []
+        self.battery = vehicle.capacity
+        self.energySpent = [0]*(24*60*7)
+        self.accessoryLoad = 1.0 # kW
+
+    def addJourney(self,journey,offset):
+        purpose = journey[0]
+        timeOut = journey[1]+offset*24*60
+        timeBack = journey[2]+offset*24*60
+
+        # add the driver and passenger load
+        self.vehicle.load += 75*1.6
+
+        # hack to get around negative journey lengths - gaussian problems
+        if journey[3] < 0:
+            journey[3] = -journey[3]
+        distance = journey[3]*1609.34 #convert from miles to m
+
+        self.journeysLog.append(journey)
+
+        #self.mileage += distance*2
+
+        # calculate the energy expenditure
+        if self.regionType[0] == 'U':
+            cycle = Drivecycle(distance,'urban')
+        elif self.regionType[0] == 'R':
+            cycle = Drivecycle(distance,'rural')
+        else:
+            raise Exception('region not recognised')
+
+        v = cycle.velocity # m/s
+        a = cycle.acceleration # m/s2
+
+        F = []
+        for value in v:
+            F.append(self.vehicle.Ta + self.vehicle.Tb*value +
+                     self.vehicle.Tc*value*value)
+
+        E = 0
+        for i in range(0,len(a)):
+            F[i] += (self.vehicle.mass+self.vehicle.load)*a[i]
+
+            if a[i] >= 0:
+                E += F[i]*v[i]/self.vehicle.eff
+            else:
+                E += F[i]*v[i]*self.vehicle.eff
+
+        energy = E*2.77778e-7 # kWh
+
+
+        length = int(float(len(v))/60) # minutes
+
+        # add accessory load
+        energy += length*(self.accessoryLoad+1.1171)/60
+
+        # first update details for outward journey
+
+        p = 0
+        for i in range(timeOut,timeOut+length):
+            if i >= 24*60*7:
+                i -= 24*60*7
+            p += 1/float(length)
+            self.avaliability[i] = 0
+            self.location[i] = 1
+            self.energySpent[i] += energy*p
+
+        for i in range(timeOut+length,timeBack):
+            if purpose == 'Commute':
+                self.location[i] = 2
+            elif purpose == 'Education':
+                self.location[i] = 0  #PANIC, ok might be sorted
+            else:
+                self.location[i] = 3
+            self.avaliability[i] = 0
+            self.energySpent[i] += energy
+
+        p = 0
+        for i in range(timeBack,timeBack+length):
+            if i >= 24*60*7:
+                i -= 24*60*7
+            p += 1/float(length)
+            self.avaliability[i] = 0
+            self.location[i] = 1
+            self.energySpent[i] += energy*(1+p)
+
+        if timeBack+length < 24*60*7:
+            for i in range(timeBack+length,24*60*7):
+                self.energySpent[i] += 2*energy
+
+        self.energyLog.append([timeOut+length,energy])
+        self.energyLog.append([timeBack+length,energy])
+
+        # empty the vehicle
+        self.vehicle.load = 0.0
+
+    
+
+
+class WeekSimulation():
+    """
+    class variables: regionType (str), factor (float), numberJourneys (int),
+    numberAgents (int), fleet (Fleet)
+    """
+    def __init__(self, regionType, month, population, fleetCode,region=''):
+        # fleetCode is a code to determine the fleet composition
+        # 0 -> all nissanLeaf
+        # 2 -> all mitsuibishi (for ENWL comparison)
+        self.regionType = regionType
+
+        self.factor = population/1000
+        population = 1000
+
+        # let's work out how many agents and journeys we're going to want
+        # added divisor as generating journeys in pairs
+
+        if region == '':
+            region = 'United Kingdom'
+        carsPerPerson = 0
+        with open('vehiclesPerHead.csv','rU') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if row[0] == region:
+                    carsPerPerson = float(row[1])
+
+        if carsPerPerson == 0:
+            raise Error('are you sure that is a valid region?')
+
+        self.numberAgents = int(carsPerPerson*population)
+
+        nissanLeaf = Vehicle(1705,29.92,0.076,0.02195,0.86035,32)
+        bmwI3 = Vehicle(1420,22.9,0.346,0.01626,0.87785,22)
+        teslaS60D = Vehicle(2273,37.37,0.1842,0.01508,0.94957,60)
+        fiat500e = Vehicle(1477,24.91,0.2365,0.01816,0.80955,24)
+        mitsubishi = Vehicle(1307,19.484,0.43515,0.016133,0.77805,16)
+
+        # First we need to generate our fleet of vehicles
+        self.fleet = Fleet()
+        for k in range(0,self.numberAgents):
+            if fleetCode == 0:
+                agent = WeekAgent(str(k), nissanLeaf, regionType)
+            elif fleetCode == 2:
+                agent = WeekAgent(str(k), mitsubishi, regionType)
+            else:
+                raise Exception('please check the fleet code')
+                
+            self.fleet.addAgent(agent)
+
+        print str(self.numberAgents) + ' agents were initialised, each representing ',
+        print str(self.factor) + ' vehicles'
+
+        days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday',
+                'Saturday']
+        for i in range(0,7):
+            day = days[i]
+
+            journeysPerPerson = 0
+
+            with open('number.csv','rU') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    if row['day'] == day:
+                        if row['month'] == month:
+                            if row['region'] == regionType:
+                                journeysPerPerson = float(row['number'])
+            if journeysPerPerson == 0:
+                raise Error('data for that region type / day / month not found')
+
+            numberJourneys = int(journeysPerPerson*population/2)
+
+            # Then we need to generate the pool of journeys
+            pool = JourneyPool(day, month, regionType)
+            for k in range(0,numberJourneys):
+                pool.addJourney()
+
+            print 'on '+str(day)+' '+str(numberJourneys)+' journeys were generated'
+
+            print 'now assigning journeys'
+            print 'PROGRESS:',
+            # Now we need to assign the journeys to vehicles in the fleet
+            for k in range(0,numberJourneys):
+                if k%(numberJourneys/33) == 0:
+                    print 'X',
+                journey = pool.pickOutJourney()
+                agent = self.fleet.pickAvaliableAgent(journey[1]+i*24*60,
+                                                      journey[2]+i*24*60)
+                agent.addJourney(journey,i)
+            print ''
+            print 'All journeys assigned!'
+
+        # Sort the energy logs into chronological order
+        self.fleet.sortFleetEnergyLogs()
+
+
 

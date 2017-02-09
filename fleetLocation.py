@@ -12,7 +12,7 @@ from vehicleOriented import Vehicle, JourneyPool, Agent, Fleet, ChargingScheme, 
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
 
-class VariedPower
+class VariedPower:
 
     def __init__(self,simulation):
         self.fleet = simulation.fleet
@@ -119,10 +119,10 @@ plt.show()
 # ------------------------------------------------------------------------------
  
 t = np.linspace(4,28,num=24*60)
-simulation = Simulation(regionType, month, day, population)
+simulation = Simulation(regionType, month, day, population, 0)
 
 
-test = ChargingScheme(simulation.fleet)
+test = ChargingScheme(simulation.fleet,24*60)
 homeOnly = test.allHomeCharge(2,simulation.factor)
 n = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n)
 
