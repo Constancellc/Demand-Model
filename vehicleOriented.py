@@ -341,6 +341,15 @@ class Agent:
         # empty the vehicle
         self.vehicle.load = 0.0
 
+    def getChargeProfile(self):
+
+        charging = [0]*(24*60)
+
+        for i in range(24*60):
+            if self.location[i] == 4:
+                charging[i] = 1
+
+        return charging
     
 class Fleet:
     def __init__(self):
@@ -369,46 +378,15 @@ class Fleet:
             ran = int(random.random()*len(avaliableAgents))
             return avaliableAgents[ran]
 
-    def getFleetLocations(self,factor):
-        home = [0]*(24*60)
-        work = [0]*(24*60)
-        driving = [0]*(24*60)
-        other = [0]*(24*60)
-        charging = [0]*(24*60)
+    def getFleetLocations(self,factor,length):
+        home = [0]*(length)
+        work = [0]*(length)
+        driving = [0]*(length)
+        other = [0]*(length)
+        charging = [0]*(length)
         
         for i in range(0,self.n):
-            for j in range(0,24*60):
-                if self.fleet[i].location[j] == 0:
-                    home[j] += factor
-                elif self.fleet[i].location[j] == 1:
-                    driving[j] += factor
-                elif self.fleet[i].location[j] == 2:
-                    work[j] += factor
-                elif self.fleet[i].location[j] == 3:
-                    other[j] += factor
-                elif self.fleet[i].location[j] == 4:
-                    charging[j] += factor
-                else:
-                    raise Exception('location problem')
-
-        output = []
-        output.append(home)
-        output.append(work)
-        output.append(driving)
-        output.append(other)
-        output.append(charging)
-        
-        return output
-
-    def getWeeklyFleetLocations(self,factor):
-        home = [0]*(24*60*7)
-        work = [0]*(24*60*7)
-        driving = [0]*(24*60*7)
-        other = [0]*(24*60*7)
-        charging = [0]*(24*60*7)
-        
-        for i in range(0,self.n):
-            for j in range(0,24*60*7):
+            for j in range(0,length):
                 if self.fleet[i].location[j] == 0:
                     home[j] += factor
                 elif self.fleet[i].location[j] == 1:
@@ -457,8 +435,6 @@ class Fleet:
                 power[j] += factor*self.fleet[i].energySpent[j]
 
         return power
-
-
 
 class ChargingScheme:#HomeOnly:(ChargingScheme):
     def __init__(self, fleet, length):
@@ -603,6 +579,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
             self.fleet.fleet = self.fleet.fleet[:m]
             self.fleet.n = m
             self.n = m
+
 class Simulation():
     """
     class variables: regionType (str), factor (float), numberJourneys (int),
@@ -694,6 +671,29 @@ class Simulation():
         # Sort the energy logs into chronological order
         self.fleet.sortFleetEnergyLogs()
 
+    def getSubsetFinalArrivalandEnergy(self,m,interval=1):
+        results = []
+        idleVehicles = 0
+
+        if m > self.fleet.n:
+            print 'You have chosen a subset larger than the number of agents'
+            m = self.fleet.n
+        
+        for i in range(0,m):
+            agent = self.fleet.fleet[i]
+            try:
+                log = agent.energyLog[-1]
+                energySpent = log[1]
+                time = log[0]
+
+                # covert the time into the right interval format
+                time = int(time/interval)
+                results.append([time,energySpent])
+            except IndexError:
+                idleVehicles += 1
+
+        print 'There were ' +str(idleVehicles)+' vehicles which were unused'
+        return results
     def plotLocations():
         t = np.linspace(4,28,num=24*60)
         n = self.fleet.getFleetLocations(self.factor)
@@ -720,6 +720,7 @@ class Simulation():
         # Finally, add legend
         plt.legend(loc='upper left')
         plt.show()
+
 
 class VariedPower:
 
@@ -883,6 +884,16 @@ class WeekAgent:
         # empty the vehicle
         self.vehicle.load = 0.0
 
+    def getChargeProfile(self):
+
+        charging = [0]*(7*24*60)
+
+        for i in range(0,7*24*60):
+            if self.location[i] == 4:
+                charging[i] = 1
+
+        return charging
+
     
 
 
@@ -979,6 +990,7 @@ class WeekSimulation():
 
         # Sort the energy logs into chronological order
         self.fleet.sortFleetEnergyLogs()
+
 
 
 

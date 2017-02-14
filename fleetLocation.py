@@ -124,7 +124,7 @@ simulation = Simulation(regionType, month, day, population, 0)
 
 test = ChargingScheme(simulation.fleet,24*60)
 homeOnly = test.allHomeCharge(2,simulation.factor)
-n = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n)
+n = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
 
 # Generating figure and lines
 plt.figure(1)
