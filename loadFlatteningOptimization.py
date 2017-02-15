@@ -154,7 +154,7 @@ print baseLoad
 b = []
 for i in range(0,n):
     for j in range(0,len(baseLoad)):
-        b.append(baseLoad[j])
+        b.append(0.0)#baseLoad[j])
 
 q = matrix(b)
 
