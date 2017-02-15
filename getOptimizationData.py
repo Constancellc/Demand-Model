@@ -22,8 +22,8 @@ scale = float(population)/64100000
 
 
 outFile = 'chargingDemand.csv'
-fleetSize = 10
-timeInterval = 15 # mins
+fleetSize = 40
+timeInterval = 5 # mins
 pMax = 4.0 # kW
 
 # starting with the charging demand
@@ -107,20 +107,18 @@ with open('ng-data/Demand_Data2016.csv','rU') as csvfile:
 # offset the day to 4AM
 nd = data[8:]+data[0:8]
 
-print nd
-
 # ok lets turn this 30 minute data into the correct resolution...
 
 baseLoad = []
 
-for i in range(0,24*(60/timeInterval)):
+for i in range(0,t):
     if i%(30/timeInterval) == 0:
-        if i*timeInterval/30 == 48:
-            i -= 1
+        #if i*timeInterval/30 == 48:
+            #i -= 1
         baseLoad.append(float(int(nd[i*timeInterval/30])))
     else:
-        f = float((i%30))/30
-        p1 = int(i/30)
+        f = float((i%(30/timeInterval)))/(30/timeInterval)
+        p1 = int(i*timeInterval/30)
         p2 = p1+1
         if p2 == 48: # this is a hack
             p2 -= 1
@@ -129,7 +127,6 @@ for i in range(0,24*(60/timeInterval)):
         baseLoad.append(float(int(nd[p1]+f*(nd[p2]-nd[p1]))))
 
 print baseLoad
-
 b = []
 for i in range(0,n):
     for j in range(0,len(baseLoad)):
@@ -152,17 +149,22 @@ for i in range(0,2*t*n):
         bineq.append(pMax)
 h = matrix(bineq)
 
-print h
-
-
 sol=solvers.qp(P, q, G, h, A, b)
 X = sol['x']
-print X
+#print X
 
 plt.figure(1)
+summed = [0.0]*t
 for i in range(0,n):
     data = []
     for j in range(0,t):
         data.append(X[i*t+j])
+        summed[j] += X[i*t+j] 
     plt.plot(data)
+
+for j in range(0,t):
+    summed[j] += baseLoad[j]
+plt.figure(2)
+plt.plot(summed)
+plt.plot(baseLoad)
 plt.show()

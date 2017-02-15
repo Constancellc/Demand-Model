@@ -3,17 +3,18 @@ import matplotlib.pyplot as plt
 import random
 import csv
 
-data = []
+from cvxopt import matrix, spdiag, solvers, sparse
 
-with open('ng-data/Demand_Data2016.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        if row[0] == '03-Feb-16':
-            data.append(row[4])
+n = 2
+t = 4
 
-nd = data[8:]+data[0:8]
-print nd
+A2 = matrix(0.0,(n,t*n))
 
-plt.figure(1)
-plt.plot(nd)
-plt.show()
+for j in range(0,n):
+    for i in range(0,t):
+        A2[n*i+j*(t*n+1)] = 1.0
+        if i < 2:
+            continue
+
+
+print A2
