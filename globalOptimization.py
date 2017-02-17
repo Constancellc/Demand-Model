@@ -15,7 +15,7 @@ I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION
 """
 regionType = 'Urban City and Town'
 region = ''
-month = 'August' # don't use december, i only have 6 days of ng data for it
+month = 'January' # don't use december, i only have 6 days of ng data for it
 day = 'Saturday'
 population = 150200
 
@@ -138,8 +138,11 @@ for i in range(0,t):
 times = []
 powers = []
 
-day = '04'
-month = '02'
+pvDay = str(calender[month][day])
+months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
+          'June':'06','July':'07','August':'08','September':'09',
+          'October':'10','November':'11','December':'12'}
+pvMonth = months[month]
 
 with open('pv/GBPV_data.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -147,9 +150,9 @@ with open('pv/GBPV_data.csv','rU') as csvfile:
         if row[0] == 'substation_id':
             continue
         
-        if row[1][8:10] != day:
+        if row[1][8:10] != pvDay:
             continue
-        elif row[1][5:7] != month:
+        elif row[1][5:7] != pvMonth:
             continue
         
         hour = int(row[1][11:13])-4
