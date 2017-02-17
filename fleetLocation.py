@@ -119,12 +119,48 @@ plt.show()
 # ------------------------------------------------------------------------------
  
 t = np.linspace(4,28,num=24*60)
+
 simulation = Simulation(regionType, month, day, population, 0)
-
-
 test = ChargingScheme(simulation.fleet,24*60)
-homeOnly = test.allHomeCharge(2,simulation.factor)
-n = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
+homeOnly = test.allHomeCharge(4,simulation.factor)
+n1 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
+
+regionType = 'Urban Conurbation'
+simulation = Simulation(regionType, month, day, population, 0)
+test = ChargingScheme(simulation.fleet,24*60)
+homeOnly = test.allHomeCharge(4,simulation.factor)
+n2 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
+
+regionType = 'Rural Town and Fringe'
+simulation = Simulation(regionType, month, day, population, 0)
+test = ChargingScheme(simulation.fleet,24*60)
+homeOnly = test.allHomeCharge(4,simulation.factor)
+n3 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
+
+regionType = 'Rural Village, Hamlet and Isolated Dwelling'
+simulation = Simulation(regionType, month, day, population, 0)
+test = ChargingScheme(simulation.fleet,24*60)
+homeOnly = test.allHomeCharge(4,simulation.factor)
+n4 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
+
+home = [0.0]*24*60
+work = [0.0]*24*60
+other = [0.0]*24*60
+transit = [0.0]*24*60
+charge = [0.0]*24*60
+for i in range(0,24*60):
+    home[i] = 0.446*n1[0][i] + 0.369*n2[0][i] + 0.092*n3[0][i] + 0.093*n4[0][i]
+    work[i] = 0.446*n1[2][i] + 0.369*n2[2][i] + 0.092*n3[2][i] + 0.093*n4[2][i]
+    other[i] = 0.446*n1[3][i] + 0.369*n2[3][i] + 0.092*n3[3][i] + 0.093*n4[3][i]
+    transit[i] = 0.446*n1[1][i] + 0.369*n2[1][i] + 0.092*n3[1][i] + 0.093*n4[1][i]
+    charge[i] = 0.446*n1[4][i] + 0.369*n2[4][i] + 0.092*n3[4][i] + 0.093*n4[4][i]
+
+n = []
+n.append(home)
+n.append(transit)
+n.append(work)
+n.append(other)
+n.append(charge)
 
 # Generating figure and lines
 plt.figure(1)
@@ -146,5 +182,5 @@ plt.xlim((4,28))
 plt.xlabel('time')
 
 # Finally, add legend
-plt.legend(loc=1)
+plt.legend(loc='upper center')
 plt.show()

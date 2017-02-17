@@ -681,19 +681,55 @@ class Simulation():
         
         for i in range(0,m):
             agent = self.fleet.fleet[i]
-            try:
-                log = agent.energyLog[-1]
-                energySpent = log[1]
-                time = log[0]
+            nTrips = len(agent.energyLog)
+
+            if nTrips == 0:
+                idleVehicles += 1
+            else:
+                energySpent = 0
+                for j in range(0,nTrips):
+                    energySpent += agent.energyLog[j][1]
+                timeOut = agent.energyLog[0][0]
+                timeBack = agent.energyLog[-1][0]
 
                 # covert the time into the right interval format
-                time = int(time/interval)
+                time = int(timeBack/interval)
                 results.append([time,energySpent])
-            except IndexError:
-                idleVehicles += 1
 
         print 'There were ' +str(idleVehicles)+' vehicles which were unused'
         return results
+
+    def getSubsetBookendTimesandEnergy(self,m,tMax,interval=1):
+        results = []
+        idleVehicles = 0
+
+        if m > self.fleet.n:
+            print 'You have chosen a subset larger than the number of agents'
+            m = self.fleet.n
+        
+        for i in range(0,m):
+            agent = self.fleet.fleet[i]
+            nTrips = len(agent.energyLog)
+
+            if nTrips == 0:
+                idleVehicles += 1
+            else:
+                energySpent = 0
+                for j in range(0,nTrips):
+                    energySpent += agent.energyLog[j][1]
+                timeOut = agent.energyLog[0][0]
+                timeBack = agent.energyLog[-1][0]
+
+                # covert the time into the right interval format
+                timeOut = int(timeOut/interval) + 24*(60/interval)
+                if timeOut > tMax:
+                    timeOut = tMax
+                timeBack = int(timeBack/interval)
+                results.append([timeBack,energySpent,timeOut])
+
+        print 'There were ' +str(idleVehicles)+' vehicles which were unused'
+        return results
+    
     def plotLocations():
         t = np.linspace(4,28,num=24*60)
         n = self.fleet.getFleetLocations(self.factor)

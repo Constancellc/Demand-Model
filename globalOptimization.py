@@ -15,26 +15,34 @@ I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION
 """
 regionType = 'Urban City and Town'
 region = ''
-month = 'January'
-day = 'Wednesday'
+month = 'August' # don't use december, i only have 6 days of ng data for it
+day = 'Saturday'
 population = 150200
 
-
-
 outFile = 'chargingDemand.csv'
-fleetSize = 20
+fleetSize = 40
 scale = float(fleetSize)/25800000
 timeInterval = 15 # mins
 pMax = 4.0 # kW
 
+nHours = 24+4 # the number of hours I want to simulate
+
+# CHOSE OBJECTIVE 1 - VALLEY FILLING, 2 - LOAD FLATTENING
+obj = 3
+
+t = nHours*(60/timeInterval)
+
 # starting with the charging demand
 simulation = Simulation(regionType,month,day,population,0)
-results = simulation.getSubsetFinalArrivalandEnergy(fleetSize,timeInterval)
+results = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,
+                                                    timeInterval)
 
 n = len(results)
-t = 24*(60/timeInterval)
 
-# it would be nice to be able to compare to the unoptimized case
+# ------------------------------------------------------------------------------
+# DUMB CHARGING SECTION
+# ------------------------------------------------------------------------------
+
 dumbCharging = [0]*t
 for j in range(0,n):
     time = results[j][0]
@@ -57,40 +65,10 @@ print dumbCharging
 # the first equality constraint ensures the right amount of charge is recovered
 # the second ensures that only avalible vehicles are plugged in
 
-A1 = matrix(0.0,(n,t*n))
-A2 = matrix(0.0,(n,t*n))
-b1 = matrix(0.0,(2*n,1))
+# ------------------------------------------------------------------------------
+# GETTING NATIONAL GRID DATA
+# ------------------------------------------------------------------------------
 
-for j in range(0,n):
-    b1[j] = float(results[j][1]) 
-    for i in range(0,t):
-        A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
-        if i < results[j][0]:
-            A2[n*(t*j+i)+j] = 1.0
-            #A2[n*i+j*(t*n+1)] = 1.0
-
-# the first inequality constraint prevents negative powers, the second limits
-# the size of the charging power
-
-A3 = spdiag([-1]*(t*n))
-A4 = spdiag([1]*(t*n))
-
-print results
-
-Aeq = sparse([A1,A2])
-#beq = sparse([b1,b2])
-
-Aineq = sparse([A3,A4])
-
-
-# if u want 2 store results
-
-#with open(outFile,'w') as csvfile:
-#    writer = csv.writer(csvfile)
-#    writer.writerows(results)
-
-
-# now baseLoad
 # find right date for day of the week
 calender = {'January':{'Monday':11,'Tuesday':12,'Wednesday':13,'Thursday':14,
                        'Friday':15,'Saturday':16,'Sunday':17},
@@ -117,26 +95,28 @@ calender = {'January':{'Monday':11,'Tuesday':12,'Wednesday':13,'Thursday':14,
             'December':{'Monday':12,'Tuesday':13,'Wednesday':14,'Thursday':15,
                        'Friday':16,'Saturday':17,'Sunday':18}}
 
-data = []
+dayOne = []
+dayTwo = []
 
 with open('ng-data/Demand_Data2016.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         #print str(calender[month][day])+'-'+month[:3]+'-16'
         if row[0] == str(calender[month][day])+'-'+month[:3]+'-16':
-            data.append(scale*1000*float(row[4]))
+            dayOne.append(scale*1000*float(row[4]))
+        elif row[0] == str(calender[month][day]+1)+'-'+month[:3]+'-16':
+            dayTwo.append(scale*1000*float(row[4]))
+            
+# 4AM on first day to 8AM on second
+nd = dayOne[8:]+dayTwo[0:(8+(nHours-24)*2)]
 
-# offset the day to 4AM
-nd = data[8:]+data[0:8]
-
-# ok lets turn this 30 minute data into the correct resolution...
-
+# interpolate data to obtain the correct resolution
 baseLoad = []
 
 for i in range(0,t):
     r = i%(30/timeInterval)
     if r == 0:
-        if i*timeInterval/30 == 48:
+        if i*timeInterval/30 == nHours*2:
             i -= 1
         baseLoad.append(float(int(100*nd[i*timeInterval/30]))/100)
     else:
@@ -144,41 +124,125 @@ for i in range(0,t):
 
         p1 = int(i*timeInterval/30)
         p2 = p1+1
-        if p2 == 48: # this is a hack
+        if p2 == nHours*2: # this is a hack
             p2 -= 1
 
         # rounding to integer just because I feel like it
         baseLoad.append(float(int(100*(nd[p1]+f*(nd[p2]-nd[p1]))))/100)
 
-print baseLoad
-b = []
-for i in range(0,n):
-    for j in range(0,len(baseLoad)):
-        b.append(0.0)#baseLoad[j])
 
-q = matrix(b)
+# ------------------------------------------------------------------------------
+# GETTING PV DATA
+# ------------------------------------------------------------------------------
 
-I = spdiag([1]*t)
-P = sparse([[I]*n]*n)
+times = []
+powers = []
 
-A = Aeq
-b = b1
+day = '04'
+month = '02'
 
-G = Aineq
+with open('pv/GBPV_data.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        if row[0] == 'substation_id':
+            continue
+        
+        if row[1][8:10] != day:
+            continue
+        elif row[1][5:7] != month:
+            continue
+        
+        hour = int(row[1][11:13])-4
+        mins = int(row[1][14:16])
+        time = hour*(60/timeInterval)+int(mins/timeInterval)
+        times.append(time)
+        powers.append(scale*1000*float(row[2]))
 
-bineq = []
+pv = [0.0]*t
+
+for i in range(0,t):
+    if i < times[0]:
+        continue
+    elif i > times[-1]:
+        continue
+
+    gap = times[1]-times[0]
+
+    j = 0
+    while times[j] < i and j < t-1:
+        j += 1
+
+    distance = times[j] - i
+    f = float(distance)/gap
+
+    pv[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
+
+# ------------------------------------------------------------------------------
+# SETTING UP THE OPTIMIZATION PROBLEM
+# ------------------------------------------------------------------------------
+
+
+# constraints
+# The equality constraint ensures the required amount of energy is delivered 
+A1 = matrix(0.0,(n,t*n))
+A2 = matrix(0.0,(n,t*n))
+b = matrix(0.0,(2*n,1))
+
+for j in range(0,n):
+    b[j] = float(results[j][1]) 
+    for i in range(0,t):
+        A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
+        if i < results[j][0] or i > results[j][2]:
+            A2[n*(t*j+i)+j] = 1.0
+
+A = sparse([A1,A2])
+
+A3 = spdiag([-1]*(t*n))
+A4 = spdiag([1]*(t*n))
+
+# The inequality constraint ensures powers are positive and below a maximum
+G = sparse([A3,A4])
+
+h = []
 for i in range(0,2*t*n):
     if i<t*n:
-        bineq.append(0.0)
+        h.append(0.0)
     else:
-        bineq.append(pMax)
-h = matrix(bineq)
+        h.append(pMax)
+h = matrix(h)
+
+# objective
+
+if obj == 1:
+    q = []
+    for i in range(0,n):
+        for j in range(0,len(baseLoad)):
+            q.append(baseLoad[j])
+
+    q = matrix(q)
+elif obj == 2:
+    q = matrix([0.0]*(t*n))
+
+if obj == 3:
+    q = []
+    for i in range(0,n):
+        for j in range(0,len(baseLoad)):
+            q.append(pv[j]+baseLoad[j])
+
+    q = matrix(q)
+
+if obj == 1 or obj == 2 or obj == 3:
+    I = spdiag([1]*t)
+    P = sparse([[I]*n]*n)
 
 sol=solvers.qp(P, q, G, h, A, b)
 X = sol['x']
-#print X
 
-x = np.linspace(4,28,num=24*60/timeInterval)
+# ------------------------------------------------------------------------------
+# GRAPH PLOTTING SECTION
+# ------------------------------------------------------------------------------
+
+x = np.linspace(4,nHours+4,num=nHours*60/timeInterval)
 
 plt.figure(1)
 
@@ -190,10 +254,10 @@ for i in range(0,n):
         data.append(X[i*t+j])
         summed[j] += X[i*t+j] 
     plt.plot(x,data)
-xaxis = np.linspace(6,26,num=6)
-my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00']
+xaxis = np.linspace(6,30,num=7)
+my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00','06:00']
 plt.xticks(xaxis, my_xticks)
-plt.xlim((4,28))
+plt.xlim((4,4+nHours))
 plt.xlabel('time')
 plt.ylabel('Power (kW)')
 plt.title('Individual Charge Profiles for Smart Charging')
@@ -207,9 +271,10 @@ for j in range(0,t):
 plt.plot(x,summed,label='Smart Charging')
 plt.plot(x,baseLoad,label='Scaled Base Load')
 plt.plot(x,dumbCharging,label='Dumb Charging')
+plt.plot(x,pv,label='PV')
 
 plt.xticks(xaxis, my_xticks)
-plt.xlim((4,28))
+plt.xlim((4,4+nHours))
 plt.ylabel('Power (kW)')
 plt.legend(loc='upper left')
 plt.title('Aggregate Power Demand')

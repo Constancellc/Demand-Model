@@ -5,7 +5,7 @@ A script to download all historic data from the Sheffield Solar PV_Live API and 
 Jamie Taylor 2015-10-13
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import requests
 import json
 import sys
@@ -26,6 +26,7 @@ def main():
         duration = 1825 #Numbers of days of historic data to get (1825 == 5 years)
     latest_timestamp = datetime.now() #Initialise to now
     earliest_timestamp = latest_timestamp - timedelta(days=duration)
+
     request_start = earliest_timestamp #Initialise
     printer = [] #Initialise
     if block_size > duration:
@@ -47,6 +48,7 @@ def main():
                   request_end.strftime("%Y-%m-%dT%H:%M:%S")))
         resultpage = requests.get(url, auth=requests.auth.HTTPBasicAuth(username, password)).text #return the web page (JSON) as a string
         data = json.loads(resultpage) #translate the JSON string to a python dictionary
+
         if len(data[0]["data"]) > 0:
             columns = [x["column"] for x in data[0]["meta"]]
             if not quiet:
@@ -54,6 +56,7 @@ def main():
             if len(printer) == 0:
                 printer.append(",".join(columns))
             for row in data[0]["data"]:
+                print row
                 row = [str(x) for x in row]
                 if not quiet:
                     print "    " + ",".join(row)
