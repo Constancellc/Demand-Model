@@ -256,8 +256,12 @@ class Agent:
         timeOut = journey[1]
         timeBack = journey[2]
 
+        passengers = {'Commute':0.2,'Education':1.1,'Business':0.2,
+                         'Shopping':0.7,'Other escort + personal':0.9,
+                         'Entertainment':0.8,'Other':0.9}
+
         # add the driver and passenger load
-        self.vehicle.load += 75*1.6
+        self.vehicle.load += (1.0+passengers[purpose])*np.random.normal(75.0,2)
 
         # hack to get around negative journey lengths - gaussian problems
         if journey[3] < 0:
@@ -586,14 +590,14 @@ class Simulation():
     numberAgents (int), fleet (Fleet)
     """
     def __init__(self, regionType, month, day, population, fleetCode,
-                 region=''):
+                 f=1,region=''):
         # fleetCode is a code to determine the fleet composition
         # 0 -> all nissanLeaf
         # 2 -> all mitsuibishi (for ENWL comparison)
         self.regionType = regionType
 
-        self.factor = population/1000
-        population = 1000
+        self.factor = f*population/1000
+        population = 1000/f
 
         # let's work out how many agents and journeys we're going to want
         journeysPerPerson = 0
@@ -637,6 +641,16 @@ class Simulation():
         for k in range(0,self.numberAgents):
             if fleetCode == 0:
                 agent = Agent(str(k), nissanLeaf, regionType)
+            if fleetCode == 1:
+                ran = random.random()
+                if ran < 0.391:
+                    agent = Agent(str(k), fiat500e, regionType)
+                elif ran < 0.652:
+                    agent = Agent(str(k), nissanLeaf, regionType)
+                elif ran < 0.745:
+                    agent = Agent(str(k), bmwI3, regionType)
+                else:
+                    agent = Agent(str(k), teslaS60D, regionType)
             elif fleetCode == 2:
                 agent = Agent(str(k), mitsubishi, regionType)
             else:
@@ -660,7 +674,9 @@ class Simulation():
         print 'PROGRESS:',
         # Now we need to assign the journeys to vehicles in the fleet
         for k in range(0,self.numberJourneys):
-            if k%(self.numberJourneys/33) == 0:
+            if self.numberJourneys < 33:
+                print 'X',
+            elif k%(self.numberJourneys/33) == 0:
                 print 'X',
             journey = pool.pickOutJourney()
             agent = self.fleet.pickAvaliableAgent(journey[1],journey[2])
@@ -725,7 +741,9 @@ class Simulation():
                 if timeOut > tMax:
                     timeOut = tMax
                 timeBack = int(timeBack/interval)
-                results.append([timeBack,energySpent,timeOut])
+
+                idNo = str(i)
+                results.append([timeBack,energySpent,timeOut,idNo])
 
         print 'There were ' +str(idleVehicles)+' vehicles which were unused'
         return results
