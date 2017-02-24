@@ -30,7 +30,7 @@ demand = [0]*(24*60)
 
 for region in regionBreakdown:
     population = regionBreakdown[region]*totalPopulation
-    simulation = Simulation(region, month, day, population, 0)
+    simulation = Simulation(region, month, day, population, 1)
     
     test = ChargingScheme(simulation.fleet,24*60)
     test.allHomeCharge(4,simulation.factor)
@@ -127,4 +127,5 @@ plt.ylim((0,70000))
 plt.xlabel('time')
 plt.ylabel('power demand (MW)')
 plt.legend(loc='lower left')
+plt.grid()
 plt.show()

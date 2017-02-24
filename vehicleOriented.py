@@ -215,14 +215,14 @@ class JourneyPool:
                     'Other escort + personal','Entertainment','Other']
         
         pdf = []
-        for key in purposes:
-            pdf.append(len(self.journeys[key]))
+        for i in range(0,7):            
+            pdf.append(len(self.journeys[purposes[i]]))
 
         ran = random.random()*sum(pdf)
 
         c = pdf[0]
         i = 0
-        while c <= ran:
+        while c <= ran and i < 6:
             i += 1
             c += pdf[i]
 
@@ -230,11 +230,16 @@ class JourneyPool:
 
         # now pick journey pair
         ran = int(len(self.journeys[purpose])*random.random())
+
         journey = self.journeys[purpose][ran]
-
         self.journeys[purpose].remove(journey)
-
         return [purpose,journey[0],journey[1],journey[2]]
+
+    def returnJourney(self, trip):
+        purpose = trip[0]
+        journey = trip[1:]
+
+        self.journeys[purpose].append(journey)
     
 class Agent:
     # This stores all of the agents dynamic parameters, unlike the 'vehicle'
@@ -345,6 +350,7 @@ class Agent:
         # empty the vehicle
         self.vehicle.load = 0.0
 
+    
     def getChargeProfile(self):
 
         charging = [0]*(24*60)
@@ -354,6 +360,10 @@ class Agent:
                 charging[i] = 1
 
         return charging
+
+class NoAvaliableAgents(Exception):
+    def __init__(self, timeA, timeB):
+        print 'No agents free between times '+str(timeA)+' and '+str(timeB)
     
 class Fleet:
     def __init__(self):
@@ -363,6 +373,11 @@ class Fleet:
     def addAgent(self,agent):
         self.n += 1
         self.fleet.append(agent)
+
+    def reset(self):
+        for i in range(0,self.n):
+            for j in range(0,len(self.fleet[0].avaliability)):
+                self.fleet[i].avaliability[j] = 1
 
     def pickAvaliableAgent(self,timeA,timeB):
         avaliableAgents = []
@@ -376,8 +391,7 @@ class Fleet:
         if avaliableAgents == []:
             print timeA
             print timeB
-            raise Exception('no avaliable agents between times ' + str(timeA) +
-                            ' and ' + str(timeB))
+            raise NoAvaliableAgents(timeA,timeB)
         else:
             ran = int(random.random()*len(avaliableAgents))
             return avaliableAgents[ran]
@@ -662,7 +676,6 @@ class Simulation():
         print str(self.factor) + ' vehicles'
 
 
-
         # Then we need to generate the pool of journeys
         pool = JourneyPool(day, month, regionType)
         for k in range(0,self.numberJourneys):
@@ -670,19 +683,36 @@ class Simulation():
 
         print str(self.numberJourneys) + ' journeys were generated'
 
-        print 'now assigning journeys'
-        print 'PROGRESS:',
-        # Now we need to assign the journeys to vehicles in the fleet
-        for k in range(0,self.numberJourneys):
-            if self.numberJourneys < 33:
-                print 'X',
-            elif k%(self.numberJourneys/33) == 0:
-                print 'X',
-            journey = pool.pickOutJourney()
-            agent = self.fleet.pickAvaliableAgent(journey[1],journey[2])
-            agent.addJourney(journey)
-        print ''
-        print 'All journeys assigned!'
+        assignmentComplete = False
+
+        while assignmentComplete == False:
+            try:
+                pickedOutJourneys = []
+                print 'now assigning journeys'
+                print 'PROGRESS:',
+                # Now we need to assign the journeys to vehicles in the fleet
+                for k in range(0,self.numberJourneys):
+                    if self.numberJourneys < 33:
+                        print 'X',
+                    elif k%(self.numberJourneys/33) == 0:
+                        print 'X',
+                    journey = pool.pickOutJourney()
+                    pickedOutJourneys.append(journey)
+                    
+                    agent = self.fleet.pickAvaliableAgent(journey[1],journey[2])
+                    agent.addJourney(journey)
+                    
+                print ''
+                print 'All journeys assigned!'
+                assignmentComplete = True
+                
+            except NoAvaliableAgents:
+                print 'Damn it! re running this one'
+                self.fleet.reset()
+                for trip in pickedOutJourneys:
+                    pool.returnJourney(trip)
+                    print 'returned ' + str(trip[0])
+                continue
 
         # Sort the energy logs into chronological order
         self.fleet.sortFleetEnergyLogs()
@@ -738,8 +768,8 @@ class Simulation():
 
                 # covert the time into the right interval format
                 timeOut = int(timeOut/interval) + 24*(60/interval)
-                if timeOut > tMax:
-                    timeOut = tMax
+                #if timeOut > tMax:
+                #    timeOut = tMax
                 timeBack = int(timeBack/interval)
 
                 idNo = str(i)

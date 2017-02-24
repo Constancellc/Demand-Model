@@ -2,62 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import csv
+from cvxopt import matrix, spdiag, solvers, sparse
 
-timeInterval = 15
+t = 3
+t0 = 1
+m = 3
 
-times = []
-powers = []
+A1 = matrix(0.0,(m,(t-t0)*m))
+A2 = matrix(0.0,(m,(t-t0)*m))
+b = matrix(0.0,(2*m,1))
 
-day = '02'
-month = '01'
-
-with open('pv/GBPV_data.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        if row[0] == 'substation_id':
-            continue
-        
-        if row[1][8:10] != day:
-            continue
-        elif row[1][5:7] != month:
-            continue
-        
-        print row[1]
-        
-        hour = int(row[1][11:13])-4
-        mins = int(row[1][14:16])
-        time = hour*(60/timeInterval)+int(mins/timeInterval)
-        times.append(time)
-        powers.append(float(row[2]))
-
-print times
-
-t = 24*(60/timeInterval)
-
-interpolated = [0.0]*t
-
-for i in range(0,t):
-    if i < times[0]:
-        continue
-    elif i > times[-1]:
-        continue
-
-    gap = times[1]-times[0]
-
-    j = 0
-    while times[j] < i and j < t-1:
-        j += 1
-
-    distance = times[j] - i
-    f = float(distance)/gap
-
-    interpolated[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
-    
-print interpolated
-
-plt.figure(1)
-plt.plot(interpolated)
-plt.show()
+for j in range(0,m):
+    b[j] = 1.0 
+    for i in range(0,t-t0):
+        A1[m*((t-t0)*j+i)+j] = 2.0
+        if i > (3-t0) or i == (t-t0-1):
+            A2[m*((t-t0)*j+i)+j] = 1.0
 
 
+print A2
+print A1
         
