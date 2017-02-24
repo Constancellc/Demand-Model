@@ -273,7 +273,7 @@ class Agent:
             journey[3] = -journey[3]
         distance = journey[3]*1609.34 #convert from miles to m
 
-        self.journeysLog.append(journey)
+
 
         #self.mileage += distance*2
 
@@ -307,6 +307,9 @@ class Agent:
 
         length = int(float(len(v))/60) # minutes
 
+        journey += [length]
+        
+        self.journeysLog.append(journey)
         # add accessory load
         energy += length*(self.accessoryLoad+1.1171)/60
 
@@ -745,7 +748,8 @@ class Simulation():
         print 'There were ' +str(idleVehicles)+' vehicles which were unused'
         return results
 
-    def getSubsetBookendTimesandEnergy(self,m,tMax,interval=1):
+    def getSubsetBookendTimesandEnergy(self,m,tMax,interval=1,
+                                       workCharging=False):
         results = []
         idleVehicles = 0
 
@@ -763,6 +767,24 @@ class Simulation():
                 energySpent = 0
                 for j in range(0,nTrips):
                     energySpent += agent.energyLog[j][1]
+
+                    # check for commutes if we're considering work charging
+                    if workCharging == True:
+                        if agent.journeyLog[j][0] == 'Commute':
+                            workArrival = agent.journeyLog[j][1]+agent.journeyLog[j][3]
+                            workDepart = agent.journeyLog[j][2]
+
+                            # look for right energy
+
+                            for row in energyLog:
+                                if row[0] == workArrival:
+                                    print 'I found the commute!'
+                                    commuteEnergy = row[1]
+                                    
+                            workArrival = int(workArrival/interval)+1
+                            workDepart = int(workDepart/interval)
+                            
+                    
                 timeOut = agent.energyLog[0][0]
                 timeBack = agent.energyLog[-1][0]
 
@@ -773,10 +795,17 @@ class Simulation():
                 timeBack = int(timeBack/interval)
 
                 idNo = str(i)
-                results.append([timeBack,energySpent,timeOut,idNo])
+                #results.append([timeBack,energySpent,timeOut,idNo])
 
+        if workCharging == True and workArrival != 0:
+            results.append([timeBack,energySpent,timeOut,idNo,1,workArrival,
+                            workDeparture,commuteEnergy])
+        else:
+            results.append([timeBack,energySpent,timeOut,idNo,0,0,0,0])
+            
         print 'There were ' +str(idleVehicles)+' vehicles which were unused'
         return results
+    
     
     def plotLocations():
         t = np.linspace(4,28,num=24*60)
