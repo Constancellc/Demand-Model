@@ -770,20 +770,27 @@ class Simulation():
 
                     # check for commutes if we're considering work charging
                     if workCharging == True:
-                        if agent.journeyLog[j][0] == 'Commute':
-                            workArrival = agent.journeyLog[j][1]+agent.journeyLog[j][3]
-                            workDepart = agent.journeyLog[j][2]
 
-                            # look for right energy
+                        # reset commute stats
+                        workArrival = 0
+                        workDepart = 0
+                        commuteEnergy = 0
+                        
+                        # look for commute details
+                        for entry in agent.journeysLog:
+                            if entry[0] == 'Commute':
+                                workArrival = entry[1]+entry[3]
+                                workDepart = entry[2]
 
-                            for row in energyLog:
-                                if row[0] == workArrival:
-                                    print 'I found the commute!'
-                                    commuteEnergy = row[1]
-                                    
-                            workArrival = int(workArrival/interval)+1
-                            workDepart = int(workDepart/interval)
-                            
+                        # look for right energy
+                        for row in agent.energyLog:
+                            if row[0] == workArrival:
+                                print 'I found the commute!'
+                                commuteEnergy = row[1]
+
+                                workArrival = int(workArrival/interval)+1
+                                workDepart = int(workDepart/interval)
+                                
                     
                 timeOut = agent.energyLog[0][0]
                 timeBack = agent.energyLog[-1][0]
@@ -797,11 +804,11 @@ class Simulation():
                 idNo = str(i)
                 #results.append([timeBack,energySpent,timeOut,idNo])
 
-        if workCharging == True and workArrival != 0:
-            results.append([timeBack,energySpent,timeOut,idNo,1,workArrival,
-                            workDeparture,commuteEnergy])
-        else:
-            results.append([timeBack,energySpent,timeOut,idNo,0,0,0,0])
+            if workCharging == True and commuteEnergy != 0:
+                results.append([timeBack,energySpent,timeOut,idNo,1,workArrival,
+                                workDeparture,commuteEnergy])
+            else:
+                results.append([timeBack,energySpent,timeOut,idNo,0,0,0,0])
             
         print 'There were ' +str(idleVehicles)+' vehicles which were unused'
         return results

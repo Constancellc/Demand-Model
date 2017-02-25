@@ -34,8 +34,8 @@ t = nHours*(60/timeInterval)
 
 # starting with the charging demand
 simulation = Simulation(regionType,month,day,population,1,f=int(400/fleetSize))
-results = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,
-                                                    timeInterval)
+results = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,timeInterval,
+                                                    workCharging=True)
 
 n = len(results)
 
@@ -61,7 +61,7 @@ for j in range(0,n):
         else:
             dumbCharging[time] += energy
             energy = 0
-print dumbCharging
+
 # the first equality constraint ensures the right amount of charge is recovered
 # the second ensures that only avalible vehicles are plugged in
 
@@ -206,7 +206,7 @@ h2 = []
 for j in range(0,n):
     if results[j][4] == 1:
         commutes += 1
-        h2.append(results[j][7])
+        h2.append(float(results[j][7]))
 
 A5 = matrix(0.0,(commutes,t*n))
 
@@ -221,10 +221,11 @@ for j in range(0,n):
             A2[n*(t*j+i)+j] = 1.0
             
         # but if it's at work we can also charge now
-        if results[j][3] == 1:
+        if results[j][4] == 1:
             if i > results[j][5] and i < results[j][6]:
                 A2[n*(t*j+i)+j] = 0.0
                 A5[commutes*(t*j+i)+c] = float(timeInterval)/60
+            if i == 0:
                 c += 1
 
 A = sparse([A1,A2])
