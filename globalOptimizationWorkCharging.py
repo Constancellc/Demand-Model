@@ -34,19 +34,114 @@ t = nHours*(60/timeInterval)
 
 # starting with the charging demand
 simulation = Simulation(regionType,month,day,population,1,f=int(400/fleetSize))
-results = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,timeInterval,
+
+# ------------------------------------------------------------------------------
+# SETTING UP THE OPTIMIZATION PROBLEM
+# ------------------------------------------------------------------------------
+def optimize(results):
+
+    # constraints
+    # The equality constraint ensures the required amount of energy is delivered 
+    A1 = matrix(0.0,(n,t*n))
+    A2 = matrix(0.0,(n,t*n))
+
+    b = matrix(0.0,(2*n,1))
+
+
+
+    # this isn't incredibly efficient but hey-ho
+    # counting number of commutes, and therefore additional constraints
+    commutes = 0
+    h2 = []
+
+    for j in range(0,n):
+        if results[j][4] == 1:
+            commutes += 1
+            h2.append(float(results[j][7]))
+
+    A5 = matrix(0.0,(commutes,t*n))
+
+    c = 0
+
+    for j in range(0,n):
+        b[j] = float(results[j][1])
+
+        for i in range(0,t):
+            A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
+            if i < results[j][0] or (i > results[j][2] and i < (results[j][0]+t/2)):
+                A2[n*(t*j+i)+j] = 1.0
+                
+            # but if it's at work we can also charge now
+            if results[j][4] == 1:
+                if i > results[j][5] and i < results[j][6]:
+                    A2[n*(t*j+i)+j] = 0.0
+                    A5[commutes*(t*j+i)+c] = float(timeInterval)/60
+                if i == 0:
+                    c += 1
+
+    A = sparse([A1,A2])
+
+    A3 = spdiag([-1]*(t*n))
+    A4 = spdiag([1]*(t*n))
+
+    # The inequality constraint ensures powers are positive and below a maximum
+    G = sparse([A3,A4,A5])
+
+    h = []
+    for i in range(0,2*t*n):
+        if i<t*n:
+            h.append(0.0)
+        else:
+            h.append(pMax)
+    h += h2
+    h = matrix(h)
+
+    # objective
+
+    if obj == 1:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
+
+        q = matrix(q)
+    elif obj == 2:
+        q = matrix([0.0]*(t*n))
+
+    if obj == 3:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(pv[j]+baseLoad[j])
+
+        q = matrix(q)
+
+    if obj == 1 or obj == 2 or obj == 3:
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+
+    sol=solvers.qp(P, q, G, h, A, b)
+    X = sol['x']
+    return X
+
+
+results1 = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,timeInterval,
+                                                    workCharging=False)
+results2 = simulation.getSubsetBookendTimesandEnergy(fleetSize,t,timeInterval,
                                                     workCharging=True)
 
-n = len(results)
+n = len(results1)
 
+#print results1
+#print results2
 # ------------------------------------------------------------------------------
 # DUMB CHARGING SECTION
 # ------------------------------------------------------------------------------
 
 dumbCharging = [0]*t
 for j in range(0,n):
-    time = results[j][0]
-    energy = results[j][1] # kWh
+    time = results1[j][0]
+    energy = results1[j][1] # kWh
     while energy > 0:
         if energy > (timeInterval/60)*4:
             
@@ -184,145 +279,82 @@ if obj == 3:
 
         pv[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
 
-# ------------------------------------------------------------------------------
-# SETTING UP THE OPTIMIZATION PROBLEM
-# ------------------------------------------------------------------------------
 
-
-# constraints
-# The equality constraint ensures the required amount of energy is delivered 
-A1 = matrix(0.0,(n,t*n))
-A2 = matrix(0.0,(n,t*n))
-
-b = matrix(0.0,(2*n,1))
-
-
-
-# this isn't incredibly efficient but hey-ho
-# counting number of commutes, and therefore additional constraints
-commutes = 0
-h2 = []
-
-for j in range(0,n):
-    if results[j][4] == 1:
-        commutes += 1
-        h2.append(float(results[j][7]))
-
-A5 = matrix(0.0,(commutes,t*n))
-
-c = 0
-
-for j in range(0,n):
-    b[j] = float(results[j][1])
-
-    for i in range(0,t):
-        A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
-        if i < results[j][0] or (i > results[j][2] and i < (results[j][0]+t/2)):
-            A2[n*(t*j+i)+j] = 1.0
-            
-        # but if it's at work we can also charge now
-        if results[j][4] == 1:
-            if i > results[j][5] and i < results[j][6]:
-                A2[n*(t*j+i)+j] = 0.0
-                A5[commutes*(t*j+i)+c] = float(timeInterval)/60
-            if i == 0:
-                c += 1
-
-A = sparse([A1,A2])
-
-A3 = spdiag([-1]*(t*n))
-A4 = spdiag([1]*(t*n))
-
-# The inequality constraint ensures powers are positive and below a maximum
-G = sparse([A3,A4,A5])
-
-h = []
-for i in range(0,2*t*n):
-    if i<t*n:
-        h.append(0.0)
-    else:
-        h.append(pMax)
-h += h2
-h = matrix(h)
-
-# objective
-
-if obj == 1:
-    q = []
-    for i in range(0,n):
-        for j in range(0,len(baseLoad)):
-            q.append(baseLoad[j])
-
-    q = matrix(q)
-elif obj == 2:
-    q = matrix([0.0]*(t*n))
-
-if obj == 3:
-    q = []
-    for i in range(0,n):
-        for j in range(0,len(baseLoad)):
-            q.append(pv[j]+baseLoad[j])
-
-    q = matrix(q)
-
-if obj == 1 or obj == 2 or obj == 3:
-    I = spdiag([1]*t)
-    P = sparse([[I]*n]*n)
-
-sol=solvers.qp(P, q, G, h, A, b)
-X = sol['x']
 
 # ------------------------------------------------------------------------------
 # GRAPH PLOTTING SECTION
 # ------------------------------------------------------------------------------
+X1 = optimize(results1)
+X2 = optimize(results2)
 
 x = np.linspace(4,nHours+4,num=nHours*60/timeInterval)
 
-averageProfile = [0.0]*t
+averageProfile1 = [0.0]*t
+averageProfile2 = [0.0]*t
 
 plt.figure(1)
 
 plt.subplot(312)
 summed = [0.0]*t
+summed2 = [0.0]*t
 for i in range(0,n):
     data = []
     for j in range(0,t):
-        data.append(X[i*t+j])
-        summed[j] += X[i*t+j]
-        averageProfile[j] += X[i*t+j]/n
+        data.append(X1[i*t+j])
+        summed2[j] += X2[i*t+j]
+        summed[j] += X1[i*t+j]
+        #averageProfile1[j] += X1[i*t+j]/n
+        #averageProfile2[j] += X2[i*t+j]/n
     plt.plot(x,data)
 xaxis = np.linspace(6,54,num=13)
 my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00','06:00','10:00','16:00','18:00','22:00','02:00','06:00']
 plt.xticks(xaxis, my_xticks)
 plt.xlim((10,40))
-
+plt.title('Home Only',y=0.8)
 plt.ylabel('Power (kW)')
-plt.title('Individual Charge Profiles for Smart Charging')
+
+#plt.ylabel('Power (kW)')
+#plt.title('Individual Charge Profiles for Smart Charging')
 
 plt.subplot(311)
 
 for j in range(0,t):
     summed[j] += baseLoad[j]
+    summed2[j] += baseLoad[j]
     dumbCharging[j] += baseLoad[j]
 
-plt.plot(x,summed,label='Smart Charging')
-plt.plot(x,baseLoad,label='Scaled Base Load')
-plt.plot(x,dumbCharging,label='Dumb Charging')
+plt.plot(x,summed,label='Home Only')
+plt.plot(x,summed2,label='Home and Work')
+#plt.plot(x,baseLoad,label='Scaled Base Load')
+#plt.plot(x,dumbCharging,label='Dumb Charging')
 if obj ==3:
     plt.plot(x,pv,label='PV')
 
 plt.xticks(xaxis, my_xticks)
 plt.xlim((10,40))
 plt.ylabel('Power (kW)')
-plt.legend(loc='upper left')
+plt.legend(loc='upper right',ncol=2)
 plt.title('Aggregate Power Demand')
 
+#plt.subplot(212)
+#plt.plot(x,averageProfile1,label='Home Only')
+#plt.plot(x,averageProfile2,label='Home and Work')
+#plt.xticks(xaxis, my_xticks)
+#plt.xlim((10,40))
+#plt.xlabel('time')
+#plt.ylabel('Power (kW)')
+#plt.title('Average Charge Profile')
+
 plt.subplot(313)
-plt.plot(x,averageProfile)
+for i in range(0,n):
+    data = []
+    for j in range(0,t):
+        data.append(X2[i*t+j])
+    plt.plot(x,data)
 plt.xticks(xaxis, my_xticks)
 plt.xlim((10,40))
+plt.title('Home and Work',y=0.8)
 plt.xlabel('time')
 plt.ylabel('Power (kW)')
-plt.title('Average Charge Profile')
 
 plt.show()

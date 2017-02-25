@@ -752,6 +752,7 @@ class Simulation():
                                        workCharging=False):
         results = []
         idleVehicles = 0
+        commuteEnergy = 0
 
         if m > self.fleet.n:
             print 'You have chosen a subset larger than the number of agents'
@@ -763,50 +764,45 @@ class Simulation():
 
             if nTrips == 0:
                 idleVehicles += 1
-            else:
-                energySpent = 0
-                for j in range(0,nTrips):
-                    energySpent += agent.energyLog[j][1]
+                continue
+#            else:
+            energySpent = 0
+            for j in range(0,nTrips):
+                energySpent += agent.energyLog[j][1]
 
                     # check for commutes if we're considering work charging
-                    if workCharging == True:
+                if workCharging == True:
 
-                        # reset commute stats
-                        workArrival = 0
-                        workDepart = 0
-                        commuteEnergy = 0
-                        
-                        # look for commute details
-                        for entry in agent.journeysLog:
-                            if entry[0] == 'Commute':
-                                workArrival = entry[1]+entry[3]
-                                workDepart = entry[2]
-
-                        # look for right energy
-                        for row in agent.energyLog:
-                            if row[0] == workArrival:
-                                print 'I found the commute!'
-                                commuteEnergy = row[1]
-
-                                workArrival = int(workArrival/interval)+1
-                                workDepart = int(workDepart/interval)
+                    # reset commute stats
+                    workArrival = 0
+                    workDepart = 0
+                    commuteEnergy = 0
+                    # look for commute details
+                    for entry in agent.journeysLog:
+                        if entry[0] == 'Commute':
+                            workArrival = entry[1]+entry[4]
+                            workDepart = entry[2]
+                            
+                    # look for right energy
+                    for row in agent.energyLog:
+                        if row[0] == workArrival:
+                            commuteEnergy = row[1]
+                            workArrival = int(workArrival/interval)+1
+                            workDepart = int(workDepart/interval)
                                 
-                    
-                timeOut = agent.energyLog[0][0]
-                timeBack = agent.energyLog[-1][0]
 
-                # covert the time into the right interval format
-                timeOut = int(timeOut/interval) + 24*(60/interval)
-                #if timeOut > tMax:
-                #    timeOut = tMax
-                timeBack = int(timeBack/interval)
+            timeOut = agent.energyLog[0][0]
+            timeBack = agent.energyLog[-1][0]
 
-                idNo = str(i)
-                #results.append([timeBack,energySpent,timeOut,idNo])
+            # covert the time into the right interval format
+            timeOut = int(timeOut/interval) + 24*(60/interval)
+            timeBack = int(timeBack/interval)
 
+            idNo = str(i)
+               #results.append([timeBack,energySpent,timeOut,idNo])
             if workCharging == True and commuteEnergy != 0:
                 results.append([timeBack,energySpent,timeOut,idNo,1,workArrival,
-                                workDeparture,commuteEnergy])
+                               workDepart,commuteEnergy])
             else:
                 results.append([timeBack,energySpent,timeOut,idNo,0,0,0,0])
             
