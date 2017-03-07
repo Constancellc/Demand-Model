@@ -4,22 +4,21 @@ import random
 import csv
 from cvxopt import matrix, spdiag, solvers, sparse
 
-t = 3
-t0 = 1
-m = 3
+for i in range(1,2):
+    f = open('openDSSprofiles/load_profile_'+str(i)+'.txt')
+    data = f.read()
+    print data
 
-A1 = matrix(0.0,(m,(t-t0)*m))
-A2 = matrix(0.0,(m,(t-t0)*m))
-b = matrix(0.0,(2*m,1))
+    results = []
+    newDigit = ''
+    
+    for j in range(0,len(data)):
+        if data[j] == '':
+            continue
+        if data[j-1] == '':
+            results.append(newDigit)
+            newDigit = ''
+        #print data[j]
+        newDigit += data[j]
 
-for j in range(0,m):
-    b[j] = 1.0 
-    for i in range(0,t-t0):
-        A1[m*((t-t0)*j+i)+j] = 2.0
-        if i > (3-t0) or i == (t-t0-1):
-            A2[m*((t-t0)*j+i)+j] = 1.0
-
-
-print A2
-print A1
-        
+    print results

@@ -15,7 +15,7 @@ I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION
 """
 regionType = 'Urban City and Town'
 region = ''
-month = 'July' # don't use december, i only have 6 days of ng data for it
+month = 'January' # don't use december, i only have 6 days of ng data for it
 day = 'Wednesday' # using sunday dodge as next day assumptions very bad
 population = 150200
 
@@ -64,17 +64,23 @@ def optimize(results):
     c = 0
 
     for j in range(0,n):
+        # total energy required to be replenished
         b[j] = float(results[j][1])
 
         for i in range(0,t):
             A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
+
+            # if the vehicle hasn't arrived home yet or has left the next day
+            # its charging power must be zero
             if i < results[j][0] or (i > results[j][2] and i < (results[j][0]+t/2)):
                 A2[n*(t*j+i)+j] = 1.0
                 
-            # but if it's at work we can also charge now
+            # but if it's at work we can also charge, so undo this last step
             if results[j][4] == 1:
                 if i > results[j][5] and i < results[j][6]:
                     A2[n*(t*j+i)+j] = 0.0
+
+                    # also set up inequality contraint for that evs work charge
                     A5[commutes*(t*j+i)+c] = float(timeInterval)/60
                 if i == 0:
                     c += 1
@@ -84,16 +90,16 @@ def optimize(results):
     A3 = spdiag([-1]*(t*n))
     A4 = spdiag([1]*(t*n))
 
-    # The inequality constraint ensures powers are positive and below a maximum
     G = sparse([A3,A4,A5])
 
     h = []
     for i in range(0,2*t*n):
         if i<t*n:
-            h.append(0.0)
+            h.append(0.0) # ensure all powers non-negative
         else:
-            h.append(pMax)
-    h += h2
+            h.append(pMax) # ensures all powers less than a maximum
+    
+    h += h2 # add work charging limits
     h = matrix(h)
 
     # objective
@@ -303,18 +309,15 @@ for i in range(0,n):
         data.append(X1[i*t+j])
         summed2[j] += X2[i*t+j]
         summed[j] += X1[i*t+j]
-        #averageProfile1[j] += X1[i*t+j]/n
-        #averageProfile2[j] += X2[i*t+j]/n
+
     plt.plot(x,data)
 xaxis = np.linspace(6,54,num=13)
-my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00','06:00','10:00','16:00','18:00','22:00','02:00','06:00']
+my_xticks = ['06:00','10:00 \n Wed','16:00','18:00','22:00','02:00','06:00','10:00 \n Thur','16:00','18:00','22:00','02:00','06:00']
 plt.xticks(xaxis, my_xticks)
-plt.xlim((10,40))
-plt.title('Home Only',y=0.8)
+plt.xlim((9,40))
+plt.ylim(0,4.5)
+plt.title('Home Only - Individual Profiles',y=0.8)
 plt.ylabel('Power (kW)')
-
-#plt.ylabel('Power (kW)')
-#plt.title('Individual Charge Profiles for Smart Charging')
 
 plt.subplot(311)
 
@@ -325,25 +328,17 @@ for j in range(0,t):
 
 plt.plot(x,summed,label='Home Only')
 plt.plot(x,summed2,label='Home and Work')
-#plt.plot(x,baseLoad,label='Scaled Base Load')
+plt.plot(x,baseLoad,label='Scaled Base Load')
 #plt.plot(x,dumbCharging,label='Dumb Charging')
 if obj ==3:
     plt.plot(x,pv,label='PV')
 
 plt.xticks(xaxis, my_xticks)
-plt.xlim((10,40))
+plt.xlim((9,40))
 plt.ylabel('Power (kW)')
-plt.legend(loc='upper right',ncol=2)
+plt.legend(loc='lower right',ncol=1)
 plt.title('Aggregate Power Demand')
 
-#plt.subplot(212)
-#plt.plot(x,averageProfile1,label='Home Only')
-#plt.plot(x,averageProfile2,label='Home and Work')
-#plt.xticks(xaxis, my_xticks)
-#plt.xlim((10,40))
-#plt.xlabel('time')
-#plt.ylabel('Power (kW)')
-#plt.title('Average Charge Profile')
 
 plt.subplot(313)
 for i in range(0,n):
@@ -352,9 +347,10 @@ for i in range(0,n):
         data.append(X2[i*t+j])
     plt.plot(x,data)
 plt.xticks(xaxis, my_xticks)
-plt.xlim((10,40))
-plt.title('Home and Work',y=0.8)
+plt.xlim((9,40))
+plt.title('Home and Work - Individual Profiles',y=0.8)
 plt.xlabel('time')
 plt.ylabel('Power (kW)')
+plt.ylim(0,4.5)
 
 plt.show()

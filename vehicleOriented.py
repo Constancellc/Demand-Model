@@ -457,8 +457,24 @@ class Fleet:
 
         return power
 
+    def generateChargeProfiles(self,m,power):
+        if m > self.n:
+            print 'number requested larger than fleet'
+            m = self.n
+
+        results = []
+
+        for i in range(0,m):
+            profile = [0]*(24*60)
+            for j in range(24*60):
+                if self.fleet[i].location[j] == 4:
+                    profile[j] += power
+
+            results.append(profile)
+        return results
+
 class ChargingScheme:#HomeOnly:(ChargingScheme):
-    def __init__(self, fleet, length):
+    def __init__(self, fleet, length=24*60):
         self.fleet = fleet
         self.n = fleet.n
         self.length = length
@@ -551,7 +567,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
             if len(journeys) != 0:
                 # Step through time, checking for journeys as you go
-                for l in range(journeys[0][0],length):
+                for l in range(journeys[0][0],self.length):
                     if len(journeys) != 0:
 
                         # If you find a journey, decrease the battery by the energy req

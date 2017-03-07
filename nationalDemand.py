@@ -33,7 +33,7 @@ for region in regionBreakdown:
     simulation = Simulation(region, month, day, population, 1)
     
     test = ChargingScheme(simulation.fleet,24*60)
-    test.allHomeCharge(4,simulation.factor)
+    test.allHomeandWorkCharge(4,simulation.factor)
     for i in range(0,24*60):
         demand[i] += test.powerDemand[i]/1000
 
