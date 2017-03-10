@@ -2,23 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import csv
-from cvxopt import matrix, spdiag, solvers, sparse
 
-for i in range(1,2):
-    f = open('openDSSprofiles/load_profile_'+str(i)+'.txt')
-    data = f.read()
-    print data
 
+base = 'evprofiles/'
+out = 'evprofiles2/'
+for i in range(1,56):   
     results = []
-    newDigit = ''
-    
-    for j in range(0,len(data)):
-        if data[j] == '':
-            continue
-        if data[j-1] == '':
-            results.append(newDigit)
-            newDigit = ''
-        #print data[j]
-        newDigit += data[j]
+    with open(base+str(i)+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            for j in range(0,1440):
+                results.append(float(row[j]))
 
-    print results
+    with open(out+str(i)+'.csv','w') as csvfile:
+        writer = csv.writer(csvfile)
+        for row in results:
+            writer.writerow([row])

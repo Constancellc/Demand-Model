@@ -489,7 +489,7 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
 
             # also other stuff
 
-    def allHomeCharge(self,power,factor):
+    def allHomeCharge(self,power,factor,supressText=False):
         # locationCode = 0 --> home only =1 --> home or work
         for k in range(0,self.n):
 
@@ -540,7 +540,8 @@ class ChargingScheme:#HomeOnly:(ChargingScheme):
                 incomplete.append([self.fleet.fleet[k].name,battery/cap])
 
         if incomplete == []:
-            print 'all vehicles fully charged'
+            if supressText == False:
+                print 'all vehicles fully charged'
         else:
             print str(len(incomplete)) + ' of ' + str(self.n),
             print 'vehicles did not reach full charge'
@@ -623,7 +624,7 @@ class Simulation():
     numberAgents (int), fleet (Fleet)
     """
     def __init__(self, regionType, month, day, population, fleetCode,
-                 f=1,region=''):
+                 f=1,region='',supressText=False):
         # fleetCode is a code to determine the fleet composition
         # 0 -> all nissanLeaf
         # 2 -> all mitsuibishi (for ENWL comparison)
@@ -691,8 +692,9 @@ class Simulation():
                 
             self.fleet.addAgent(agent)
 
-        print str(self.numberAgents) + ' agents were initialised, each representing ',
-        print str(self.factor) + ' vehicles'
+        if supressText == False:
+            print str(self.numberAgents) + ' agents were initialised, each representing ',
+            print str(self.factor) + ' vehicles'
 
 
         # Then we need to generate the pool of journeys
@@ -700,29 +702,34 @@ class Simulation():
         for k in range(0,self.numberJourneys):
             pool.addJourney()
 
-        print str(self.numberJourneys) + ' journeys were generated'
+        if supressText == False:
+            print str(self.numberJourneys) + ' journeys were generated'
 
         assignmentComplete = False
 
         while assignmentComplete == False:
             try:
                 pickedOutJourneys = []
-                print 'now assigning journeys'
-                print 'PROGRESS:',
+                
+                if supressText == False:
+                    print 'now assigning journeys'
+                    print 'PROGRESS:',
                 # Now we need to assign the journeys to vehicles in the fleet
                 for k in range(0,self.numberJourneys):
-                    if self.numberJourneys < 33:
-                        print 'X',
-                    elif k%(self.numberJourneys/33) == 0:
-                        print 'X',
+                    if supressText == False:
+                        if self.numberJourneys < 33:
+                            print 'X',
+                        elif k%(self.numberJourneys/33) == 0:
+                            print 'X',
                     journey = pool.pickOutJourney()
                     pickedOutJourneys.append(journey)
                     
                     agent = self.fleet.pickAvaliableAgent(journey[1],journey[2])
                     agent.addJourney(journey)
                     
-                print ''
-                print 'All journeys assigned!'
+                if supressText == False:
+                    print ''
+                    print 'All journeys assigned!'
                 assignmentComplete = True
                 
             except NoAvaliableAgents:

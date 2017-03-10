@@ -2,6 +2,22 @@
 
 There are several functionalities within this folder.
 
+******************
+vehicleOriented.py
+******************
+This contains all the classes necessary to run the agent-based simulation. This includes the following:
+- Vehicle 
+- JourneyPool 
+- Agent
+- Fleet
+- ChargingScheme
+- Simulation
+
+***************
+vehicleModel.py
+***************
+This contains the class Drivecycle which imports the correct version of Artemis and loops it until the required distance has been obtained.
+
 ***************
 powerPredict.py
 ***************

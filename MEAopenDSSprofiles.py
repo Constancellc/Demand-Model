@@ -78,6 +78,8 @@ data = {'01':{'Monday':[0.0]*(24*60),'Tuesday':[0.0]*(24*60),
 
 users = {}
 
+j = 1
+
 with open('../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv') as csvfile:
     reader = csv.reader(csvfile)
     reader.next()
@@ -97,6 +99,10 @@ with open('../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv') as 
             users[userID][0] = row[1]
 
         month = row[1][5:7]
+
+        if month != '01':
+            continue
+        
         year = row[1][:4]
 
         if year == '2016':
@@ -111,6 +117,9 @@ with open('../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv') as 
 
         day = remainder[daysOffset%7]
 
+        if day != 'Monday':
+            continue
+
         endHour = int(row[2][11:13])
         if endHour < startHour:
             endHour += 24
@@ -120,47 +129,18 @@ with open('../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv') as 
                 
         endMin = int(row[2][14:16])
 
+        profile = [0.0]*24*60
+
         for i in range(startHour*60+startMin, endHour*60+endMin):
             if i == 24*60:
                 i -= 24*60
                 day = nextDay[day]
             elif i > 24*60:
                 i -= 24*60
-            data[month][day][i] += 3.5
+            profile[i] = 3.5
 
-
-
-carMonths = {1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0}
-
-for key in users:
-
-    if users[key][0][:4] != users[key][1][:4]: # not within one calender year
-        for i in range(1,13):
-            carMonths[i] += 1
-
-
-    startMonth = int(users[key][0][5:7])
-    endMonth = int(users[key][1][5:7])
-    for i in range(startMonth, endMonth+1):
-        carMonths[i] += 1
-
-
-t = np.linspace(0,24,num=24*60)
-plt.figure(1)
-
-for i in range(0,12):
-    plt.subplot(4,3,i+1)
-    for j in range(0,7):
-        for k in range(0,24*60):
-            data[months[i]][days[j]][k] = data[months[i]][days[j]][k]/(4*carMonths[i+1])
-        plt.plot(t,data[months[i]][days[j]],label=days[j])
-    plt.xlim(0,24)
-    plt.ylim(0,1)
-    plt.title(monthTitles[i],y=0.8)
-    xaxis = np.linspace(2,22,num=6)
-    my_xticks = ['02:00','06:00','10:00','16:00','18:00','22:00']
-    plt.xticks(xaxis, my_xticks)
-    if i == 0:
-        plt.legend(loc=[0,-4.1],ncol=7)
-plt.show()
-    
+        with open('MEAprofiles/'+str(j)+'.csv','w') as csvfile:
+            writer = csv.writer(csvfile)
+            for k in range(0,24*60):
+                writer.writerow([profile[k]])
+            j += 1
