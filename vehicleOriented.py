@@ -8,22 +8,11 @@ import csv
 import random
 
 # get the drivecycle class i wrote to run artemis for a given vehicle / distance
-from vehicleModel import Drivecycle
+from vehicleModel import Drivecycle, Vehicle
 
 # ------------------------------------------------------------------------------
 # CLASS DEFINITIONS SECTION
 # ------------------------------------------------------------------------------
-class Vehicle:
-    # Vehicle just stores the salient parameters of an individual agent
-    def __init__(self,mass,Ta,Tb,Tc,eff,cap):
-        self.mass = mass # kg
-        self.load = 0 #kg
-        self.Ta = Ta*4.44822 # convert lbf to N
-        self.Tb = Tb*9.9503 # lbf/mph -> N/mps
-        self.Tc = Tc*22.258 # lbf/mph2 -> N/(mps)^2 
-        self.eff = eff
-        self.capacity = cap # kWh
-        self.battery = cap
 
 class JourneyPool:
     # Defines the 'pool' of randomly generated journeys in a given region
@@ -244,7 +233,7 @@ class JourneyPool:
 class Agent:
     # This stores all of the agents dynamic parameters, unlike the 'vehicle'
     # class whose parameters do not change during the simulation
-    def __init__(self, name, vehicle, regionType):
+    def __init__(self, name, vehicle, regionType, month):
         self.name = name
         self.vehicle = vehicle
         self.regionType = regionType
@@ -254,7 +243,11 @@ class Agent:
         self.energyLog = []
         self.battery = vehicle.capacity
         self.energySpent = [0]*(24*60)
-        self.accessoryLoad = 1.0 # kW
+        accessoryLoad = {'January':1.4,'February':1.2, 'March':0.8,
+                         'April':0.35, 'May':0.05, 'June':0.0, 'July':0.0,
+                         'August':0.0, 'September':0.0, 'October':0.3,
+                         'November':0.85, 'December':1.25}# kW
+        self.accessoryLoad = accessoryLoad[month]
 
     def addJourney(self,journey):
         purpose = journey[0]
@@ -273,10 +266,6 @@ class Agent:
             journey[3] = -journey[3]
         distance = journey[3]*1609.34 #convert from miles to m
 
-
-
-        #self.mileage += distance*2
-
         # calculate the energy expenditure
         if self.regionType[0] == 'U':
             cycle = Drivecycle(distance,'urban')
@@ -285,33 +274,13 @@ class Agent:
         else:
             raise Exception('region not recognised')
 
-        v = cycle.velocity # m/s
-        a = cycle.acceleration # m/s2
+        energy = self.vehicle.getEnergyExpenditure(cycle,0.17)
 
-        F = []
-        for value in v:
-            F.append(self.vehicle.Ta + self.vehicle.Tb*value +
-                     self.vehicle.Tc*value*value)
-
-        E = 0
-        for i in range(0,len(a)):
-            F[i] += (self.vehicle.mass+self.vehicle.load)*a[i]
-
-            if a[i] >= 0:
-                E += F[i]*v[i]/self.vehicle.eff
-            else:
-                E += F[i]*v[i]*self.vehicle.eff
-
-        energy = E*2.77778e-7 # kWh
-
-
-        length = int(float(len(v))/60) # minutes
+        length = int(float(len(cycle.velocity))/60) # minutes
 
         journey += [length]
         
         self.journeysLog.append(journey)
-        # add accessory load
-        energy += length*(self.accessoryLoad+1.1171)/60
 
         # first update details for outward journey
 
@@ -664,29 +633,29 @@ class Simulation():
 
         self.numberAgents = int(carsPerPerson*population)
 
-        nissanLeaf = Vehicle(1705,29.92,0.076,0.02195,0.86035,32)
-        bmwI3 = Vehicle(1420,22.9,0.346,0.01626,0.87785,22)
-        teslaS60D = Vehicle(2273,37.37,0.1842,0.01508,0.94957,60)
-        fiat500e = Vehicle(1477,24.91,0.2365,0.01816,0.80955,24)
-        mitsubishi = Vehicle(1307,19.484,0.43515,0.016133,0.77805,16)
+        nissanLeaf = Vehicle(1705.0,29.92,0.076,0.02195,0.86035,32.0)
+        bmwI3 = Vehicle(1420.0,22.9,0.346,0.01626,0.87785,22.0)
+        teslaS60D = Vehicle(2273.0,37.37,0.1842,0.01508,0.94957,60.0)
+        fiat500e = Vehicle(1477.0,24.91,0.2365,0.01816,0.80955,24.0)
+        mitsubishi = Vehicle(1307.0,19.484,0.43515,0.016133,0.77805,16.0)
 
         # First we need to generate our fleet of vehicles
         self.fleet = Fleet()
         for k in range(0,self.numberAgents):
             if fleetCode == 0:
-                agent = Agent(str(k), nissanLeaf, regionType)
+                agent = Agent(str(k), nissanLeaf, regionType, month)
             if fleetCode == 1:
                 ran = random.random()
                 if ran < 0.391:
-                    agent = Agent(str(k), fiat500e, regionType)
+                    agent = Agent(str(k), fiat500e, regionType, month)
                 elif ran < 0.652:
-                    agent = Agent(str(k), nissanLeaf, regionType)
+                    agent = Agent(str(k), nissanLeaf, regionType, month)
                 elif ran < 0.745:
-                    agent = Agent(str(k), bmwI3, regionType)
+                    agent = Agent(str(k), bmwI3, regionType, month)
                 else:
-                    agent = Agent(str(k), teslaS60D, regionType)
+                    agent = Agent(str(k), teslaS60D, regionType, month)
             elif fleetCode == 2:
-                agent = Agent(str(k), mitsubishi, regionType)
+                agent = Agent(str(k), mitsubishi, regionType, month)
             else:
                 raise Exception('please check the fleet code')
                 

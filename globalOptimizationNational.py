@@ -7,8 +7,8 @@ import random
 from cvxopt import matrix, spdiag, solvers, sparse
 
 # get the drivecycle class i wrote to run artemis for a given vehicle / distance
-from vehicleModel import Drivecycle
-from vehicleOriented import Vehicle, JourneyPool, Agent, Fleet, Simulation, ChargingScheme
+from vehicleModel import Drivecycle, Vehicle
+from vehicleOriented import JourneyPool, Agent, Fleet, Simulation, ChargingScheme
 
 """
 I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION

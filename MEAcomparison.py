@@ -29,8 +29,8 @@ for i in range(0,12):
     print 'running simulation for ' + months[i]
     plt.subplot(4,3,i+1)
     for j in range(0,7):
-        simulation = Simulation(regionType,months[i],days[j],population,1,
-                                supressText=True)
+        simulation = Simulation(regionType,months[i],days[j],population,1)#,f=int(400/fleetSize))#,
+                                #supressText=True)
         test = ChargingScheme(simulation.fleet)
         test.allHomeCharge(3.5,1,supressText=True)
         results = simulation.fleet.generateChargeProfiles(fleetSize,3.5)

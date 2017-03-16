@@ -58,5 +58,43 @@ class Drivecycle:
 
         self.acceleration = a
 
+class Vehicle:
+    # Vehicle just stores the salient parameters of an individual agent
+    def __init__(self,mass,Ta,Tb,Tc,eff,cap):
+        self.mass = mass # kg
+        self.load = 0.0 #kg
+        self.Ta = Ta*4.44822 # convert lbf to N
+        self.Tb = Tb*9.9503 # lbf/mph -> N/mps
+        self.Tc = Tc*22.258 # lbf/mph2 -> N/(mps)^2 
+        self.eff = eff
+        self.capacity = cap # kWh
+        self.battery = cap
+        self.p0 = 1170.8 # This is the constant power loss in J/s
 
+    def getEnergyExpenditure(self,cycle,accessoryLoad):
+        # accesroy load in kW, cycle a Drivecycle object
+        
+        v = cycle.velocity # m/s
+        a = cycle.acceleration # m/s2
+
+        F = []
+        for value in v:
+            F.append(self.Ta + self.Tb*value + self.Tc*value*value)
+
+        E = 0
+        for i in range(0,len(a)):
+            F[i] += (self.mass+self.load)*a[i]
+
+            if a[i] >= 0:
+                E += F[i]*v[i]/self.eff
+            else:
+                E += F[i]*v[i]*self.eff
+
+            E += self.p0
+
+        energy = E*2.77778e-7 # J -> kWh
+
+        energy += len(v)*(accessoryLoad)/3600 # add accesory load 
+
+        return energy
 
