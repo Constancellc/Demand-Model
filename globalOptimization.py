@@ -28,7 +28,7 @@ pMax = 4.0 # kW
 nHours = 24+4 # the number of hours I want to simulate
 
 # CHOSE OBJECTIVE 1 - VALLEY FILLING, 2 - LOAD FLATTENING, 3 - SOLAR
-obj = 1
+obj = 3
 
 t = nHours*(60/timeInterval)
 
@@ -138,6 +138,34 @@ for i in range(0,t):
 times = []
 powers = []
 
+months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
+          'June':'06','July':'07','August':'08','September':'09',
+          'October':'10','November':'11','December':'12'}
+
+with open('../Documents/av_solar.csv','rU') as csvfile:
+    # this data is at 10 min intervals
+    reader = csv.reader(csvfile)
+    for row in reader:
+
+        if row[0] == months[month]:
+            rawData = row[1:]
+
+oneDayPV = [0.0]*(24*60/timeInterval)
+
+f = float(144)/(24*60/timeInterval)
+
+for i in range(0,(24*60/timeInterval)):
+    oneDayPV[i] = float(rawData[int(i*f)])*fleetSize
+
+# this is where i am stuck, trying to fix the solar optimization
+i'm over here!!'
+
+pv = [0.0]*t
+# needs to start at 4 am and end nHours later
+
+pv = oneDayPV[4*(60/timeInterval)
+'''
+
 pvDay = str(calender[month][day])
 months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
           'June':'06','July':'07','August':'08','September':'09',
@@ -180,7 +208,7 @@ if obj == 3:
         f = float(distance)/gap
 
         pv[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
-
+'''
 # ------------------------------------------------------------------------------
 # SETTING UP THE OPTIMIZATION PROBLEM
 # ------------------------------------------------------------------------------
@@ -231,7 +259,7 @@ if obj == 3:
     q = []
     for i in range(0,n):
         for j in range(0,len(baseLoad)):
-            q.append(pv[j]+baseLoad[j])
+            q.append(baseLoad[j]-pv[j])
 
     q = matrix(q)
 

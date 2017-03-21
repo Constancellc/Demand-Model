@@ -155,6 +155,27 @@ for k in range(0,4):
     times = []
     powers = []
 
+    pvMonths = {'January':'1','February':'2','March':'3','April':'4','May':'5',
+              'June':'6','July':'7','August':'8','September':'9',
+              'October':'10','November':'11','December':'12'}
+
+    with open('../Documents/av_solar.csv','rU') as csvfile:
+        # this data is at 10 min intervals
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row[0] == pvMonths[month]:
+                rawData = row[1:]
+
+    pv = [0.0]*t
+
+    f = float(t)/144
+
+    for i in range(0,t):
+        pv[i] = int(i*f)*25800000
+
+    
+    '''
+
     pvDay = str(calender[month][day])
     months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
               'June':'06','July':'07','August':'08','September':'09',
@@ -197,7 +218,8 @@ for k in range(0,4):
             f = float(distance)/gap
 
             pv[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
-
+    '''
+    
     # ------------------------------------------------------------------------------
     # SETTING UP THE OPTIMIZATION PROBLEM
     # ------------------------------------------------------------------------------
