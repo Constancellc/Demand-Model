@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import random
+import copy
 
 from cvxopt import matrix, spdiag, solvers, sparse
 
@@ -15,7 +16,7 @@ I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION
 """
 regionType = 'Urban City and Town'
 region = ''
-month = 'January' # don't use december, i only have 6 days of ng data for it
+month = 'June' # don't use december, i only have 6 days of ng data for it
 day = 'Wednesday' # using sunday dodge as next day assumptions very bad
 population = 150200
 
@@ -61,7 +62,7 @@ for j in range(0,n):
         else:
             dumbCharging[time] += energy
             energy = 0
-print dumbCharging
+
 # the first equality constraint ensures the right amount of charge is recovered
 # the second ensures that only avalible vehicles are plugged in
 
@@ -146,6 +147,10 @@ with open('../Documents/av_solar.csv','rU') as csvfile:
     # this data is at 10 min intervals
     reader = csv.reader(csvfile)
     for row in reader:
+        try:
+            print row[0]
+        except:
+            continue
 
         if row[0] == months[month]:
             rawData = row[1:]
@@ -157,13 +162,8 @@ f = float(144)/(24*60/timeInterval)
 for i in range(0,(24*60/timeInterval)):
     oneDayPV[i] = float(rawData[int(i*f)])*fleetSize
 
-# this is where i am stuck, trying to fix the solar optimization
-i'm over here!!'
+pv = oneDayPV[4*(60/timeInterval):]+oneDayPV[:(nHours-20)*(60/timeInterval)]
 
-pv = [0.0]*t
-# needs to start at 4 am and end nHours later
-
-pv = oneDayPV[4*(60/timeInterval)
 '''
 
 pvDay = str(calender[month][day])
@@ -213,66 +213,71 @@ if obj == 3:
 # SETTING UP THE OPTIMIZATION PROBLEM
 # ------------------------------------------------------------------------------
 
+def optimize(obj):
+    # constraints
+    # The equality constraint ensures the required amount of energy is delivered 
+    A1 = matrix(0.0,(n,t*n))
+    A2 = matrix(0.0,(n,t*n))
+    b = matrix(0.0,(2*n,1))
 
-# constraints
-# The equality constraint ensures the required amount of energy is delivered 
-A1 = matrix(0.0,(n,t*n))
-A2 = matrix(0.0,(n,t*n))
-b = matrix(0.0,(2*n,1))
+    for j in range(0,n):
+        b[j] = float(results[j][1]) 
+        for i in range(0,t):
+            A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
+            if i < results[j][0] or i > results[j][2]:
+                A2[n*(t*j+i)+j] = 1.0
 
-for j in range(0,n):
-    b[j] = float(results[j][1]) 
-    for i in range(0,t):
-        A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
-        if i < results[j][0] or i > results[j][2]:
-            A2[n*(t*j+i)+j] = 1.0
+    A = sparse([A1,A2])
 
-A = sparse([A1,A2])
+    A3 = spdiag([-1]*(t*n))
+    A4 = spdiag([1]*(t*n))
 
-A3 = spdiag([-1]*(t*n))
-A4 = spdiag([1]*(t*n))
+    # The inequality constraint ensures powers are positive and below a maximum
+    G = sparse([A3,A4])
 
-# The inequality constraint ensures powers are positive and below a maximum
-G = sparse([A3,A4])
+    h = []
+    for i in range(0,2*t*n):
+        if i<t*n:
+            h.append(0.0)
+        else:
+            h.append(pMax)
+    h = matrix(h)
 
-h = []
-for i in range(0,2*t*n):
-    if i<t*n:
-        h.append(0.0)
-    else:
-        h.append(pMax)
-h = matrix(h)
+    # objective
 
-# objective
+    if obj == 1:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
 
-if obj == 1:
-    q = []
-    for i in range(0,n):
-        for j in range(0,len(baseLoad)):
-            q.append(baseLoad[j])
+        q = matrix(q)
+    elif obj == 2:
+        q = matrix([0.0]*(t*n))
 
-    q = matrix(q)
-elif obj == 2:
-    q = matrix([0.0]*(t*n))
+    if obj == 3:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j]-pv[j])
 
-if obj == 3:
-    q = []
-    for i in range(0,n):
-        for j in range(0,len(baseLoad)):
-            q.append(baseLoad[j]-pv[j])
+        q = matrix(q)
 
-    q = matrix(q)
+    if obj == 1 or obj == 2 or obj == 3:
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
 
-if obj == 1 or obj == 2 or obj == 3:
-    I = spdiag([1]*t)
-    P = sparse([[I]*n]*n)
+    sol=solvers.qp(P, q, G, h, A, b)
+    X = sol['x']
 
-sol=solvers.qp(P, q, G, h, A, b)
-X = sol['x']
+    return X
 
 # ------------------------------------------------------------------------------
 # GRAPH PLOTTING SECTION
 # ------------------------------------------------------------------------------
+
+X = optimize(obj)
+X0 = optimize(2)
 
 x = np.linspace(4,nHours+4,num=nHours*60/timeInterval)
 
@@ -280,30 +285,47 @@ averageProfile = [0.0]*t
 
 plt.figure(1)
 
+
 plt.subplot(312)
 summed = [0.0]*t
+if obj == 3:
+    summed2 = [0.0]*t
+    pvcopy = copy.copy(pv)
 for i in range(0,n):
     data = []
     for j in range(0,t):
         data.append(X[i*t+j])
-        summed[j] += X[i*t+j]
+        summed[j] += X0[i*t+j]
+        if obj == 3:
+            summed2[j] += X[i*t+j]
+            if pvcopy[j] > 0:
+                if pvcopy[j] >= X[i*t+j]:
+                    pvcopy[j] -= X[i*t+j]
+                    summed2[j] -= X[i*t+j]
+                else:
+                    pvcopy[j] = 0
+                    summed2[j] -= pvcopy[j]
+                    
         averageProfile[j] += X[i*t+j]/n
     plt.plot(x,data)
 xaxis = np.linspace(6,30,num=7)
 my_xticks = ['06:00','10:00','16:00','18:00','22:00','02:00','06:00']
 plt.xticks(xaxis, my_xticks)
 plt.xlim((4,4+nHours))
-plt.xlabel('time')
+plt.ylim((0,5.5))
 plt.ylabel('Power (kW)')
-plt.title('Individual Charge Profiles for Smart Charging')
+plt.title('Individual Charge Profiles for Smart Charging',y=0.8)
 
 plt.subplot(311)
 
 for j in range(0,t):
     summed[j] += baseLoad[j]
+    summed2[j] += baseLoad[j]
     dumbCharging[j] += baseLoad[j]
 
 plt.plot(x,summed,label='Smart Charging')
+if obj == 3:
+    plt.plot(x,summed2,label='Smart Charging with Solar')
 plt.plot(x,baseLoad,label='Scaled Base Load')
 plt.plot(x,dumbCharging,label='Dumb Charging')
 if obj ==3:
@@ -319,7 +341,10 @@ plt.subplot(313)
 plt.plot(x,averageProfile)
 plt.xticks(xaxis, my_xticks)
 plt.xlim((4,4+nHours))
+plt.ylim((0,1.5))
 plt.ylabel('Power (kW)')
-plt.title('Average Charge Profile')
+plt.title('Average Charge Profile',y=0.8)
+plt.xlabel('time')
+
 
 plt.show()
