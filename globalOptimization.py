@@ -320,7 +320,8 @@ plt.subplot(311)
 
 for j in range(0,t):
     summed[j] += baseLoad[j]
-    summed2[j] += baseLoad[j]
+    if obj == 3:
+        summed2[j] += baseLoad[j]
     dumbCharging[j] += baseLoad[j]
 
 plt.plot(x,summed,label='Smart Charging')

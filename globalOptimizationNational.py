@@ -23,9 +23,8 @@ pMax = 4.0 # kW
 
 nHours = 48 # the number of hours I want to simulate
 
-
-# CHOSE OBJECTIVE 1 - VALLEY FILLING, 2 - LOAD FLATTENING, 3 - SOLAR
-obj = 1
+# DECIDE WHETHER TO CONSIDER SOLAR OR NOT
+solar = True
 
 t = nHours*(60/timeInterval)
 
@@ -38,6 +37,67 @@ regionBreakdown = {'Urban Conurbation':37,'Urban City and Town':45,
 
 plotMonths = ['January','April','July','October']
 plt.figure(1)
+
+# CHOSE OBJECTIVE 1 - VALLEY FILLING, 2 - LOAD FLATTENING, 3 - SOLAR
+def optimize(obj,baseLoad,pv):
+    # constraints
+    # The equality constraint ensures the required amount of energy is delivered 
+    A1 = matrix(0.0,(n,t*n))
+    A2 = matrix(0.0,(n,t*n))
+    b = matrix(0.0,(2*n,1))
+
+    for j in range(0,n):
+        b[j] = float(results[j][1]) 
+        for i in range(0,t):
+            A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
+            if i < results[j][0] or (i > results[j][2] and i < (results[j][0]+t/2)):
+                A2[n*(t*j+i)+j] = 1.0
+
+    A = sparse([A1,A2])
+
+    A3 = spdiag([-1]*(t*n))
+    A4 = spdiag([1]*(t*n))
+
+    # The inequality constraint ensures powers are positive and below a maximum
+    G = sparse([A3,A4])
+
+    h = []
+    for i in range(0,2*t*n):
+        if i<t*n:
+            h.append(0.0)
+        else:
+            h.append(pMax)
+    h = matrix(h)
+
+    # objective
+
+    if obj == 1:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
+
+        q = matrix(q)
+    elif obj == 2:
+        q = matrix([0.0]*(t*n))
+
+    if obj == 3:
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j]-pv[j])
+
+        q = matrix(q)
+
+    if obj == 1 or obj == 2 or obj == 3:
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+
+    sol=solvers.qp(P, q, G, h, A, b)
+    X = sol['x']
+    return X
+
+# END OF FUNCTION DEFINITION
 
 for k in range(0,4):
     month = plotMonths[k]
@@ -155,131 +215,40 @@ for k in range(0,4):
     times = []
     powers = []
 
-    pvMonths = {'January':'1','February':'2','March':'3','April':'4','May':'5',
-              'June':'6','July':'7','August':'8','September':'9',
+    months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
+              'June':'06','July':'07','August':'08','September':'09',
               'October':'10','November':'11','December':'12'}
 
     with open('../Documents/av_solar.csv','rU') as csvfile:
         # this data is at 10 min intervals
         reader = csv.reader(csvfile)
         for row in reader:
-            if row[0] == pvMonths[month]:
+            try:
+                print row[0]
+            except:
+                continue
+
+            if row[0] == months[month]:
                 rawData = row[1:]
 
-    pv = [0.0]*t
+    oneDayPV = [0.0]*(24*60/timeInterval)
 
-    f = float(t)/144
+    f = float(144)/(24*60/timeInterval)
 
-    for i in range(0,t):
-        pv[i] = int(i*f)*25800000
+    for i in range(0,(24*60/timeInterval)):
+        oneDayPV[i] = float(rawData[int(i*f)])*fleetSize
 
-    
-    '''
+    twoDays = oneDayPV + oneDayPV
 
-    pvDay = str(calender[month][day])
-    months = {'January':'01','February':'02','March':'03','April':'04','May':'05',
-              'June':'06','July':'07','August':'08','September':'09',
-              'October':'10','November':'11','December':'12'}
-    pvMonth = months[month]
-
-    if obj == 3:
-        with open('pv/GBPV_data.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                if row[0] == 'substation_id':
-                    continue
-                
-                if row[1][8:10] != pvDay:
-                    continue
-                elif row[1][5:7] != pvMonth:
-                    continue
-                
-                hour = int(row[1][11:13])-4
-                mins = int(row[1][14:16])
-                time = hour*(60/timeInterval)+int(mins/timeInterval)
-                times.append(time)
-                powers.append(scale*1000*float(row[2]))
-
-        pv = [0.0]*t
-
-        for i in range(0,t):
-            if i < times[0]:
-                continue
-            elif i > times[-1]:
-                continue
-
-            gap = times[1]-times[0]
-
-            j = 0
-            while times[j] < i and j < t-1:
-                j += 1
-
-            distance = times[j] - i
-            f = float(distance)/gap
-
-            pv[i] = float(int(100*(powers[j]+f*(powers[j-1]-powers[j]))))/100
-    '''
+    pv = oneDayPV[4*(60/timeInterval):]+twoDays[:(nHours-20)*(60/timeInterval)]    
     
     # ------------------------------------------------------------------------------
     # SETTING UP THE OPTIMIZATION PROBLEM
     # ------------------------------------------------------------------------------
 
-
-    # constraints
-    # The equality constraint ensures the required amount of energy is delivered 
-    A1 = matrix(0.0,(n,t*n))
-    A2 = matrix(0.0,(n,t*n))
-    b = matrix(0.0,(2*n,1))
-
-    for j in range(0,n):
-        b[j] = float(results[j][1]) 
-        for i in range(0,t):
-            A1[n*(t*j+i)+j] = float(timeInterval)/60 # kWh -> kW
-            if i < results[j][0] or (i > results[j][2] and i < (results[j][0]+t/2)):
-                A2[n*(t*j+i)+j] = 1.0
-
-    A = sparse([A1,A2])
-
-    A3 = spdiag([-1]*(t*n))
-    A4 = spdiag([1]*(t*n))
-
-    # The inequality constraint ensures powers are positive and below a maximum
-    G = sparse([A3,A4])
-
-    h = []
-    for i in range(0,2*t*n):
-        if i<t*n:
-            h.append(0.0)
-        else:
-            h.append(pMax)
-    h = matrix(h)
-
-    # objective
-
-    if obj == 1:
-        q = []
-        for i in range(0,n):
-            for j in range(0,len(baseLoad)):
-                q.append(baseLoad[j])
-
-        q = matrix(q)
-    elif obj == 2:
-        q = matrix([0.0]*(t*n))
-
-    if obj == 3:
-        q = []
-        for i in range(0,n):
-            for j in range(0,len(baseLoad)):
-                q.append(pv[j]+baseLoad[j])
-
-        q = matrix(q)
-
-    if obj == 1 or obj == 2 or obj == 3:
-        I = spdiag([1]*t)
-        P = sparse([[I]*n]*n)
-
-    sol=solvers.qp(P, q, G, h, A, b)
-    X = sol['x']
+    X = optimize(1,baseLoad,pv)
+    if solar == True:
+        Xsolar = optimize(3,baseLoad,pv)
 
     # ------------------------------------------------------------------------------
     # GRAPH PLOTTING SECTION
@@ -288,13 +257,21 @@ for k in range(0,4):
     x = np.linspace(4,nHours+4,num=nHours*60/timeInterval)
 
     averageProfile = [0.0]*t
+    summed = [0.0]*t
+    if solar == True:
+        summedSolar = [0.0]*t
+        averageSolarProfile = [0.0]*t
     numPluggedIn = [0.0]*t
 
     plt.subplot(2,2,k+1)
-    summed = [0.0]*t
+    
+
     for i in range(0,n):
         for j in range(0,t):
             summed[j] += X[i*t+j]
+            if solar == True:
+                summedSolar[j] += Xsolar[i*t+j]
+                averageSolarProfile[j] += Xsolar[i*t+j]/n
             if X[i+t+j] >= 0.1:
                 numPluggedIn[j] += 1
             averageProfile[j] += X[i*t+j]/n
@@ -306,6 +283,12 @@ for k in range(0,4):
 
     for j in range(0,t):
         summed[j] += baseLoad[j]
+        if solar == True:
+            if pv[j] > summedSolar[j]:
+                summedSolar[j] = 0.0
+            else:
+                summedSolar[j] -= pv[j] 
+            summedSolar[j] += baseLoad[j]
         dumbCharging[j] += baseLoad[j]
 
     scale = scale*1000000
@@ -314,19 +297,26 @@ for k in range(0,4):
         dumbCharging[j] = dumbCharging[j]/scale
         summed[j] = summed[j]/scale
         baseLoad[j] = baseLoad[j]/scale
+        if solar == True:
+            summedSolar[j] = summedSolar[j]/scale
+            #pv[j] = pv[j]/scale
         
 
     plt.plot(x,baseLoad,label='Scaled Base Load')
     plt.plot(x,dumbCharging,label='Dumb Charging')
     plt.plot(x,summed,label='Smart Charging')
-    if obj ==3:
-        plt.plot(x,pv,label='PV')
+    if solar == True:
+        plt.plot(x,summedSolar,label='Smart Charging inc. Solar')
+        #plt.plot(x,pv,label='PV')
 
     plt.xticks(xaxis, my_xticks)
     plt.xlim((9,40))
     plt.ylabel('Power (GW)')
     if k == 0:
-        plt.legend(loc=[0.5,-1.5],ncol=3)
+        if solar == True:
+            plt.legend(loc=[0.5,-1.5],ncol=4)
+        else:
+            plt.legend(loc=[0.5,-1.5],ncol=3)
     plt.title(month,y=0.85)
     plt.ylim(20,80)
     plt.xlabel('time')

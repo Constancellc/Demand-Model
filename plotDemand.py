@@ -3,12 +3,13 @@ import numpy as np
 import csv
 
 """
-THIS IS GOING TO BE A FUNCTION TO PLOT THE PREDICTED DRIVING DEMAND OF A CITY
+THIS IS GOING TO BE A FUNCTION TO PLOT THE PREDICTED LIVE POWER DEMAND OF A CITY
 OR AREA, SHOWING ITS VARIATION THROUGHOUT THE YEAR, WEEK AND DAY
 """
 
 regionType = 'Urban City and Town'
-population = 150200
+#regionType = 'Rural Village, Hamlet and Isolated Dwelling'
+population = 64.1# million
 
 months = ['January','February','March','April','May','June','July','August',
           'September','October','November','December']
@@ -46,6 +47,9 @@ regions = {'Urban Conurbation':uc,'Urban City and Town':ut,
            'Rural Village, Hamlet and Isolated Dwelling':rv}
 
 fig = plt.figure()
+
+xaxis = np.linspace(5,29,num=4)
+my_xticks = ['08:00','14:00','20:00','02:00']
 
 for i in range(0,12):
     if i == 0:
@@ -92,7 +96,8 @@ for i in range(0,12):
         plt.plot(x,sun,label='Sunday')
         if i == 1:
             plt.legend(loc=[-1,-2.7],ncol=7)
-        plt.xlabel('time /hour')
-        plt.ylabel('power /kW')
-        plt.title(months[i])
+        plt.xticks(xaxis, my_xticks)
+        if i == 0 or i == 4 or i == 8:
+            plt.ylabel('power (GW)')
+        plt.title(months[i],y=0.9)
 plt.show()

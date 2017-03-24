@@ -644,7 +644,7 @@ class Simulation():
         for k in range(0,self.numberAgents):
             if fleetCode == 0:
                 agent = Agent(str(k), nissanLeaf, regionType, month)
-            if fleetCode == 1:
+            elif fleetCode == 1:
                 ran = random.random()
                 if ran < 0.391:
                     agent = Agent(str(k), fiat500e, regionType, month)
@@ -657,6 +657,7 @@ class Simulation():
             elif fleetCode == 2:
                 agent = Agent(str(k), mitsubishi, regionType, month)
             else:
+                print fleetCode
                 raise Exception('please check the fleet code')
                 
             self.fleet.addAgent(agent)
