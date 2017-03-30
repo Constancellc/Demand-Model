@@ -1,13 +1,13 @@
 import csv
 import matplotlib.pyplot as plt
 
-trips = '../../Documents/UKDA-5340-tab/csv/carDriverTrips.csv'
+trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 labels = []
 histogram = {}
 
 
-i = 6 # index which you are plotting
+i = 2 # index which you are plotting
 with open(trips,'rU') as csvfile:
     reader = csv.reader(csvfile)
     reader.next()

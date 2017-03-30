@@ -25,7 +25,7 @@ with open(trips,'rU') as csvfile:
             data.append(row+['Month'])
         else:
             try:
-                data.append(row+[months[row[4]]])
+                data.append(row+[months[row[5]]])
             except KeyError:
                 print 'problem with household '+row[4]
                 data.append(row+['0'])

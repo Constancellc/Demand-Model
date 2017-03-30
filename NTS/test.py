@@ -1,12 +1,9 @@
 import csv
 
-rawData = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
+rawData = '../../Documents/UKDA-5340-tab/csv/tripsWithVehicleNosAndMonths.csv'
 
 with open(rawData,'rU') as csvfile:
-    reader = csv.reader(csvfile,delimiter='\t')
-    i = 0
+    reader = csv.reader(csvfile)
     for row in reader:
-        if i < 1:
-            print row
-        i += 1
-    
+        print row
+
