@@ -4,8 +4,8 @@ import random
 import datetime
 import csv
 
-tripData = '../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
-chargeData = '../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv'
+tripData = '../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
+chargeData = '../../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv'
 
 data = [tripData, chargeData]
 

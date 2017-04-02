@@ -2,7 +2,7 @@ import csv
 
 
 # This section extracts the trip data
-'''
+#'''
 
 rawData = '../../Documents/UKDA-5340-tab/tab/tripeul2015.tab'
 outfile = '../../Documents/UKDA-5340-tab/csv/carDriverTrips.csv'
@@ -15,7 +15,7 @@ with open(rawData,'rU') as csvfile:
         if i < 1:
             data.append(row)
         else:
-            if row[16] != '5':
+            if row[16] != '5': # if trip by car
                 continue
             data.append(row)
         i += 1
@@ -29,7 +29,7 @@ with open(outfile,'w') as csvfile:
         row += [line[1]] # survey year
         row += [line[2]] # day id
         if i == 0:
-            row += ['HouseholdDayID']
+            row += ['ConstanceDayID']
         else:
             row += [str(10*int(line[4])+int(line[7]))]
         row += [line[3]] # individual id
@@ -115,7 +115,7 @@ with open(outfile,'w') as csvfile:
         writer.writerow(row)
                 
 '''
-#'''       
+'''       
 # this section extracts the day info
 rawData = '../../Documents/UKDA-5340-tab/tab/dayeul2015.tab'
 outfile = '../../Documents/UKDA-5340-tab/csv/days.csv'
@@ -135,7 +135,7 @@ with open(outfile,'w') as csvfile:
         row += [line[0]] # survey year
         row += [line[1]] # day ID
         if i == 0:
-            row += ['HouseholdDayID']
+            row += ['ConstanceDayID']
         else:
             row += [str(10*int(line[3])+int(line[6]))]
 
@@ -149,4 +149,4 @@ with open(outfile,'w') as csvfile:
         writer.writerow(row)
 
 
-#'''   
+'''   
