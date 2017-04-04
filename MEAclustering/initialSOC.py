@@ -57,22 +57,29 @@ vehicles = users
 plt.figure(2)
 for vehicle in vehicles:
     ran = random.random()
-    if ran > 0.04:
+    if ran > 0.02:
         continue
 
     means = []
-    upper = []
-    lower = []    
+    maxs = []
+    mins = []    
 
     months[vehicle].sort()
 
     for i in range(0,len(months[vehicle])): # for each month
+        highest = 0
+        lowest = 12
         # calculate average
         m = 0
         n = float(sum(plugIns[vehicle][months[vehicle][i]])) # number of plug ins that month
         
         for j in range(0,13): # for each possible SOC
             m += j*float(plugIns[vehicle][months[vehicle][i]][j])
+            if plugIns[vehicle][months[vehicle][i]][j] != 0:
+                if j > highest:
+                    highest = float(j)
+                if j < lowest:
+                    lowest = float(j)
         m = m/n
 
         # and variance
@@ -86,9 +93,10 @@ for vehicle in vehicles:
         v = v/n
 
         means.append(m)
-        upper.append(m+math.sqrt(v))
-        lower.append(m-math.sqrt(v))
-    plt.plot(months[vehicle],means,label=vehicle)
+        maxs.append(highest-m)
+        mins.append(m-lowest)
+    plt.errorbar(months[vehicle],means,yerr=[mins, maxs],label=vehicle)
+    #plt.plot(months[vehicle],means,label=vehicle)
     #plt.fill_between(months[vehicle],upper,lower,alpha=0.5)
 plt.xlabel('time')
 plt.ylabel('average SOC on plug in')
