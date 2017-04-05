@@ -17,6 +17,9 @@ with open(chargeData,'rU') as csvfile:
     reader.next()
     for row in reader:
         ID = row[0]
+
+        if ID != 'GC06':
+            continue
             
         finalSOC = int(row[4])
         overallHistogram[finalSOC] += 1
@@ -32,7 +35,7 @@ with open(chargeData,'rU') as csvfile:
             charges[ID] = []
 
         charges[ID].append(startTime)
-        charges[ID].append(endTime)
+        #charges[ID].append(endTime)
 
 N = sum(overallHistogram)
 
@@ -43,14 +46,16 @@ plt.figure(1)
 plt.bar(range(0,13),overallHistogram)
 plt.title('State of Charge (out of 12) on Unplug')
 
-times = [0]*500
+times = [0]*800
 
 for ID in charges:
     charges[ID] = sorted(charges[ID])
     lengthsBetweenCharges[ID] = []
     
-    for i in range(0,len(charges[ID])/2-1):
-        timedelta = charges[ID][2*i+2]-charges[ID][2*i+1]
+    #for i in range(0,len(charges[ID])/2-1):
+        #timedelta = charges[ID][2*i+2]-charges[ID][2*i+1]
+    for i in range(0,len(charges[ID])-1):
+        timedelta = charges[ID][i+1]-charges[ID][i]
         dayGap = timedelta.days
         minGap = timedelta.seconds/60
         gap = dayGap*1440+minGap
@@ -66,7 +71,12 @@ for ID in lengthsBetweenCharges:
             print gap
 
 plt.figure(2)
-plt.bar(range(0,500),times)
+plt.bar(range(0,800),times)
+plt.xlim(0,150)
+#plt.ylim(0,5000)
+plt.title('Histogram of gap between consecutive charges')
+plt.ylabel('frequency')
+plt.xlabel('time (hours)')
 
 
 plt.show()
