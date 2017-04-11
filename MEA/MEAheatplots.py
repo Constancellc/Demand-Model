@@ -11,8 +11,8 @@ import plotly.graph_objs as go
 
 
 
-tripData = '../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
-chargeData = '../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv'
+tripData = '../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
+chargeData = '../../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv'
 
 data = [tripData, chargeData]
 labels = [1,-1]
@@ -85,7 +85,7 @@ for hour in range(0,24):
         time_list.append(datetime.time(hour,minute))
 
 
-vehicle = 'ST1114'
+vehicle = 'BL08'
 run = createHeatmap(vehicle)
 heatmap = run[0]
 date_list = run[1]
