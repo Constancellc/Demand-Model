@@ -5,7 +5,7 @@ awData = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 chargeData = '../../Documents/My_Electric_avenue_Technical_Data/EVChargeData.csv'
 
 
-with open(awData,'rU') as csvfile:
+with open(rawData,'rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         print row
