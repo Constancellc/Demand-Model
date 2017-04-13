@@ -27,7 +27,7 @@ with open(infile,'rU') as csvfile:
         if i == 0:
             data.append(row+['WeekDay'])
         else:
-            dayNo = int(days[row[5]])+int(row[7])
+            dayNo = int(days[row[5]])+int(row[7])-1
             if dayNo > 7:
                 dayNo -= 7
             data.append(row+[str(dayNo)])
@@ -49,8 +49,8 @@ with open(outfile,'w') as csvfile:
         row += [line[11]] # tripStart
         row += [line[12]] # tripEnd
         row += [line[14]] # tripDistance
-        row += [line[10]] # purpose from
-        row += [line[11]] # purpose to
+        row += [line[9]] # purpose from
+        row += [line[10]] # purpose to
         
                         
         writer.writerow(row)

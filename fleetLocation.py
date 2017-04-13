@@ -122,25 +122,25 @@ t = np.linspace(4,28,num=24*60)
 
 simulation = Simulation(regionType, month, day, population, 0)
 test = ChargingScheme(simulation.fleet,24*60)
-homeOnly = test.allHomeCharge(4,simulation.factor)
+#homeOnly = test.allHomeCharge(4,simulation.factor)
 n1 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
 
 regionType = 'Urban Conurbation'
 simulation = Simulation(regionType, month, day, population, 0)
 test = ChargingScheme(simulation.fleet,24*60)
-homeOnly = test.allHomeCharge(4,simulation.factor)
+#homeOnly = test.allHomeCharge(4,simulation.factor)
 n2 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
 
 regionType = 'Rural Town and Fringe'
 simulation = Simulation(regionType, month, day, population, 0)
 test = ChargingScheme(simulation.fleet,24*60)
-homeOnly = test.allHomeCharge(4,simulation.factor)
+#homeOnly = test.allHomeCharge(4,simulation.factor)
 n3 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
 
 regionType = 'Rural Village, Hamlet and Isolated Dwelling'
 simulation = Simulation(regionType, month, day, population, 0)
 test = ChargingScheme(simulation.fleet,24*60)
-homeOnly = test.allHomeCharge(4,simulation.factor)
+#homeOnly = test.allHomeCharge(4,simulation.factor)
 n4 = simulation.fleet.getFleetLocations(1.0/simulation.fleet.n,24*60)
 
 home = [0.0]*24*60
@@ -168,7 +168,7 @@ plt.plot(t,n[0],label='Home')
 plt.plot(t,n[2],label='Work')
 plt.plot(t,n[3],label='Other')
 plt.plot(t,n[1],label='In Transit')
-plt.plot(t,n[4],label='Charging')
+#plt.plot(t,n[4],label='Charging')
 
 # sort out the y axis
 #plt.ylim((0,1))
