@@ -42,6 +42,7 @@ distance = {}
 endTimes = {}
 #startTimes = {}
 rTypes = {}
+rTypes2 = {}
 
 nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
 
@@ -57,60 +58,65 @@ with open('../../Documents/UKDA-5340-tab/tab/householdeul2015.tab','rU') as csvf
 
         if householdID not in rTypes:
             rTypes[householdID] = regionType1
+            rTypes2[householdID] = regionType2
 
 # predicting energy expenditure
-with open('../../Documents/UKDA-5340-tab/csv/tripsUseful.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    reader.next()
-    for row in reader:
-        if row[5] != day: # skip trips that are the wrong day of the week
-            continue
-        if row[6] != month: # or the wrong month
-            continue
+def predictEnergy(day, month, car, regionType=None):
+    with open('../../Documents/UKDA-5340-tab/csv/tripsUseful.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        reader.next()
+        for row in reader:
+            if row[5] != day: # skip trips that are the wrong day of the week
+                continue
+            if row[6] != month: # or the wrong month
+                continue
 
-        vehicle = row[2]
+            if rTypes2[row[1]] != '1':
+                continue
 
-        if vehicle == ' ': # or have missing vehicle ids
-            continue
-        
-        #household = row[1]
-        #purposeFrom = row[11]
-        #purposeTo = row[12]
-        try:
-            passengers = int(row[13]) # find the number of people in the car
-        except:
-            passengers = 1
+            vehicle = row[2]
 
-        try:
-            #tripStart = int(row[8])
-            tripEnd = int(row[9])
-            tripDistance = float(row[10])*1609.34 #convert from miles to m
-        except:
-            continue
+            if vehicle == ' ': # or have missing vehicle ids
+                continue
+            
+            #household = row[1]
+            #purposeFrom = row[11]
+            #purposeTo = row[12]
+            try:
+                passengers = int(row[13]) # find the number of people in the car
+            except:
+                passengers = 1
 
-        if vehicle not in energy:
-            energy[vehicle] = 0
-            distance[vehicle] = 0
+            try:
+                #tripStart = int(row[8])
+                tripEnd = int(row[9])
+                tripDistance = float(row[10])*1609.34 #convert from miles to m
+            except:
+                continue
 
-        distance[vehicle] += tripDistance/1609.34
+            if vehicle not in energy:
+                energy[vehicle] = 0
+                distance[vehicle] = 0
 
-        if rTypes[row[1]] == '1':
-            cycle = Drivecycle(tripDistance,'rural')
-        elif rTypes[row[1]] == '2':
-            cycle = Drivecycle(tripDistance,'urban')
-        else:
-            continue
+            distance[vehicle] += tripDistance/1609.34
 
-        nissanLeaf.load = passengers*75 # add passengers
-        energySpent = nissanLeaf.getEnergyExpenditure(cycle,0.0)
-        energy[vehicle] += energySpent
-        nissanLeaf.load = 0 # remove passengers
-        
-        if vehicle not in endTimes:
-            endTimes[vehicle] = tripEnd
-        else:
-            if tripEnd > endTimes[vehicle]:
+            if rTypes[row[1]] == '1':
+                cycle = Drivecycle(tripDistance,'rural')
+            elif rTypes[row[1]] == '2':
+                cycle = Drivecycle(tripDistance,'urban')
+            else:
+                continue
+
+            car.load = passengers*75 # add passengers
+            energySpent = nissanLeaf.getEnergyExpenditure(cycle,0.0)
+            energy[vehicle] += energySpent
+            car.load = 0 # remove passengers
+            
+            if vehicle not in endTimes:
                 endTimes[vehicle] = tripEnd
+            else:
+                if tripEnd > endTimes[vehicle]:
+                    endTimes[vehicle] = tripEnd
 #
 
 
