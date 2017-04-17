@@ -11,9 +11,6 @@ from cvxopt import matrix, spdiag, solvers, sparse
 from vehicleModel import Drivecycle
 from vehicleOriented import Vehicle, JourneyPool, Agent, Fleet, Simulation, ChargingScheme
 
-"""
-I THINK THIS FILE IS GOING TO CONTAIN ALL OF THE OPTIMIZATION DATA COLLECTION
-"""
 regionType = 'Urban City and Town'
 region = ''
 month = 'June' # don't use december, i only have 6 days of ng data for it

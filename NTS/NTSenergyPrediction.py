@@ -17,7 +17,15 @@ class EnergyPrediction:
         # car: vehicle object
         # regionType (opt): string filtering for a specific region type
         # region (opt): string filtering for a specific region
+
+
+        self.day = day
+        self.month = month
         self.car = car
+        self.regionType = regionType
+        self.region = region
+
+        
         missingclass = 0
         ########################################################################
         # first getting the region types
@@ -30,7 +38,10 @@ class EnergyPrediction:
         if region is not None:
             self.reg3 = {} # 1:NE, 2:NW, 3:Y+H, 4:EM, 5:WM, 6:E, 7:L, 8:SE, 9:SW,
                       # 10: Wales, 11: Scotland
-        
+                      
+        self.nVehicles = 0
+        self.nHouseholds = 0
+        self.nPeople = 0
 
         with open(households,'rU') as csvfile:
             reader = csv.reader(csvfile,delimiter='\t')
@@ -46,9 +57,19 @@ class EnergyPrediction:
 
                     if regionType is not None:
                         self.reg2[row[0]] = row[149]
+                        if row[149] == regionType:
+                            self.nHouseholds += 1
+                            self.nPeople += int(row[32])
 
-                    if region is not None:
+                    elif region is not None:
                         self.reg3[row[0]] = row[28]
+                        if row[28] == region:
+                            self.nHouesholds += 1
+                            self.nPeople += int(row[32])
+
+                    else:
+                        self.nHouseholds += 1
+                        self.nPeople += int(row[32])
         
         ########################################################################
         # now getting the trip data and running it through the vehicle model
@@ -113,8 +134,48 @@ class EnergyPrediction:
                 car.load = passengers*75 # add appropriate load to vehicle
                 self.energy[vehicle] += car.getEnergyExpenditure(cycle,0.0)
                 car.load = 0
-        print missingclass,
-        print ' trips were skipped due to missing classification'
+        #print missingclass,
+        #print ' trips were skipped due to missing classification'
+
+    def getNextDayStartTimes(self):
+
+        self.startTimes = {}
+
+        nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
+
+        with open(trips,'rU') as csvfile:
+            reader = csv.reader(csvfile)
+            reader.next()
+            for row in reader:
+                if row[5] != nextDay[self.day]:
+                    continue
+                if row[6] != self.month:
+                    continue
+
+                if self.regionType is not None:
+                    if self.reg2[row[1]] != self.regionType:
+                        continue
+
+                if self.region is not None:
+                    if self.reg3[row[1]] != self.region:
+                        continue
+
+                vehicle = row[2]
+
+                if vehicle == ' ': # skip trips where the vehicle is missing
+                    continue
+
+                try:
+                    tripStart = int(row[8])
+                except:
+                    continue
+
+                if vehicle not in self.startTimes:
+                    self.startTimes[vehicle] = tripStart
+                else:
+                    if tripStart < self.startTimes[vehicle]:
+                        self.startTimes[vehicle] = tripStart
+
 
     def plotMileage(self,figNo=1,wait=False):
         dailyMiles = [0]*200
@@ -165,20 +226,28 @@ class EnergyPrediction:
         if wait == False:
             plt.show()
 
-    def getDumbChargingProfile(self,power,tmax):
+    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,
+                               scalePerHousehold=False):
         # power: the charging power in kW
         # tmax: the no. minutes past 00:00 the simulation is run for
 
         uncharged = 0
+        outOfCharge = 0
 
         if tmax < 24*60:
             print 'please choose a simulation length greater than a day'
             tmax = 24*60
 
         profile = [0.0]*tmax
+        nVehicles = 0
 
         for vehicle in self.energy:
+            nVehicles += 1
+            
             kWh = self.energy[vehicle]
+            if kWh > 24:
+                outOfCharge += 1
+                kWh = 24
             chargeStart = self.endTimes[vehicle]
             chargeTime = int(kWh*60/power)
 
@@ -189,10 +258,16 @@ class EnergyPrediction:
                 uncharged += 1
 
             for i in range(chargeStart,chargeEnd):
-                profile[i] += power
+                profile[i] += scaleFactor*power
 
-        print uncharged,
-        print ' vehicles did not reach full charge'
+        if scalePerHousehold == True:
+            for i in range(0,tmax):
+                profile[i] = profile[i]/self.nHouseholds
+
+        print outOfCharge,
+        print ' out of '
+        print nVehicles
+        print ' vehicles ran out of charge'
 
         return profile
         
