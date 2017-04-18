@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import csv
 from cvxopt import matrix, spdiag, solvers, sparse
-from vehicleModel import Drivecycle, Vehicle
+from vehicleModelCopy import Drivecycle, Vehicle
 
 results = []
 #distances = []
@@ -32,7 +32,7 @@ trainingData = {'01':[],'02':[],'03':[],'04':[],'05':[],'06':[],'07':[],'08':[],
 testingData = {'01':[],'02':[],'03':[],'04':[],'05':[],'06':[],'07':[],'08':[],
                '09':[],'10':[],'11':[],'12':[]}
 
-with open('../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv') as csvfile:
+with open('../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv') as csvfile:
     reader = csv.reader(csvfile)
     reader.next()
     for row in reader:
@@ -73,8 +73,11 @@ def error(accessoryLoad, month,plot=False):
         if int(distance) == 0:
             continue
 
-        cycleR = Drivecycle(distance,'rural')
-        energyPR = nissanLeaf.getEnergyExpenditure(cycleR,accessoryLoad)
+        if distance >= 50000:
+            cycle = Drivecycle(distance,'motorway')
+        else:
+            cycle = Drivecycle(distance,'rural')
+        energyPR = nissanLeaf.getEnergyExpenditure(cycle,accessoryLoad)
 
         if plot == True:
             predictions[month].append(energyPR)
@@ -96,7 +99,7 @@ chosen = {}
 
 for month in months:
     best = 10^20
-    for accessory in np.arange(0.0,2.0,0.05):
+    for accessory in np.arange(-0.5,2.0,0.1):
         mse = error(accessory,month)
         if mse <= best:
             best = mse

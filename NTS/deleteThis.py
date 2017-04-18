@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
+import random
 # my code
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
@@ -36,17 +37,22 @@ plotMonths = {'1':1,'4':2,'7':3,'10':4}
 titles = {'1':'January','4':'April','7':'July','10':'October'}
 
 nHours = 36
+ppH = 2
 t = np.linspace(0,nHours,nHours*60)
 
 x = np.linspace(8,32,num=7)
 my_xticks = ['08:00 \n Wed','12:00','16:00','20:00','0:00',
              '04:00','08:00 \n Thu']
 
-for month in ['1','4','7','10']:
-    run = NationalEnergyPrediction(day,month)
-    dumbProfile = run.getNationalDumbChargingProfile(3.5)
+month = '2'
 
+run = EnergyPrediction(day,month)
+dumbProfile = run.getDumbChargingProfile(3.5,tmax=36*60)
 
+scale = float(63000000)/run.nPeople
+scale = scale/1000000
+
+for i in range(0,1):
     # getting the baseLoad to compare against
     dayOne = []
     dayTwo = []
@@ -76,24 +82,27 @@ for month in ['1','4','7','10']:
         baseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
         baseLoad[i] = float(int(baseLoad[i]))/1000 # MW -> rounded GW
 
-    smartProfiles = run.getNationalOptimalChargingProfiles(3.5,baseLoad)
+    smartProfiles = run.getOptimalChargingProfiles(3.5,baseLoad,scale,
+                                                   pointsPerHour=ppH)
 
-    summed = [0.0]*36
+    summed = [0.0]*(nHours*ppH)
+
+    t2 = np.linspace(0,nHours,nHours*ppH)
+
     for vehicle in smartProfiles:
         for i in range(0,len(summed)):
             summed[i] += smartProfiles[vehicle][i]
     
     for i in range(0,len(baseLoad)):
-        dumbProfile[i] += baseLoad[i]
-        if i%60 == 0:
-            summed[i/60] += baseLoad[i]
+        dumbProfile[i] = dumbProfile[i]*scale+baseLoad[i]
+        if i%(60/ppH) == 0:
+            summed[i*ppH/60] += baseLoad[i]
 
-    plt.subplot(2,2,plotMonths[month])
+
     plt.plot(t,dumbProfile,label='Dumb Charging')
     plt.plot(t,baseLoad,label='Base Load')
-    plt.plot(summed,label='Smart Charging')
-    if month == '1':
-        plt.legend(loc=[0.7,1.1],ncol=2)
+    plt.plot(t2,summed,label='Smart Charging')
+    plt.legend()
 
     plt.grid()
         
@@ -102,7 +111,6 @@ for month in ['1','4','7','10']:
     plt.ylabel('power demand (GW)')
     plt.xlim(6,34)
     plt.ylim(20,80)
-    plt.title(titles[month],y=0.85)
 
 
 plt.show()

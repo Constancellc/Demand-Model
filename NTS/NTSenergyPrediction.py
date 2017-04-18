@@ -1,7 +1,9 @@
 # packages
 import csv
+import random
 import matplotlib.pyplot as plt
 import numpy as np
+from cvxopt import matrix, spdiag, solvers, sparse
 # my code
 from vehicleModelCopy import Drivecycle, Vehicle
 
@@ -11,21 +13,25 @@ trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 class EnergyPrediction:
 
-    def __init__(self, day, month, car, regionType=None, region=None):
+    def __init__(self, day, month, car=None, regionType=None, region=None):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
         # regionType (opt): string filtering for a specific region type
         # region (opt): string filtering for a specific region
 
-
+        if car == None:
+            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
+            car = nissanLeaf
+            
         self.day = day
         self.month = month
         self.car = car
         self.regionType = regionType
         self.region = region
 
-        
+
+            
         missingclass = 0
         ########################################################################
         # first getting the region types
@@ -104,6 +110,7 @@ class EnergyPrediction:
                     self.energy[vehicle] = 0.0
                     self.distance[vehicle] = 0.0
                     self.endTimes[vehicle] = 0
+                    self.nVehicles += 1
                     
                 try:
                     passengers = int(row[13]) # find the # people in the car
@@ -120,8 +127,13 @@ class EnergyPrediction:
 
                 if tripEnd > self.endTimes[vehicle]:
                     self.endTimes[vehicle] = tripEnd
-                    
-                if self.reg1[row[1]] == '1':
+
+                # if the trip is really long, run the motorway artemis
+                if tripDistance > 30000:
+                    cycle = Drivecycle(tripDistance,'motorway')
+
+                # otherwise run the rural/urban depending on the location
+                elif self.reg1[row[1]] == '1':
                     cycle = Drivecycle(tripDistance,'rural')
                 elif self.reg1[row[1]] == '2':
                     cycle = Drivecycle(tripDistance,'urban')
@@ -130,9 +142,13 @@ class EnergyPrediction:
                     missingclass += 1
                     continue
                     #cycle = Drivecycle(tripDistance,'rural')
+                accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,
+                                 '6':0.0,'7':0.0,'8':0.0,'9':0.0,'10':0.2,
+                                 '11':0.7,'12':1.3}
 
                 car.load = passengers*75 # add appropriate load to vehicle
-                self.energy[vehicle] += car.getEnergyExpenditure(cycle,0.0)
+                self.energy[vehicle] += car.getEnergyExpenditure(cycle,
+                                                                 accessoryLoad[month])
                 car.load = 0
         #print missingclass,
         #print ' trips were skipped due to missing classification'
@@ -140,6 +156,9 @@ class EnergyPrediction:
     def getNextDayStartTimes(self):
 
         self.startTimes = {}
+
+        for vehicle in self.endTimes:
+            self.startTimes[vehicle] = 24*60
 
         nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 
@@ -239,10 +258,8 @@ class EnergyPrediction:
             tmax = 24*60
 
         profile = [0.0]*tmax
-        nVehicles = 0
 
         for vehicle in self.energy:
-            nVehicles += 1
             
             kWh = self.energy[vehicle]
             if kWh > 24:
@@ -266,10 +283,252 @@ class EnergyPrediction:
 
         print outOfCharge,
         print ' out of '
-        print nVehicles
+        print self.nVehicles
         print ' vehicles ran out of charge'
 
         return profile
+
+    def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale,nHours=36,
+                                   pointsPerHour=1):
+        # pMax is the maximum charging power allowed
+        # baseLoad is the vector of non-ev demand that we're trying to valley fill
+        # baseScale is the ratio of the population creating the baseLoad to
+        #   the population creating the charging demand
+
+        profiles = {}
+
+        vehicles = []
+        b = []
+        
+        # I'm going to need to downsample
+        for vehicle in self.energy:
+            if random.random() < 0.01:
+                vehicles.append(vehicle)
+                b.append(baseScale*self.energy[vehicle])
+
+        self.getNextDayStartTimes()
+
+        #n = self.nVehicles
+        n = len(vehicles)
+
+        scale = float(self.nVehicles/n) # This accounts for downsampling
+        pMax = pMax*scale
+        
+        for i in range(0,len(b)):
+            b[i] = b[i]*scale#*0.000001
+
+        t = nHours*pointsPerHour
+
+        if len(baseLoad) > t:
+            f = len(baseLoad)/t
+            newBaseLoad = []
+            
+            for i in range(0,t):
+                newBaseLoad.append(baseLoad[i*f])
+            baseLoad = newBaseLoad
+            
+        elif len(baseLoad) < t:
+            raise Exception('i dont think you want this')
+
+        #vehicles = []
+
+        A1 = matrix(0.0,(n,t*n)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(n,t*n)) # ensures vehicle only charges when avaliable
+
+        #b = []
+
+        #for vehicle in self.energy:
+#            vehicles.append(vehicle)
+#            b.append(self.energy[vehicle])
+
+        b += [0.0]*n
+        b = matrix(b)
+
+        for j in range(0,n):
+            arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
+            departure += 24*pointsPerHour
+            for i in range(0,t):
+                A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
+                if i < arrival or i > departure:
+                    A2[n*(t*j+i)+j] = 1.0
+
+        A = sparse([A1,A2])
+
+        A3 = spdiag([-1]*(t*n))
+        A4 = spdiag([1]*(t*n))
+
+        G = sparse([A3,A4])
+        
+        h = []
+
+        for i in range(0,t*n):
+            h.append(0.0)
+        for i in range(0,t*n):
+            h.append(pMax)
+
+        h = matrix(h)
+
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
+
+        q = matrix(q)
+
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+ 
+        sol = solvers.qp(P,q,G,h,A,b)
+        X = sol['x']
+
+        for i in range(0,n):
+            load = []
+            for j in range(0,t):
+                load.append(X[i*t+j])
+
+            profiles[vehicles[i]] = load
+            
+        return profiles
+
+class NationalEnergyPrediction:
+
+    def __init__(self,day,month,vehicle=None):
+
+        if vehicle == None:
+            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
+            vehicle = nissanLeaf
+
+        # run a simulation filtering for each of the region types
+        self.uc = EnergyPrediction(day,month,nissanLeaf,regionType='1')
+        self.ut = EnergyPrediction(day,month,nissanLeaf,regionType='2')
+        self.rt = EnergyPrediction(day,month,nissanLeaf,regionType='3')
+        self.rv = EnergyPrediction(day,month,nissanLeaf,regionType='4')
+
+        # find the scale required to get a representative population
+        ucScale = float(23650000)/self.uc.nPeople
+        utScale = float(28590000)/self.ut.nPeople
+        rtScale = float(5900000)/self.rt.nPeople
+        rvScale = float(5960000)/self.rv.nPeople
+
+        self.ucScale = ucScale/1000000 # kW -> GW
+        self.utScale = utScale/1000000 # kW -> GW
+        self.rtScale = rtScale/1000000 # kW -> GW
+        self.rvScale = rvScale/1000000 # kW -> GW
+
+    def getNationalDumbChargingProfile(self,power):
+
+        nHours = 36
+
+        # get the scaled dumb charging profiles
+        ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
+                                                   scaleFactor=self.ucScale)
+        utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
+                                                   scaleFactor=self.utScale)
+        rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
+                                                   scaleFactor=self.rtScale)
+        rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
+                                                   scaleFactor=self.rvScale)
+
+        dumbProfile = []
+
+        for i in range(0,len(ucProfile)):
+            dumbProfile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
+                               rvProfile[i])
+
+        return dumbProfile
+
+    def getNationalOptimalChargingProfiles(self,pmax,baseLoad,nHours=36,
+                                           pointsPerHour=1):
+
+        profiles = {}
+
+        nUc = self.uc.nVehicles
+        nUt = self.ut.nVehicles
+        nRt = self.rt.nVehicles
+        nRv = self.rv.nVehicles
+
+        # gather a list of all of the vehicles
+        vehicles = []
+
+        for vehicle in self.uc:
+            vehicles.append(vehicle)
+        for vehicle in self.ut:
+            vehicles.append(vehicle)
+        for vehicle in self.rt:
+            vehicles.append(vehicle)
+        for vehicle in self.rv:
+            vehicles.append(vehicle)
+
+        n = nUc+nUt+nRt+nRv
+
+        t = nHours*pointsPerHour
+
+        
+        if len(baseLoad) > t:
+            f = len(baseLoad)/t
+            newBaseLoad = []
+            
+            for i in range(0,t):
+                newBaseLoad.append(baseLoad[i*f])
+            baseLoad = newBaseLoad
+            
+        elif len(baseLoad) < t:
+            raise Exception('i dont think you want this')
+
+        A1 = matrix(0.0,(n,t*n)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(n,t*n)) # ensures vehicle only charges when avaliable
+
+        b = []
+
+        for vehicle in self.energy:
+            vehicles.append(vehicle)
+            b.append(self.energy[vehicle])
+
+        b += [0.0]*n
+        b = matrix(b)
+
+        for j in range(0,n):
+            arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
+            departure += 24*pointsPerHour
+            for i in range(0,t):
+                A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
+                if i < arrival or i > departure:
+                    A2[n*(t*j+i)+j] = 1.0
+
+        A = sparse([A1,A2])
+
+        A3 = spdiag([-1]*(t*n))
+        A4 = spdiag([1]*(t*n))
+
+        G = sparse([A3,A4])
+        
+        h = []
+
+        for i in range(0,t*n):
+            h.append(0.0)
+        for i in range(0,t*n):
+            h.append(pMax)
+
+        h = matrix(h)
+
+        q = []
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
+
+        q = matrix(q)
+
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+
+        sol = solvers.qp(P,q,G,h,A,b)
+        X = sol['x']
+        
+        return profiles
+        
+        
         
 
                 
