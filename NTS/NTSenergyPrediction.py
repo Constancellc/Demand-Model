@@ -353,7 +353,7 @@ class EnergyPrediction:
         # tmax: the no. minutes past 00:00 the simulation is run for
 
         uncharged = 0
-        outOfCharge = 0
+        nOutOfCharge = 0
 
         if tmax < 24*60:
             print 'please choose a simulation length greater than a day'
@@ -401,6 +401,7 @@ class EnergyPrediction:
 
                 if energyRequired > self.car.capacity:
                     print 'i have run out of charge'
+                    print journeys
                     outofCharge = True
 
                 if journeys[0][2] == 1:
@@ -437,7 +438,7 @@ class EnergyPrediction:
                 profile[i] += scaleFactor*power
 
             if outOfCharge is True:
-                outOfCharge += 1
+                nOutOfCharge += 1
 
         if scalePerHousehold == True:
             for i in range(0,tmax):
@@ -451,7 +452,7 @@ class EnergyPrediction:
             for i in range(0,tmax):
                 profile[i] = profile[i]/self.nPeople
 
-        print outOfCharge,
+        print nOutOfCharge,
         print ' out of '
         print self.nVehicles
         print ' vehicles ran out of charge'
