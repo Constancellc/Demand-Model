@@ -7,7 +7,7 @@ tripData = '../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
 households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 grid = '../ng-data/Demand_Data2016.csv'
 
-with open(tripData,'rU') as csvfile:
+with open(awData,'rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         print row

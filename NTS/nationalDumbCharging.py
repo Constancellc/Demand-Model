@@ -42,10 +42,11 @@ x = np.linspace(8,32,num=7)
 my_xticks = ['08:00 \n Wed','12:00','16:00','20:00','0:00',
              '04:00','08:00 \n Thu']
 
+pointsPerHour = 1
+
 for month in ['1','4','7','10']:
     run = NationalEnergyPrediction(day,month)
-    dumbProfile = run.getNationalDumbChargingProfile(3.5)
-
+    dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
 
     # getting the baseLoad to compare against
     dayOne = []
@@ -59,7 +60,7 @@ for month in ['1','4','7','10']:
             elif row[0] == str(calender[month][nextDay[day]])+months[month]:
                 dayTwo.append(float(row[4]))
 
-    halfHourly = dayOne+dayTwo[:24]
+    halfHourly = dayOne+dayTwo[:(nHours-24)*2]
 
     baseLoad = [0.0]*nHours*60
 
@@ -75,6 +76,8 @@ for month in ['1','4','7','10']:
         
         baseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
         baseLoad[i] = float(int(baseLoad[i]))/1000 # MW -> rounded GW
+
+        
 
     smartProfiles = run.getNationalOptimalChargingProfiles(3.5,baseLoad)
 
@@ -93,7 +96,7 @@ for month in ['1','4','7','10']:
     plt.plot(t,baseLoad,label='Base Load')
     plt.plot(summed,label='Smart Charging')
     if month == '1':
-        plt.legend(loc=[0.7,1.1],ncol=2)
+        plt.legend(loc=[0.5,1.1],ncol=3)
 
     plt.grid()
         
