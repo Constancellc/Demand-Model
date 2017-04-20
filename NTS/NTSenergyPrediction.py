@@ -315,15 +315,19 @@ class EnergyPrediction:
                 self.car.load = 0
 
                 if row[12] == '23':
-                    home = 1
+                    location = 1 # home
+                elif row[12] == '1':
+                    location = 2 # work
+                elif row[12] == '4' or row[12] == '5':
+                    location = 3 # shopping
                 else:
-                    home = 0
+                    location = 0
 
                 if row[2] not in self.overCapacityTravelDiaries:
                     self.overCapacityTravelDiaries[row[2]] = []
 
                 self.overCapacityTravelDiaries[row[2]].append([tripEnd,energy,
-                                                                home])
+                                                                location])
         # sort the travel diaries chronologically
         
         newLogs = {}
@@ -345,15 +349,17 @@ class EnergyPrediction:
         self.overCapacityTravelDiaries = newLogs
               
                 
-    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,
-                               scalePerHousehold=False,scalePerVehicle=False,
-                               scalePerPerson=False):
+    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,logOutofCharge=True,
+                               highUseHomeCharging=True,highUseWorkCharging=True,
+                               highUseShopCharging=True, scalePerHousehold=False,
+                               scalePerVehicle=False,scalePerPerson=False):
         # power: the charging power in kW
         
         # tmax: the no. minutes past 00:00 the simulation is run for
 
         uncharged = 0
-        nOutOfCharge = 0
+        self.nOutOfCharge = 0
+        self.dumbScaleFactor = scaleFactor
 
         if tmax < 24*60:
             print 'please choose a simulation length greater than a day'
@@ -361,18 +367,21 @@ class EnergyPrediction:
 
         profile = [0.0]*tmax
 
-        self.findOverCapacityVehicles()
+        if highUseHomeCharging == True or highUseWorkCharging == True or highUseShopCharging == True:
+            self.findOverCapacityVehicles()
 
         for vehicle in self.energy:
 
-            if vehicle in self.overCapacityVehicles:
-                continue
+            if highUseHomeCharging == True:
+                if vehicle in self.overCapacityVehicles:
+                    continue
             
             kWh = self.energy[vehicle]
 
-            #if kWh > 24:
-#                outOfCharge += 1
-#                kWh = 24
+            if highUseHomeCharging == False:
+                if kWh > 24:
+                    self.nOutOfCharge += 1
+                    kWh = 24
 
             chargeStart = self.endTimes[vehicle]
             chargeTime = int(kWh*60/power)
@@ -387,58 +396,87 @@ class EnergyPrediction:
                 profile[i] += scaleFactor*power
 
         # now for the high acheivers:
-        self.getOverCapacityTravelDiaries()
-                                    
-        for vehicle in self.overCapacityVehicles:
-            outOfCharge = False
-            
-            journeys = self.overCapacityTravelDiaries[vehicle]
+        if highUseHomeCharging == True:
+            if logOutofCharge == True:
+                self.outOfChargeLog = {}
+                
+            chargingLocations = [1]
 
-            energyRequired = 0.0
+            if highUseWorkCharging == True:
+                chargingLocations.append(2)
+            if highUseShopCharging == True:
+                chargingLocations.append(3)
+                
+            self.getOverCapacityTravelDiaries()
+                                        
+            for vehicle in self.overCapacityVehicles:
+                outOfCharge = False
+                
+                journeys = self.overCapacityTravelDiaries[vehicle]
 
-            while len(journeys) > 1:
+                energyRequired = 0.0
+
+                while len(journeys) > 1:
+                    energyRequired += journeys[0][1]
+
+                    if energyRequired > self.car.capacity:
+                        outofCharge = True
+
+                        if logOutofCharge == True:
+
+                            if vehicle not in self.outOfChargeLog:
+                                self.outOfChargeLog[vehicle] = []
+
+                            self.outOfChargeLog[vehicle].append([energyRequired-self.car.capacity,
+                                                            journeys[0][0]])
+
+                    if journeys[0][2] in chargingLocations:
+                        # car gone home
+                        if journeys[0][2] == '3':
+                            chargePower = power # room for fast charging
+                        else:
+                            chargePower = power
+                            
+                        chargeStart = journeys[0][0]                        
+                        timeRequired = int(energyRequired*60/chargePower) # mins
+                        departure = journeys[1][0]
+
+                        if chargeStart+timeRequired < departure:
+                            chargeEnd = chargeStart+timeRequired
+
+                        else:
+                            chargeEnd = departure
+
+                        energyRequired -= chargePower*(chargeEnd-chargeStart)/60
+
+                        for i in range(chargeStart,chargeEnd):
+                            profile[i] += scaleFactor*chargePower
+
+                    journeys.remove(journeys[0])
+
+                # now it's end of the day and all possible day charging has occured
                 energyRequired += journeys[0][1]
 
                 if energyRequired > self.car.capacity:
-                    print 'i have run out of charge'
-                    print journeys
-                    outofCharge = True
+                    outOfCharge = True
 
-                if journeys[0][2] == 1:
-                    # car gone home
-                    chargeStart = journeys[0][0]                        
-                    timeRequired = int(energyRequired*60/power) # mins
-                    departure = journeys[1][0]
+                    if logOutofCharge == True:
+                        
+                        if vehicle not in self.outOfChargeLog:
+                            self.outOfChargeLog[vehicle] = []
+                            
+                        self.outOfChargeLog[vehicle].append([energyRequired-self.car.capacity,
+                                                            journeys[0][0]])
+                    energyRequired = self.car.capacity
 
-                    if chargeStart+timeRequired < departure:
-                        chargeEnd = chargeStart+timeRequired
+                chargeStart = journeys[0][0]
+                timeRequired = int(energyRequired*60/power) # mins
+                
+                for i in range(chargeStart,chargeStart+timeRequired):
+                    profile[i] += scaleFactor*power
 
-                    else:
-                        chargeEnd = departure
-
-                    energyRequired -= power*(chargeEnd-chargeStart)/60
-
-                    for i in range(chargeStart,chargeEnd):
-                        profile[i] += scaleFactor*power
-
-                journeys.remove(journeys[0])
-
-            # now it's end of the day and all possible day charging has occured
-            energyRequired += journeys[0][1]
-
-            if energyRequired > self.car.capacity:
-                print 'i have run out of charge'
-                outOfCharge = True
-                energyRequired = self.car.capacity
-
-            chargeStart = journeys[0][0]
-            timeRequired = int(energyRequired*60/power) # mins
-            
-            for i in range(chargeStart,chargeStart+timeRequired):
-                profile[i] += scaleFactor*power
-
-            if outOfCharge is True:
-                nOutOfCharge += 1
+                if outOfCharge is True:
+                    self.nOutOfCharge += 1
 
         if scalePerHousehold == True:
             for i in range(0,tmax):
@@ -452,13 +490,35 @@ class EnergyPrediction:
             for i in range(0,tmax):
                 profile[i] = profile[i]/self.nPeople
 
-        print nOutOfCharge,
+        print self.nOutOfCharge,
         print ' out of '
         print self.nVehicles
         print ' vehicles ran out of charge'
 
         return profile
 
+    def getMissingCapacity(self,nHours):
+        try:
+            log = self.outOfChargeLog
+        except:
+            raise Exception('you need to run dumb charging with logOutOfCharge = True before running this function')
+
+        extraRequirements = [0.0]*100
+        
+        for vehicle in log:
+            extraCapacity = 0
+            for entry in log[vehicle]:
+                if entry[0] > extraCapacity:
+                    extraCapacity = entry[0]
+
+            try:
+                extraRequirements[int(extraCapacity)] += self.dumbScaleFactor
+            except:
+                 print vehicle,
+                 print extraCapacity
+                 
+        return extraRequirements
+            
     def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale=1,nHours=36,
                                    pointsPerHour=1):
         # pMax is the maximum charging power allowed in kW
@@ -480,7 +540,7 @@ class EnergyPrediction:
         
         # I'm going to need to downsample
         for vehicle in self.energy:
-            if random.random() < 0.02:
+            if random.random() < 0.01:
                 vehicles.append(vehicle)
                 b.append(baseScale*self.energy[vehicle])
 
@@ -591,6 +651,8 @@ class NationalEnergyPrediction:
 
     def getNationalDumbChargingProfile(self,power,nHours):
 
+        self.nHours = nHours
+
         # get the scaled dumb charging profiles
         ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
                                                    scaleFactor=self.ucScale)
@@ -608,6 +670,29 @@ class NationalEnergyPrediction:
                                rvProfile[i])
 
         return dumbProfile
+
+    def getNationalMissingCapacity(self):
+
+        try:
+            nHours = self.nHours
+        except:
+            raise Exception('please run getNationalDumbChargingProfile first')
+
+        ucMissingCapacity = self.uc.getMissingCapacity(nHours)
+        utMissingCapacity = self.ut.getMissingCapacity(nHours)
+        rtMissingCapacity = self.rt.getMissingCapacity(nHours)
+        rvMissingCapacity = self.rv.getMissingCapacity(nHours)
+
+        missingCapacity = []
+
+        for i in range(0,len(ucMissingCapacity)):
+            missingCapacity.append(ucMissingCapacity[i]*1000+
+                                   utMissingCapacity[i]*1000+
+                                   rtMissingCapacity[i]*1000+
+                                   rvMissingCapacity[i]*1000)
+            # unit of thousands of vehicles (I think)
+
+        return missingCapacity
 
     def getNationalOptimalChargingProfiles(self,pMax,baseLoad,nHours=36,
                                            pointsPerHour=1):

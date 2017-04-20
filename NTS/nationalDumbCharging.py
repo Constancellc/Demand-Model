@@ -44,9 +44,12 @@ my_xticks = ['08:00 \n Wed','12:00','16:00','20:00','0:00',
 
 pointsPerHour = 1
 
+shortfalls = {}
+
 for month in ['1','4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
+    shortfalls[month] = run.getNationalMissingCapacity()
 
     # getting the baseLoad to compare against
     dayOne = []
@@ -108,4 +111,12 @@ for month in ['1','4','7','10']:
     plt.title(titles[month],y=0.85)
 
 
+plt.figure(2)
+for month in ['1','4','7','10']:
+    plt.subplot(2,2,plotMonths[month])
+    plt.bar(range(0,len(shortfalls[month])),shortfalls[month])
+    plt.xlabel('extra capacity required (kWh)')
+    plt.ylabel('Thousands of vehicles')
+    plt.title(titles[month],y=0.85)
+    
 plt.show()
