@@ -361,6 +361,9 @@ class EnergyPrediction:
         self.nOutOfCharge = 0
         self.dumbScaleFactor = scaleFactor
 
+        if logOutofCharge == True:
+            self.outOfChargeLog = {}
+
         if tmax < 24*60:
             print 'please choose a simulation length greater than a day'
             tmax = 24*60
@@ -378,9 +381,15 @@ class EnergyPrediction:
             
             kWh = self.energy[vehicle]
 
-            if highUseHomeCharging == False:
+            if highUseHomeCharging == False or highUseWorkCharging == False and highUseShopCharging == False:
                 if kWh > 24:
                     self.nOutOfCharge += 1
+
+                    if logOutofCharge == True:
+                        if vehicle not in self.outOfChargeLog:
+                            self.outOfChargeLog[vehicle] = []
+
+                        self.outOfChargeLog[vehicle].append([kWh-24,vehicle])
                     kWh = 24
 
             chargeStart = self.endTimes[vehicle]
@@ -397,8 +406,7 @@ class EnergyPrediction:
 
         # now for the high acheivers:
         if highUseHomeCharging == True:
-            if logOutofCharge == True:
-                self.outOfChargeLog = {}
+
                 
             chargingLocations = [1]
 

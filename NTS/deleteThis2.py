@@ -12,11 +12,12 @@ month = '2'
 
 
 run = EnergyPrediction(day,month)
-dumbProfile = run.getDumbChargingProfile(3.5,tmax=36*60,
+dumbProfile = run.getDumbChargingProfile(3.5,tmax=36*60,logOutofCharge=True,
                                          highUseWorkCharging=False,
                                          highUseHomeCharging=False,
                                          highUseShopCharging=False)
 
+missing1 = run.getMissingCapacity(36)
 
 run2 = EnergyPrediction(day,month)
 dumbProfile2 = run2.getDumbChargingProfile(3.5,tmax=36*60,logOutofCharge=True,
@@ -34,15 +35,19 @@ dumbProfile4 = run4.getDumbChargingProfile(3.5,tmax=36*60,logOutofCharge=True)
 missing4 = run4.getMissingCapacity(36)
 
 plt.figure(1)
-#plt.plot(dumbProfile,label='without')
+plt.plot(dumbProfile,label='without')
 plt.plot(dumbProfile2,label='home only')
 plt.plot(dumbProfile3,label='home + work')
 plt.plot(dumbProfile4,label='home, work + shops')
+plt.ylabel('Power')
 plt.legend()
 
 plt.figure(2)
-#plt.bar(range(0,36),missing1)
-plt.bar(range(0,len(missing2)),missing2)
-plt.bar(range(0,len(missing2)),missing3)
-plt.bar(range(0,len(missing2)),missing4)
+plt.bar(range(0,len(missing2)),missing1,label='without mid-day')
+plt.bar(range(0,len(missing2)),missing2,label='home only')
+plt.bar(range(0,len(missing2)),missing3,label='home + work')
+plt.bar(range(0,len(missing2)),missing4,label='home, work + shopping')
+plt.legend()
+plt.ylabel('number of vehicles')
+plt.xlabel('missing capacity (kWh)')
 plt.show()
