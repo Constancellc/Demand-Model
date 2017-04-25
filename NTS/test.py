@@ -9,9 +9,12 @@ grid = '../ng-data/Demand_Data2016.csv'
 newTrips = '../../Documents/My_Electric_avenue_Technical_Data/constance/trips.csv'
 newCharges = '../../Documents/My_Electric_avenue_Technical_Data/constance/charges.csv'
 features = '../../Documents/My_Electric_avenue_Technical_Data/constance/features.csv'
+starttimes = '../../Documents/My_Electric_avenue_Technical_Data/constance/ranges.csv'
 
 with open(features,'rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        if row[0] != 'GC08':
+            continue
         print row
 

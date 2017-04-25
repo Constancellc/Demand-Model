@@ -7,7 +7,7 @@ tripData = '../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv'
 
 tripsOUT = '../../Documents/My_Electric_avenue_Technical_Data/constance/trips.csv'
 chargesOUT = '../../Documents/My_Electric_avenue_Technical_Data/constance/charges.csv'
-
+timeRanges = '../../Documents/My_Electric_avenue_Technical_Data/constance/ranges.csv'
 charges = {}
 trips = {}
 
@@ -35,15 +35,34 @@ with open(chargeData) as csvfile:
         stampIn = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
                                     int(row[1][8:10]),int(row[1][11:13]),
                                     int(row[1][14:16]))
-        day = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
-                                  int(row[1][8:10]))
-        minsIn = (stampIn-day).seconds/60
 
         stampOut = datetime.datetime(int(row[2][:4]),int(row[2][5:7]),
                                      int(row[2][8:10]),int(row[2][11:13]),
                                      int(row[2][14:16]))
+                
+        day = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
+                                  int(row[1][8:10]))
+
+        if day >= datetime.datetime(2013,3,31) and day < datetime.datetime(2013,10,27):
+            stampIn += datetime.timedelta(hours=1)
+            stampOut += datetime.timedelta(hours=1)
+
+        if day >= datetime.datetime(2014,3,30) and day < datetime.datetime(2014,10,26):
+            stampIn += datetime.timedelta(hours=1)
+            stampOut += datetime.timedelta(hours=1)
+            
+        if day >= datetime.datetime(2015,3,29) and day < datetime.datetime(2015,10,25):
+            stampIn += datetime.timedelta(hours=1)
+            stampOut += datetime.timedelta(hours=1)
+
+    
+
+        minsIn = (stampIn-day).seconds/60
 
         minsOut = (stampOut-day).seconds/60
+
+        if minsOut < minsIn:
+            minsOut += 24*60
 
         if stampIn < chargeRanges[userID]['earliest']:
             chargeRanges[userID]['earliest'] = stampIn
@@ -61,10 +80,19 @@ with open(chargeData) as csvfile:
 
 for user in charges:
     # get start date
-    start = chargeRanges[user]['latest']
+    start = chargeRanges[user]['earliest']
     for i in range(0,len(charges[user])):
         charges[user][i][0] = (charges[user][i][0]-start).days+1
-                                
+
+with open(timeRanges,'w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['User ID','first charge','last charge'])
+    for ID in chargeRanges:
+        row = [ID]
+        row += [chargeRanges[ID]['earliest']]
+        row += [chargeRanges[ID]['latest']]
+        writer.writerow(row)
+    
 with open(tripData,'rU') as csvfile:
     reader = csv.reader(csvfile)
     reader.next()
@@ -84,13 +112,29 @@ with open(tripData,'rU') as csvfile:
         if day > chargeRanges[user]['latest']:
             continue
 
-        minsStart = (tripStart-day).seconds/60
 
         tripEnd = datetime.datetime(int(row[2][:4]),int(row[2][5:7]),
                                      int(row[2][8:10]),int(row[2][11:13]),
                                      int(row[2][14:16]))
-        
+
+        if day >= datetime.datetime(2013,3,31) and day < datetime.datetime(2013,10,27):
+            tripStart += datetime.timedelta(hours=1)
+            tripEnd += datetime.timedelta(hours=1)
+
+        if day >= datetime.datetime(2014,3,30) and day < datetime.datetime(2014,10,26):
+            tripStart += datetime.timedelta(hours=1)
+            tripEnd += datetime.timedelta(hours=1)
+            
+        if day >= datetime.datetime(2015,3,29) and day < datetime.datetime(2015,10,25):
+            tripStart += datetime.timedelta(hours=1)
+            tripEnd += datetime.timedelta(hours=1)
+
+
+        minsStart = (tripStart-day).seconds/60        
         minsEnd = (tripEnd-day).seconds/60
+
+        if minsEnd < minsStart:
+            minsEnd += 24*60
 
         tripDist = int(float(row[3])) # m
         tripEnergy = int(float(row[4])) # Wh
@@ -100,11 +144,6 @@ with open(tripData,'rU') as csvfile:
 
         if tripEnergy == 0:
             continue
-
-        #if tripStart < tripRanges[user]['earliest']:
-#            tripRanges[user]['earliest'] = tripStart
-#        if tripEnd > tripRanges[user]['latest']:
-#            tripRanges[user]['latest'] = tripEnd
 
         if day.isoweekday() > 5:
             weekend = 1
@@ -133,7 +172,7 @@ with open(chargesOUT,'w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['ID','day No','start time','end time','energy','weekend?'])
     for user in trips:
-        for line in trips[user]:
+        for line in charges[user]:
             row = [user] + line
             writer.writerow(row)
         

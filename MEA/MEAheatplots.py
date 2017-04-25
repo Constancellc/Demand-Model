@@ -85,7 +85,7 @@ for hour in range(0,24):
         time_list.append(datetime.time(hour,minute))
 
 
-vehicle = 'BL08'
+vehicle = 'GC08'
 run = createHeatmap(vehicle)
 heatmap = run[0]
 date_list = run[1]

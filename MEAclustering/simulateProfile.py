@@ -8,7 +8,7 @@ import random
 
 features = '../../Documents/My_Electric_avenue_Technical_Data/constance/features.csv'
 
-testVehicle = 'GC06'
+testVehicle = 'GC08'
 
 with open(features,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -32,7 +32,7 @@ with open(features,'rU') as csvfile:
 
 # ok now we're going to try and simulate a profile from these aggregate stats
 
-numberDays = 100
+numberDays = 500
 startDate = datetime.datetime(2016,01,01)
 
 heatmap = []
