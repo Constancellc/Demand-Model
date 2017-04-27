@@ -11,10 +11,8 @@ newCharges = '../../Documents/My_Electric_avenue_Technical_Data/constance/charge
 features = '../../Documents/My_Electric_avenue_Technical_Data/constance/features.csv'
 starttimes = '../../Documents/My_Electric_avenue_Technical_Data/constance/ranges.csv'
 
-with open(features,'rU') as csvfile:
+with open(newTrips,'rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        if row[0] != 'GC08':
-            continue
         print row
-
+        
