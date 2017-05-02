@@ -27,16 +27,37 @@ with open('../Downloads/openDSScurrents/line6-smart.csv','rU') as csvfile:
         smartI3.append(float(row[12]))
 
 t = np.linspace(0,24,num=1440)
+xaxis2 = np.linspace(2,22,num=6)
+my_xticks2 = ['02:00','06:00','10:00','14:00','18:00','22:00']
+
+
 plt.figure(1)
 plt.subplot(3,1,1)
-plt.plot(t,dumbI1)
-plt.plot(t,smartI1)
+plt.plot(t,dumbI1,label='dumb')
+plt.plot(t,smartI1,label='valley filling')
+plt.legend()
+plt.title('Phase 1 Current',y=0.8)
+plt.ylabel('Current (A)')
+plt.xlim(0,24)
+plt.xticks(xaxis2, my_xticks2)
+
 plt.subplot(3,1,2)
 plt.plot(t,dumbI2)
 plt.plot(t,smartI2)
+plt.title('Phase 2 Current',y=0.8)
+plt.xlim(0,24)
+plt.ylabel('Current (A)')
+plt.xticks(xaxis2, my_xticks2)
+
 plt.subplot(3,1,3)
 plt.plot(t,dumbI3)
 plt.plot(t,smartI3)
+plt.title('Phase 3 Current',y=0.8)
+plt.ylabel('Current (A)')
+plt.xlim(0,24)
+plt.xlabel('time')
+plt.xticks(xaxis2, my_xticks2)
+
 
 
 p1 = 0

@@ -71,12 +71,15 @@ with open(chargeData) as csvfile:
 
         energy = int(2000*(float(row[4])-float(row[3]))) # Wh
 
+        initialSOC = float(int(100*float(row[3])/12))/100
+        finalSOC = float(int(100*float(row[4])/12))/100
+
         if day.isoweekday() > 5:
             weekend = 1
         else:
             weekend = 0
 
-        charges[userID].append([day,minsIn,minsOut,energy,weekend])
+        charges[userID].append([day,minsIn,minsOut,initialSOC,finalSOC,weekend])
 
 for user in charges:
     # get start date
@@ -170,7 +173,8 @@ with open(tripsOUT,'w') as csvfile:
 
 with open(chargesOUT,'w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['ID','day No','start time','end time','energy','weekend?'])
+    writer.writerow(['ID','day No','start time','end time','intial SOC','final SOC',
+                     'weekend?'])
     for user in trips:
         for line in charges[user]:
             row = [user] + line

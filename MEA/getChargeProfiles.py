@@ -1,10 +1,11 @@
 import csv
 import datetime
 import matplotlib.pyplot as plt
+import numpy as np
 import random
 from cvxopt import matrix, spdiag, solvers, sparse
 
-chargeData = '../../Documents/My_Electric_avenue_Technical_Data/constance/charges.csv'
+chargeData = '../../Documents/My_Electric_avenue_Technical_Data/constance/charges2.csv'
 rangeData =  '../../Documents/My_Electric_avenue_Technical_Data/constance/ranges.csv'
 tripData = '../../Documents/My_Electric_avenue_Technical_Data/constance/trips.csv'
 
@@ -12,7 +13,6 @@ profileStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/unchan
 profileStem2 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/smart/'
 
 power = 3.5
-
 
 startDates = {}
 chargeStarts = {}
@@ -32,10 +32,14 @@ with open(rangeData, 'rU') as csvfile:
                 
 latest += datetime.timedelta(21) # skip nervous weeks
 
-while latest.isoweekday() > 5 and latest.isoweekday() < 2: # pick a middle of week day
+while latest.isoweekday() != 2: # pick a tuesday for day 1
     latest += datetime.timedelta(1)
 
 profiles = {}
+energy = {}
+
+tripStarts = {}
+
 
 with open(chargeData,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -44,32 +48,36 @@ with open(chargeData,'rU') as csvfile:
             continue
 
         if row[0] not in profiles:
-            profiles[row[0]] = [0]*(48*60)
-            chargeStarts[row[0]] = []
-
+            profiles[row[0]] = [0]*(72*60)
+            chargeStarts[row[0]] = {0:0,1:0,2:0}
+            energy[row[0]] = {0:0,1:0,2:0}
+            tripStarts[row[0]] = {0:24*60,1:24*60,2:24*60}
+            
         reqDay = (latest-startDates[row[0]]).days # this is actualy the day before
 
         dayNo = int(row[1]) - reqDay
         
-        if dayNo > 1 or dayNo < 0:
+        if dayNo > 2 or dayNo < 0:
             continue
-
 
         startTime = int(row[2])+dayNo*24*60
         endTime = int(row[3])+dayNo*24*60
 
-        chargeStarts[row[0]].append([startTime,endTime-startTime])
+        if int(row[2]) > chargeStarts[row[0]][dayNo]:
+            chargeStarts[row[0]][dayNo] = int(row[2])
 
-        weekendFlag = int(row[5])
+        weekendFlag = int(row[6])
 
         if weekendFlag == 1:
             print 'fuck'
             continue
 
         for i in range(startTime,endTime):
-            if i >= 48*60:
+            if i >= 72*60:
                 continue
             profiles[row[0]][i] = power
+
+        energy[row[0]][dayNo] += float(endTime-startTime)*power/60 # kWh
 
 allVehicles = []
 
@@ -78,7 +86,6 @@ for vehicle in profiles:
 
 chosenVehicles = []
 
-tripStarts = {}
 
 for i in range(0,55):
     ran = int(random.random()*len(allVehicles))
@@ -97,12 +104,10 @@ with open(tripData,'rU') as csvfile:
         if dayNo > 2 or dayNo < 0:
             continue
 
-        tripStart = dayNo*24*60+int(row[2])
+        tripStart = int(row[2])
 
-        if row[0] not in tripStarts:
-            tripStarts[row[0]] = []
-
-        tripStarts[row[0]].append(tripStart)
+        if tripStart < tripStarts[row[0]][dayNo]:
+            tripStarts[dayNo] = tripStart
 
 baseLoad30 = []
 day2 = []
@@ -139,7 +144,7 @@ def smart_charge(start,end,energy):
     
     A = matrix(1.0/(2*t_int),(1,t))
 
-    b = matrix([energy]) # amount of energy needed
+    b = matrix([energy]) # amount of energy needed in.... kWh?
 
     A3 = spdiag([-1]*t)
     A4 = spdiag([1]*t)
@@ -162,44 +167,65 @@ def smart_charge(start,end,energy):
 smartProfiles = {}
 for vehicle in chosenVehicles:
     smartProfiles[vehicle] = [0]*(72*60)
-    nCharges = len(chargeStarts[vehicle])
-    for i in range(0,nCharges):
-        # first find the start of the next journey
-        start = chargeStarts[vehicle][i][0]
-        energy = float(chargeStarts[vehicle][i][1])*power/60
+    for day in range(0,2):
+        energyReq = energy[vehicle][day]
+        
+        start = chargeStarts[vehicle][day]+day*24*60
 
-        end = 72*60
+        end = tripStarts[vehicle][day+1]
+        if end < 540:
+            end += (day+1)*24*60
+        else:
+            end = 540+(day+1)*24*60
+        
+        if energyReq == 0:
+            continue
 
-        for trip in tripStarts[vehicle]:
-            if trip > start:
-                if trip < end:
-                    end = trip
-
-        try:
-            X = smart_charge(start,end,energy)
-        except:
-            print start,
-            print end
-            print energy
+        X = smart_charge(start,end,energyReq)
         for j in range(0,len(X)):
-            smartProfiles[vehicle][start+j] += X[j]
+                smartProfiles[vehicle][start+j] += X[j]
 
+t = np.linspace(9,33,24*60)
+xaxis = np.linspace(9,33,num=5)
+my_xticks = ['09:00','15:00','21:00','03:00','09:00']
 plt.figure(1)
 for i in range(1,17):
-    ran = int(random.random()*55)
-    vehicle = chosenVehicles[ran]
+    vehicle = chosenVehicles[i]
     plt.subplot(4,4,i)
-    plt.plot(smartProfiles[vehicle][24*60:48*60])
-    plt.plot(profiles[vehicle][24*60:])
-    plt.title(vehicle)
+    plt.plot(t,smartProfiles[vehicle][33*60:57*60])
+    plt.plot(t,profiles[vehicle][33*60:57*60])
+    plt.xticks(xaxis, my_xticks)
+    #plt.plot(t,baseLoad[24*60:48*60])
+    plt.xlim(9,33)
+    plt.ylim(0,4)
+    plt.title(vehicle,y=0.8)
 
-plt.show()
+summedSmart = [0.0]*24*60
+summedDumb = [0.0]*24*60
+
+for i in range(0,55):
+    vehicle = chosenVehicles[i]
+    for j in range(0,24*60):
+        summedSmart[j] += smartProfiles[vehicle][33*60+j]
+        summedDumb[j] += profiles[vehicle][33*60+j]
+
+xaxis2 = np.linspace(9,33,num=9)
+my_xticks2 = ['09:00','12:00','15:00','18:00','21:00','00:00','03:00','06:00','09:00']
+plt.figure(2)
+plt.xticks(xaxis2, my_xticks2)
+plt.plot(t,summedSmart,label='Valley filling')
+plt.plot(t,summedDumb,label='Observed charging')
+plt.xlim(9,33)
+plt.legend()
+plt.xlabel('time')
+plt.ylabel('total power (kW)')
 
 
 for i in range(0,55):
     with open(profileStem+str(i+1)+'.csv','w') as csvfile:
         writer = csv.writer(csvfile)
-        profile = profiles[chosenVehicles[i]][24*60:]
+        profile = profiles[chosenVehicles[i]][33*60:57*60]
+        profile = profile[15*60:] + profile[:15*60]
         for cell in profile:
             writer.writerow([cell])
 
@@ -207,7 +233,10 @@ for i in range(0,55):
 for i in range(0,55):
     with open(profileStem2+str(i+1)+'.csv','w') as csvfile:
         writer = csv.writer(csvfile)
-        profile = smartProfiles[chosenVehicles[i]][24*60:48*60]
+        profile = smartProfiles[chosenVehicles[i]][33*60:57*60]
+        profile = profile[15*60:] + profile[:15*60]
         for cell in profile:
             writer.writerow([cell])
-    
+
+plt.show()
+   
