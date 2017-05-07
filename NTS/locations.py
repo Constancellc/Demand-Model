@@ -254,22 +254,29 @@ plt.xlim(24,48)
 plt.legend(loc='upper center',ncol=3)
 plt.grid()
 plt.title('Top Contributers to "other"')
-'''        
+       
 # now looking at variation with day of the week
-days = {'1':'Monday','2':'Tuesday','3':'Wednesday','4':'Thursday',
-        '5':'Friday','6':'Saturday','7':'Sunday'}
+days = {'7':'Monday','1':'Tuesday','2':'Wednesday','3':'Thursday',
+        '4':'Friday','5':'Saturday','6':'Sunday'}
 
 plt.figure(2)
 for day in days:
-    plt.subplot(2,4,int(day))
-    totals= getLocations(day,'2')
+    if day == '7':
+        i = 1
+    else:
+        i = int(day)+1
+    plt.subplot(2,4,i)
+    run = getLocations(day,'5',smooth=True)
+    totals = run[0]
     for line in totals:
         plt.plot(t,totals[line],label=labels[line])
         plt.xticks(x, my_xticks)
+        plt.xlim(24,48)
     plt.title(days[day])
-    if day == '1':
+    plt.grid()
+    if day == '7':
         plt.legend(loc=[3.8,-.8])
-
+''' 
 # now looking at monthly variation
 months = {'1':'January','2':'February','3':'March','4':'April','5':'May',
           '6':'June','7':'July','8':'August','9':'September',
