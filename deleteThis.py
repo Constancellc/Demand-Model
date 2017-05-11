@@ -25,6 +25,17 @@ with open('../Downloads/openDSScurrents/line6-smart.csv','rU') as csvfile:
         smartI1.append(float(row[8]))
         smartI2.append(float(row[10]))
         smartI3.append(float(row[12]))
+        
+slowI1 = []        
+slowI2 = []        
+slowI3= []
+with open('../Downloads/openDSScurrents/line6-slow.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    reader.next()
+    for row in reader:
+        slowI1.append(float(row[8]))
+        slowI2.append(float(row[10]))
+        slowI3.append(float(row[12]))
 
 noneI1 = []        
 noneI2 = []        
@@ -46,6 +57,7 @@ plt.figure(1)
 plt.subplot(3,2,1)
 plt.plot(t,dumbI1,label='dumb')
 plt.plot(t,smartI1,label='valley filling')
+plt.plot(t,slowI1,label='slow')
 plt.plot(t,noneI1,label='no vehicles')
 plt.legend()
 plt.title('Phase 1')
@@ -56,6 +68,7 @@ plt.grid()
 
 plt.subplot(3,2,3)
 plt.plot(t,dumbI2)
+plt.plot(t,slowI2)
 plt.plot(t,smartI2)
 plt.plot(t,noneI2)
 plt.title('Phase 2')
@@ -66,6 +79,7 @@ plt.grid()
 
 plt.subplot(3,2,5)
 plt.plot(t,dumbI3)
+plt.plot(t,slowI3)
 plt.plot(t,smartI3)
 plt.plot(t,noneI3)
 plt.title('Phase 3')
@@ -97,6 +111,18 @@ with open('../Downloads/openDSScurrents/line862-smart.csv','rU') as csvfile:
         smartV2.append(float(row[4]))
         smartV3.append(float(row[6]))
 
+        
+slowV1 = []        
+slowV2 = []        
+slowV3= []
+with open('../Downloads/openDSScurrents/line862-slow.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    reader.next()
+    for row in reader:
+        slowV1.append(float(row[2]))
+        slowV2.append(float(row[4]))
+        slowV3.append(float(row[6]))
+
 noneV1 = []        
 noneV2 = []        
 noneV3= []
@@ -112,6 +138,7 @@ with open('../Downloads/openDSScurrents/line862-none.csv','rU') as csvfile:
 plt.subplot(3,2,2)
 plt.plot(t,dumbV1,label='dumb')
 plt.plot(t,smartV1,label='valley filling')
+plt.plot(t,slowV1)
 plt.plot(t,noneV1)
 #plt.legend()
 plt.title('Phase 1')
@@ -123,6 +150,7 @@ plt.grid()
 plt.subplot(3,2,4)
 plt.plot(t,dumbV2)
 plt.plot(t,smartV2)
+plt.plot(t,slowV2)
 plt.plot(t,noneV2)
 plt.title('Phase 2')
 plt.ylabel('Voltage (V)')
@@ -133,6 +161,7 @@ plt.grid()
 plt.subplot(3,2,6)
 plt.plot(t,dumbV3)
 plt.plot(t,smartV3)
+plt.plot(t,slowV3)
 plt.plot(t,noneV3)
 plt.title('Phase 3')
 plt.ylabel('Voltage (V)')

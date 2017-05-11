@@ -11,6 +11,7 @@ tripData = '../../Documents/My_Electric_avenue_Technical_Data/constance/trips.cs
 
 profileStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/unchanged/'
 profileStem2 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/smart/'
+profileStem3 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/slow/'
 
 power = 3.5
 
@@ -165,8 +166,10 @@ def smart_charge(start,end,energy):
 # each vehicle is going to solve its own optimization problem
 #t = t_int*48
 smartProfiles = {}
+slowProfiles = {}
 for vehicle in chosenVehicles:
     smartProfiles[vehicle] = [0]*(72*60)
+    slowProfiles[vehicle] = [0]*(72*60)
     for day in range(0,2):
         energyReq = energy[vehicle][day]
         
@@ -181,6 +184,10 @@ for vehicle in chosenVehicles:
         if energyReq == 0:
             continue
 
+        slowRate = float(energyReq)*60/(end-start)
+        for j in range(start,end):
+            slowProfiles[vehicle][j] += slowRate
+
         X = smart_charge(start,end,energyReq)
         for j in range(0,len(X)):
                 smartProfiles[vehicle][start+j] += X[j]
@@ -194,6 +201,7 @@ for i in range(1,17):
     plt.subplot(4,4,i)
     plt.plot(t,smartProfiles[vehicle][33*60:57*60])
     plt.plot(t,profiles[vehicle][33*60:57*60])
+    plt.plot(t,slowProfiles[vehicle][33*60:57*60])
     plt.xticks(xaxis, my_xticks)
     #plt.plot(t,baseLoad[24*60:48*60])
     plt.xlim(9,33)
@@ -202,12 +210,14 @@ for i in range(1,17):
 
 summedSmart = [0.0]*24*60
 summedDumb = [0.0]*24*60
+summedSlow = [0.0]*(24*60)
 
 for i in range(0,55):
     vehicle = chosenVehicles[i]
     for j in range(0,24*60):
         summedSmart[j] += smartProfiles[vehicle][33*60+j]
         summedDumb[j] += profiles[vehicle][33*60+j]
+        summedSlow[j] += slowProfiles[vehicle][33*60+j]
 
 xaxis2 = np.linspace(9,33,num=9)
 my_xticks2 = ['09:00','12:00','15:00','18:00','21:00','00:00','03:00','06:00','09:00']
@@ -215,6 +225,7 @@ plt.figure(2)
 plt.xticks(xaxis2, my_xticks2)
 plt.plot(t,summedSmart,label='Valley filling')
 plt.plot(t,summedDumb,label='Observed charging')
+plt.plot(t,summedSlow,label='slow charging')
 plt.xlim(9,33)
 plt.legend()
 plt.xlabel('time')
@@ -234,6 +245,14 @@ for i in range(0,55):
     with open(profileStem2+str(i+1)+'.csv','w') as csvfile:
         writer = csv.writer(csvfile)
         profile = smartProfiles[chosenVehicles[i]][33*60:57*60]
+        profile = profile[15*60:] + profile[:15*60]
+        for cell in profile:
+            writer.writerow([cell])
+
+for i in range(0,55):
+    with open(profileStem3+str(i+1)+'.csv','w') as csvfile:
+        writer = csv.writer(csvfile)
+        profile = slowProfiles[chosenVehicles[i]][33*60:57*60]
         profile = profile[15*60:] + profile[:15*60]
         for cell in profile:
             writer.writerow([cell])
