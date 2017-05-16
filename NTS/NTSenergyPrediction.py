@@ -13,7 +13,7 @@ trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 class EnergyPrediction:
 
-    def __init__(self, day, month, car=None, regionType=None, region=None):
+    def __init__(self, day, month=None, car=None, regionType=None, region=None):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
@@ -51,8 +51,9 @@ class EnergyPrediction:
             reader.next()
             for row in reader:
 
-                if row[9] != month: # skip households from the wrong month
-                    continue
+                if month is not None:
+                    if row[9] != month: # skip households from the wrong month
+                        continue
                 
                 if row[0] not in self.reg1:
 
@@ -89,10 +90,11 @@ class EnergyPrediction:
             reader = csv.reader(csvfile)
             reader.next()
             for row in reader:
-                if row[5] != self.day:
-                    continue
-                if row[6] != self.month:
-                    continue
+                
+                if month is not None:
+                    if row[6] != self.month:
+                        continue
+
 
                 if self.regionType is not None:
                     if self.reg2[row[1]] != self.regionType:
@@ -112,6 +114,11 @@ class EnergyPrediction:
                     self.distance[vehicle] = 0.0
                     self.endTimes[vehicle] = 0
                     self.nVehicles += 1
+
+                # leaving day skip until after initialisation of variables allows
+                # unused vehicles to be considered
+                if row[5] != self.day:
+                    continue
                     
                 try:
                     passengers = int(row[13]) # find the # people in the car
@@ -148,7 +155,7 @@ class EnergyPrediction:
 
                 car.load = passengers*75 # add appropriate load to vehicle
                 self.energy[vehicle] += car.getEnergyExpenditure(cycle,
-                                                                 accessoryLoad[month])
+                                                                 accessoryLoad[row[6]])
                 car.load = 0
 
 
@@ -221,16 +228,22 @@ class EnergyPrediction:
             plt.show()
 
     def plotEnergyConsumption(self,newFigure=True,figNo=1,wait=False,label=None,
-                              normalise=False,offset=0,width=1):
-        dailyEnergy = [0]*60
+                              normalise=False,offset=0,width=0.9,
+                              returnResults=False):
+        dailyEnergy = [0]*101
+        over100 = 0
 
         for vehicle in self.energy:
-            kWh = int(self.energy[vehicle])
+            if self.energy[vehicle] == 0:
+                dailyEnergy[0] += 1
+            else:
+                kWh = int(self.energy[vehicle])
 
-            try:
-                dailyEnergy[kWh] += 1
-            except:
-                continue
+                try:
+                    dailyEnergy[kWh+1] += 1
+                except:
+                    over100 += 1
+                    continue
 
         if normalise == True:
             total = sum(dailyEnergy)
@@ -243,11 +256,14 @@ class EnergyPrediction:
             plt.ylabel('# vehicles')
             plt.title('Histogram of vehicle predicted energy consumption')
             
-        plt.bar(np.arange(offset,60+offset,1),dailyEnergy,width=width,label=label)
+        plt.bar(np.arange(offset,101+offset,1),dailyEnergy,width=width,label=label)
     
 
         if wait == False:
             plt.show()
+        if returnResults == True:
+            dailyEnergy += [over100]
+            return dailyEnergy
 
     def findOverCapacityVehicles(self):
         self.overCapacityVehicles = []

@@ -3,6 +3,7 @@ import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import copy
 from cvxopt import matrix, spdiag, solvers, sparse
 
 chargeData = '../../Documents/My_Electric_avenue_Technical_Data/constance/charges2.csv'
@@ -11,7 +12,7 @@ tripData = '../../Documents/My_Electric_avenue_Technical_Data/constance/trips.cs
 
 profileStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/unchanged/'
 profileStem2 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/smart/'
-profileStem3 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/slow/'
+profileStem3 = '../../Documents/My_Electric_avenue_Technical_Data/profiles/perturbed/'
 
 power = 3.5
 
@@ -139,9 +140,28 @@ for i in range(0,len(baseLoad30)-1):
 
 
 
-def smart_charge(start,end,energy):
+def smart_charge(start,end,energy,perturb=False):
     t = end-start
-    q = matrix(baseLoad[start:end])
+    b = copy.copy(baseLoad[start:end])
+
+    if perturb == True:
+        # first i want to downsample
+        b2 = []
+        for i in range(0,len(b)/30):
+            b2.append(b[i]*30)
+        for i in range(0,len(b2)):
+            b2[i] = b2[i]*(1+np.random.normal(0,0.1))
+        # now we want to upsample
+        b3 = []
+        for i in range(0,len(b)/30):
+            for j in range(0,30):
+                b3.append(b2[i])
+        for i in range(0,len(b)%30):
+            b3.append(b2[-1])
+        b = b3
+            
+    
+    q = matrix(b)
     
     A = matrix(1.0/(2*t_int),(1,t))
 
@@ -160,16 +180,18 @@ def smart_charge(start,end,energy):
     sol = solvers.qp(P,q,G,h,A,b)
     X = sol['x']
 
+    del b
+
     return X
 
 
 # each vehicle is going to solve its own optimization problem
 #t = t_int*48
 smartProfiles = {}
-slowProfiles = {}
+smartProfiles2 = {}
 for vehicle in chosenVehicles:
     smartProfiles[vehicle] = [0]*(72*60)
-    slowProfiles[vehicle] = [0]*(72*60)
+    smartProfiles2[vehicle] = [0]*(72*60)
     for day in range(0,2):
         energyReq = energy[vehicle][day]
         
@@ -184,13 +206,13 @@ for vehicle in chosenVehicles:
         if energyReq == 0:
             continue
 
-        slowRate = float(energyReq)*60/(end-start)
-        for j in range(start,end):
-            slowProfiles[vehicle][j] += slowRate
-
         X = smart_charge(start,end,energyReq)
         for j in range(0,len(X)):
                 smartProfiles[vehicle][start+j] += X[j]
+                
+        X = smart_charge(start,end,energyReq,perturb=True)
+        for j in range(0,len(X)):
+                smartProfiles2[vehicle][start+j] += X[j]
 
 t = np.linspace(9,33,24*60)
 xaxis = np.linspace(9,33,num=5)
@@ -201,7 +223,7 @@ for i in range(1,17):
     plt.subplot(4,4,i)
     plt.plot(t,smartProfiles[vehicle][33*60:57*60])
     plt.plot(t,profiles[vehicle][33*60:57*60])
-    plt.plot(t,slowProfiles[vehicle][33*60:57*60])
+    plt.plot(t,smartProfiles2[vehicle][33*60:57*60])
     plt.xticks(xaxis, my_xticks)
     #plt.plot(t,baseLoad[24*60:48*60])
     plt.xlim(9,33)
@@ -210,14 +232,14 @@ for i in range(1,17):
 
 summedSmart = [0.0]*24*60
 summedDumb = [0.0]*24*60
-summedSlow = [0.0]*(24*60)
+summedSmart2 = [0.0]*(24*60)
 
 for i in range(0,55):
     vehicle = chosenVehicles[i]
     for j in range(0,24*60):
         summedSmart[j] += smartProfiles[vehicle][33*60+j]
         summedDumb[j] += profiles[vehicle][33*60+j]
-        summedSlow[j] += slowProfiles[vehicle][33*60+j]
+        summedSmart2[j] += smartProfiles2[vehicle][33*60+j]
 
 xaxis2 = np.linspace(9,33,num=9)
 my_xticks2 = ['09:00','12:00','15:00','18:00','21:00','00:00','03:00','06:00','09:00']
@@ -225,7 +247,7 @@ plt.figure(2)
 plt.xticks(xaxis2, my_xticks2)
 plt.plot(t,summedSmart,label='Valley filling')
 plt.plot(t,summedDumb,label='Observed charging')
-plt.plot(t,summedSlow,label='slow charging')
+plt.plot(t,summedSmart2,label='slow charging')
 plt.xlim(9,33)
 plt.legend()
 plt.xlabel('time')
@@ -252,7 +274,7 @@ for i in range(0,55):
 for i in range(0,55):
     with open(profileStem3+str(i+1)+'.csv','w') as csvfile:
         writer = csv.writer(csvfile)
-        profile = slowProfiles[chosenVehicles[i]][33*60:57*60]
+        profile = smartProfiles2[chosenVehicles[i]][33*60:57*60]
         profile = profile[15*60:] + profile[:15*60]
         for cell in profile:
             writer.writerow([cell])

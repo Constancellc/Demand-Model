@@ -227,12 +227,18 @@ others = run[1]
 
 t = np.linspace(0,48,num=len(totals[1]))
 labels = {3:'home',1:'in transit',2:'work',4:'shops',5:'other'}
+styles = {1:'-',2:'--',4:'-.',5:':'}
 plt.figure(1)
-plt.subplot(1,2,1)
+#plt.style.use('classic')
+plt.rcParams["font.family"] = 'serif'
+#plt.subplot(1,2,1)
 for line in totals:
-    plt.plot(t,totals[line],label=labels[line])
+    if line == 3:
+        plt.plot(t,totals[line],label=labels[line],lw=2)
+    else:
+        plt.plot(t,totals[line],label=labels[line],ls=styles[line])
 plt.ylabel('percentage of vehicles')
-plt.title('Vehicle Location')
+#plt.title('Vehicle Location')
 
 # and x axis
 x = np.linspace(26,46,num=6)
@@ -243,6 +249,8 @@ plt.xlim(24,48)
 plt.legend(loc='upper center')
 plt.grid()
 
+
+'''
 plt.subplot(1,2,2)
 t2 = np.linspace(0,48,num=len(others[6]))
 labels2 = {6:'Work trip',7:'Education',8:'Shopping',10:'Personal business',11:'Eat out',14:'Visit friends',15:'social',16:'entertainment',17:'sport',18:'holiday',19:'day trip',20:'other',21:'escort',}
@@ -276,6 +284,7 @@ for day in days:
     plt.grid()
     if day == '7':
         plt.legend(loc=[3.8,-.8])
+'''
 ''' 
 # now looking at monthly variation
 months = {'1':'January','2':'February','3':'March','4':'April','5':'May',
