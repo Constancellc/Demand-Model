@@ -70,7 +70,7 @@ class EnergyPrediction:
                     elif region is not None:
                         self.reg3[row[0]] = row[28]
                         if row[28] == region:
-                            self.nHouesholds += 1
+                            self.nHouseholds += 1
                             self.nPeople += int(row[32])
 
                     else:
