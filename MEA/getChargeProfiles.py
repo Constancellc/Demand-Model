@@ -32,6 +32,9 @@ networkProfiles = {}
 
 power = 3.5 # kW
 pMax = 7.0 # kW
+#pDiffMax = 1.0 # kW
+deadline = 10 # AM
+interval = 1 # minutes, for the network optimization
 
 startDates = {}
 chargeStarts = {}
@@ -171,7 +174,7 @@ for i in range(1,56):
     households[allVehicles[i-1]] = copy.copy(profile+profile+profile)
 
 # I also need to get the LV household profiles
-def individual_smart_charge(start,end,energy,version,vehicleID=''):
+def individual_smart_charge(start,end,energy,version,interval=1,vehicleID=''):
     t = end-start
 
     if version == 'national':
@@ -202,17 +205,17 @@ def individual_smart_charge(start,end,energy,version,vehicleID=''):
 for vehicle in allVehicles:
     nationalProfiles[vehicle] = [0]*(72*60)
     householdProfiles[vehicle] = [0]*(72*60)
-    networkProfiles[vehicle] = [0]*(72*60)
+    networkProfiles[vehicle] = [0]*((48+deadline)*60) # this enforces charging by 9AM
     for day in range(0,2):
         energyReq = energy[vehicle][day]
         
         start = chargeStarts[vehicle][day]+day*24*60
 
         end = tripStarts[vehicle][day+1]
-        if end < 540: # be charged by 9AM regardless
+        if end < 60*deadline: # be charged by 9AM regardless
             end += (day+1)*24*60
         else:
-            end = 540+(day+1)*24*60
+            end = 60*deadline+(day+1)*24*60
         
         if energyReq == 0:
             continue
@@ -227,82 +230,114 @@ for vehicle in allVehicles:
 
 
 # the last problem requires one big optimisation... which I'm HOPING will be tractable
-n = 55*2
-t = 72*60
 
-b = []
-q = []
+n = 55*2
+t = (48+deadline)*60/interval 
+
+energy_req = []
+sum_households = [0.0]*(24*60/interval)
 unused = []
+
+starts = []
+ends = []
+
+#A_diff = []
+#A_diffR = 0
 
 for j in range(0,55*2):
     vehicle = allVehicles[int(j/2)]
     day = j%2
-
+    
+    if day == 0:
+        profile = households[vehicle]
+        tot = 0
+        for i in range(0,24*60):
+            tot += profile[i]
+            if i%interval == 0:
+                sum_households[i/interval] += tot/interval
+                tot = 0
+            
     if energy[vehicle][day] == 0:
         n -= 1
         unused.append(j)
         continue
-    
-    profile = households[vehicle]
-    for value in profile:
-        q.append(value)
+   
+    energy_req.append(energy[vehicle][day])
 
-    b.append(energy[vehicle][day])
-
-b = matrix(b+[0]*n)
-q = matrix(q)
-
-A1 = matrix(0.0,(n,t*n))
-A2 = matrix(0.0,(n,t*n))
-
-for j in range(0,55*2):
-    vehicle = allVehicles[int(j/2)]
-    day = j%2
-
-    if j in unused:
-        continue
-
-    index = copy.copy(j)
-    diff = 0
-
-    for x in unused:
-        if x < index:
-            diff += 1
-
-    index -= diff
-            
     start = chargeStarts[vehicle][day]+day*24*60
-
     end = tripStarts[vehicle][day+1]
-    if end < 540: 
+
+    if end > 9*60:
+        end = 9*60+(day+1)*24*60
+    else:
         end += (day+1)*24*60
-    else:
-        end = 540+(day+1)*24*60
-        
-    for i in range(0,t):
-        A1[n*(t*index+i)+index] = 1.0/60 # kWh -> kW
-        if i < start or i > end:
-            A2[n*(t*index+i)+index] = 1.0
-           
 
-A = sparse([A1,A2])
+    start = int(start/interval)+1
+    end = int(end/interval)-1       
 
-A3 = spdiag([-1]*(t*n))
-A4 = spdiag([1]*(t*n))
-G = sparse([A3,A4])
+    starts.append(start)
+    ends.append(end)
 
-h = []
-for i in range(0,2*t*n):
-    if i<t*n:
-        h.append(0.0)
-    else:
-        h.append(pMax)
-h = matrix(h)
+'''
+for i in range(0,n):
+    for j in range(starts[i],ends[i]-1):
+        row = [0.0]*n*t
+        row[t*i+j] = 1.0
+        row[t*i+j+1] = -1.0
+        A_diff += row
+        A_diffR += 1
+'''        
+# first let's deal with the objective function
 I = spdiag([1]*t)
 P = sparse([[I]*n]*n)
 
+sum_households = sum_households+sum_households+sum_households[:deadline*60/interval]
+q = []
+for i in range(0,n):
+    q += sum_households
+q = matrix(q)
+
+# and now the constranints: equality first
+A_en = matrix(0.0,(n,t*n)) # en: energy required
+for i in range(0,n):
+    for j in range(0,t):
+        A_en[n*t*i+j*n+i] = 1.0*interval/60
+        
+A_av = matrix(0.0,(n,t*n)) # av: avaliability
+for i in range(0,n):
+    for j in range(0,t):
+        if j < starts[i] or j > ends[i]:
+            A_av[n*t*i+j*n+i] = 1.0
+
+A = matrix([A_en,A_av])
+b = matrix(energy_req+[0.0]*n)
+
+# and inequality
+'''
+A_diff = matrix(0.0,(n*(t-1),n*t)) # diff: change in power
+for i in range(0,n):
+    for j in range(0,t-1):
+        A_diff[(i*t+j)*n*(t-1)+i*(t-1)+j] = -1.0
+        A_diff[(i*t+j+1)*n*(t-1)+i*(t-1)+j] = 1.0
+'''
+
+#A_diff = matrix(A_diff,(A_diffR,n*t))
+
+
+# ok so here's the deal the above will limit the rate at which charging can
+# increase but not decrease, but this may be sufficient
+
+A_pos = spdiag([-1.0]*n*t) # keeps powers positive
+A_lim = spdiag([1.0]*n*t) # limits powers below a maximum
+
+#G = matrix([A_diff,sparse([A_pos,A_lim])])
+G = sparse([A_pos,A_lim])
+#h = matrix([pDiffMax]*A_diffR + [0.0]*t*n + [pMax]*t*n)
+h = matrix([0.0]*t*n + [pMax]*t*n)
+
 sol=solvers.qp(P, q, G, h, A, b)
 X = sol['x']
+
 
 c = 0
 for j in range(0,55*2):
@@ -311,8 +346,9 @@ for j in range(0,55*2):
     if j in unused:
         continue
 
-    for i in range(0,72*60):
-        networkProfiles[vehicle][i] += X[c]
+    for i in range(0,(48+deadline)*60/interval):
+        for j in range(0,interval):
+            networkProfiles[vehicle][i*interval+j] += X[c]
         c += 1
 
 
@@ -343,73 +379,4 @@ for i in range(0,55):
         for cell in profile:
             writer.writerow([cell])
 
-#'''
-'''
-t = np.linspace(9,33,24*60)
-xaxis = np.linspace(9,33,num=5)
-my_xticks = ['09:00','15:00','21:00','03:00','09:00']
-plt.figure(1)
-for i in range(1,17):
-    vehicle = chosenVehicles[i]
-    plt.subplot(4,4,i)
-    plt.plot(t,smartProfiles[vehicle][33*60:57*60])
-    plt.plot(t,profiles[vehicle][33*60:57*60])
-    plt.plot(t,smartProfiles2[vehicle][33*60:57*60])
-    plt.xticks(xaxis, my_xticks)
-    #plt.plot(t,baseLoad[24*60:48*60])
-    plt.xlim(9,33)
-    plt.ylim(0,4)
-    plt.title(vehicle,y=0.8)
 
-summedSmart = [0.0]*24*60
-summedDumb = [0.0]*24*60
-summedSmart2 = [0.0]*(24*60)
-
-for i in range(0,55):
-    vehicle = chosenVehicles[i]
-    for j in range(0,24*60):
-        summedSmart[j] += smartProfiles[vehicle][33*60+j]
-        summedDumb[j] += profiles[vehicle][33*60+j]
-        summedSmart2[j] += smartProfiles2[vehicle][33*60+j]
-
-xaxis2 = np.linspace(9,33,num=9)
-my_xticks2 = ['09:00','12:00','15:00','18:00','21:00','00:00','03:00','06:00','09:00']
-plt.figure(2)
-plt.xticks(xaxis2, my_xticks2)
-plt.plot(t,summedSmart,label='Valley filling')
-plt.plot(t,summedDumb,label='Observed charging')
-plt.plot(t,summedSmart2,label='slow charging')
-plt.xlim(9,33)
-plt.legend()
-plt.xlabel('time')
-plt.ylabel('total power (kW)')
-
-
-for i in range(0,55):
-    with open(profileStem+str(i+1)+'.csv','w') as csvfile:
-        writer = csv.writer(csvfile)
-        profile = profiles[chosenVehicles[i]][33*60:57*60]
-        profile = profile[15*60:] + profile[:15*60]
-        for cell in profile:
-            writer.writerow([cell])
-
-
-for i in range(0,55):
-    with open(profileStem2+str(i+1)+'.csv','w') as csvfile:
-        writer = csv.writer(csvfile)
-        profile = smartProfiles[chosenVehicles[i]][33*60:57*60]
-        profile = profile[15*60:] + profile[:15*60]
-        for cell in profile:
-            writer.writerow([cell])
-
-for i in range(0,55):
-    with open(profileStem3+str(i+1)+'.csv','w') as csvfile:
-        writer = csv.writer(csvfile)
-        profile = smartProfiles2[chosenVehicles[i]][33*60:57*60]
-        profile = profile[15*60:] + profile[:15*60]
-        for cell in profile:
-            writer.writerow([cell])
-
-plt.show()
-   
-'''
