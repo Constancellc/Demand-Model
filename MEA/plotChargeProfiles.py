@@ -2,11 +2,13 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 
-# define the location for the output csv files to be stored
+# here is where the optimization stores the profiles
 dumbStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/unchanged/'
 nationalStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/national/'
 householdStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/household/'
 networkStem = '../../Documents/My_Electric_avenue_Technical_Data/profiles/network/'
+
+
 
 # create arrays to store the final profiles
 dumbProfiles = []
@@ -74,18 +76,43 @@ for i in range(0,16):
     plt.xlim(0,24)
     plt.ylim(0,8)
 
-
-        
 # and let's make sure the energy looks convincing
 plt.figure(2)
+plt.subplot(2,1,1)
 plt.plot(t,summedDumb,label='dumb')
 plt.plot(t,summedNational,label='national')
 plt.plot(t,summedHousehold,label='household')
 plt.plot(t,summedNetwork,alpha=0.6,label='network')
-
 plt.legend()
 plt.xticks(x2,x_ticks2)
 plt.xlim(0,24)
 plt.ylabel('Power per Vehicle (kW)')
+
+# let's get the aggregate values
+summedDomestic = [0.0]*(24*60)
+        
+for i in range(1,56):
+    profile = []
+    with open('../../Documents/lv_test_feeder/Load_profile_'+str(i)+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        reader.next()
+        j = 0
+        for row in reader:
+            summedDumb[j] += float(row[1])/55
+            summedNational[j] += float(row[1])/55
+            summedHousehold[j] += float(row[1])/55
+            summedNetwork[j] += float(row[1])/55
+            summedDomestic[j] += float(row[1])/55
+            j += 1       
+
+plt.subplot(2,1,2)
+plt.plot(t,summedDumb,label='dumb')
+plt.plot(t,summedNational,label='national')
+plt.plot(t,summedHousehold,label='household')
+plt.plot(t,summedNetwork,alpha=0.6,label='network')
+plt.plot(t,summedDomestic,label='domestic')
+plt.xticks(x2,x_ticks2)
+plt.xlim(0,24)
+plt.ylabel('Total Network Power (kW)')
 
 plt.show()

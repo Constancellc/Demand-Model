@@ -31,7 +31,7 @@ householdProfiles = {}
 networkProfiles = {}
 
 power = 3.5 # kW
-pMax = 7.0 # kW
+pMax = 4.0 # kW
 #pDiffMax = 1.0 # kW
 deadline = 10 # AM
 interval = 1 # minutes, for the network optimization
