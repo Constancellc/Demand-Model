@@ -74,7 +74,7 @@ for i in range(0,16):
     plt.plot(t,networkProfiles[i],alpha=0.6)
     plt.xticks(x1,x_ticks1)
     plt.xlim(0,24)
-    plt.ylim(0,8)
+    plt.ylim(0,5)
 
 # and let's make sure the energy looks convincing
 plt.figure(2)
@@ -83,10 +83,10 @@ plt.plot(t,summedDumb,label='dumb')
 plt.plot(t,summedNational,label='national')
 plt.plot(t,summedHousehold,label='household')
 plt.plot(t,summedNetwork,alpha=0.6,label='network')
-plt.legend()
+
 plt.xticks(x2,x_ticks2)
 plt.xlim(0,24)
-plt.ylabel('Power per Vehicle (kW)')
+plt.ylabel('Charging Power\n per Vehicle (kW)')
 
 # let's get the aggregate values
 summedDomestic = [0.0]*(24*60)
@@ -110,9 +110,10 @@ plt.plot(t,summedDumb,label='dumb')
 plt.plot(t,summedNational,label='national')
 plt.plot(t,summedHousehold,label='household')
 plt.plot(t,summedNetwork,alpha=0.6,label='network')
-plt.plot(t,summedDomestic,label='domestic')
+plt.plot(t,summedDomestic,alpha=0.8,ls='--',c='black',label='no vehicles')
 plt.xticks(x2,x_ticks2)
 plt.xlim(0,24)
-plt.ylabel('Total Network Power (kW)')
-
+plt.ylabel('Total Network Power\n per Household (kW)')
+plt.legend()
+plt.xlabel('time')
 plt.show()

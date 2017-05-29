@@ -31,10 +31,7 @@ with open('../../Documents/JLRCompanyCars/JLRdata.csv','rU') as csvfile:
         if startDate <= startDates[userID]:
             startDates[userID] = startDate
 
-        #startWork = row[20]
-        #endWork = row[21]
-        #startHome = row[22]
-        #endHome = row[23]
+
 
 with open('../../Documents/JLRCompanyCars/JLRdata.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -51,14 +48,36 @@ with open('../../Documents/JLRCompanyCars/JLRdata.csv','rU') as csvfile:
         start = int(row[4][12:14])+60*int(row[4][9:11]) # mins past 00:00
         end = int(row[6][12:14])+60*int(row[6][9:11])
 
-        newData.append([userID,dayNo,month,start,end,distance])
+        if row[20] == 'TRUE':
+            startWork = 1
+        else:
+            startWork = 0
+            
+        if row[21] == 'TRUE':
+            endWork = 1
+        else:
+            endWork = 0
+            
+        if row[22] == 'TRUE':
+            startHome = 1
+        else:
+            startHome = 0
+            
+        if row[23] == 'TRUE':
+            endHome = 1
+        else:
+            endHome = 0
+
+        newData.append([userID,dayNo,month,start,end,distance,startWork,
+                        endWork,startHome,endHome])
 
         #avSpeed = int(float(row[7]))
         #duration = float(row[12])
 
-with open('../Documents/JLRCompanyCars/trips_useful.csv','w') as csvfile:
+with open('../../Documents/JLRCompanyCars/trips_useful.csv','w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['ID','day #','month','start','end','distance (m)'])
+    writer.writerow(['ID','day #','month','start','end','distance (m)',
+                     'from work?','to work?','from home?','to home?'])
     for row in newData:
         writer.writerow(row)
 
