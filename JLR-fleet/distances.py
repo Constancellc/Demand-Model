@@ -26,13 +26,21 @@ daily = [0]*400
 for ID in distances:
     for day in distances[ID]:
         try:
-            daily[distances[ID][day]/1000] += 1
+            daily[distances[ID][day]/2000] += 1
         except:
-            print distances[ID][day]/1000,
+            print distances[ID][day]/2000,
             print 'km'
 
+N = sum(daily)
+
+for i in range(0,400):
+    daily[i] = float(daily[i])/N
+    
 plt.figure(1)
-plt.bar(range(0,400),daily)
+plt.bar(range(0,800,2),daily)
+plt.xlim(0,300)
+plt.ylim(0,0.04)
+plt.xlabel('daily distance (km)')
 plt.show()
 
     
