@@ -2,9 +2,27 @@ import csv
 import matplotlib.pyplot as plt
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
 
-run = EnergyPrediction('3')
+run = EnergyPrediction('3','5')
 energy = run.plotEnergyConsumption(returnResults=True, wait=True)
+plt.xlim(0,60)
+run2 = EnergyPrediction('3','5',car='bmw')
+energy2 = run2.plotEnergyConsumption(returnResults=True, wait=True)
 
+plt.figure(2)
+plt.subplot(2,1,1)
+plt.bar(range(0,24),energy[:24],color='b')
+plt.bar(range(24,len(energy)),energy[24:],color='r')
+plt.xlim(-0.5,60)
+plt.title('Nissan Leaf')
+
+plt.subplot(2,1,2)
+plt.bar(range(0,22),energy2[:22],color='b')
+plt.bar(range(22,len(energy2)),energy[22:],color='r')
+plt.xlim(-0.5,60)
+plt.title('BMW i3')
+
+plt.show()
+'''
 s = float(sum(energy))/100
 
 print float(energy[0])/s,
@@ -29,3 +47,4 @@ print '% less than nissan Leaf'
         
 plt.show()
 
+'''

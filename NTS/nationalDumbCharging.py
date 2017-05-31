@@ -49,7 +49,7 @@ shortfalls = {}
 for month in ['1','4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
-    shortfalls[month] = run.getNationalMissingCapacity()
+ #   shortfalls[month] = run.getNationalMissingCapacity()
 
     # getting the baseLoad to compare against
     dayOne = []
@@ -80,9 +80,10 @@ for month in ['1','4','7','10']:
         baseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
         baseLoad[i] = float(int(baseLoad[i]))/1000 # MW -> rounded GW
 
-        
+        # baseLoad is in GW
 
-    smartProfiles = run.getNationalOptimalChargingProfiles(3.5,baseLoad)
+    smartProfiles = run.getNationalOptimalChargingProfiles(3.5,baseLoad,
+                                                           pointsPerHour=pointsPerHour)
 
     summed = [0.0]*36
     for vehicle in smartProfiles:
@@ -110,7 +111,7 @@ for month in ['1','4','7','10']:
     plt.ylim(20,80)
     plt.title(titles[month],y=0.85)
 
-
+'''
 plt.figure(2)
 for month in ['1','4','7','10']:
     plt.subplot(2,2,plotMonths[month])
@@ -118,5 +119,7 @@ for month in ['1','4','7','10']:
     plt.xlabel('extra capacity required (kWh)')
     plt.ylabel('Thousands of vehicles')
     plt.title(titles[month],y=0.85)
+
+'''
     
 plt.show()

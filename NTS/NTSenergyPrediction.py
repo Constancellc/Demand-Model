@@ -23,6 +23,10 @@ class EnergyPrediction:
         if car == None:
             nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
             car = nissanLeaf
+        elif car == 'tesla':
+            car = Vehicle(2273.0,37.37,0.1842,0.01508,0.94957,60.0)
+        elif car == 'bmw':
+            car = Vehicle(1420.0,22.9,0.346,0.01626,0.87785,22.0)
             
         self.day = day
         self.month = month
@@ -283,10 +287,13 @@ class EnergyPrediction:
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
+                
                 if row[5] != self.day:
                     continue
-                if row[6] != self.month:
-                    continue
+
+                if self.month is not None:
+                    if row[6] != self.month:
+                        continue
 
                 if self.regionType is not None:
                     if self.reg2[row[1]] != self.regionType:
@@ -323,7 +330,7 @@ class EnergyPrediction:
                     passengers = 1 # if missing assume only the driver
                 accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,
                                  '6':0.0,'7':0.0,'8':0.0,'9':0.0,'10':0.2,
-                                 '11':0.7,'12':1.3}
+                                 '11':0.7,'12':1.3,None:0.6}
 
                 self.car.load = passengers*75 # add appropriate load to vehicle
                 energy = self.car.getEnergyExpenditure(cycle,
@@ -365,7 +372,8 @@ class EnergyPrediction:
         self.overCapacityTravelDiaries = newLogs
               
                 
-    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,logOutofCharge=True,
+    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,
+                               chargingEfficiency=0.95,logOutofCharge=True,
                                highUseHomeCharging=True,highUseWorkCharging=True,
                                highUseShopCharging=True, scalePerHousehold=False,
                                scalePerVehicle=False,scalePerPerson=False):
@@ -397,7 +405,7 @@ class EnergyPrediction:
             
             kWh = self.energy[vehicle]
 
-            if highUseHomeCharging == False or highUseWorkCharging == False and highUseShopCharging == False:
+            if highUseHomeCharging == False and highUseWorkCharging == False and highUseShopCharging == False:
                 if kWh > 24:
                     self.nOutOfCharge += 1
 
@@ -561,24 +569,44 @@ class EnergyPrediction:
 
         vehicles = []
         b = []
+
+        unused = []
         
         # I'm going to need to downsample
         for vehicle in self.energy:
-            if random.random() < 0.01:
+            if random.random() < 0.001:
+                
+                
+                if self.energy[vehicle] == 0.0:
+                    unused += [vehicle]
+                    continue
+                if self.energy[vehicle] >= self.car.capacity:
+                    print self.energy[vehicle],
+                    print ' is higher than battery capacity'
+                    b.append(baseScale*self.car.capacity)
+                else:
+                    b.append(baseScale*self.energy[vehicle])
+
                 vehicles.append(vehicle)
-                b.append(baseScale*self.energy[vehicle])
+                
+                
+                
 
         self.getNextDayStartTimes()
 
         #n = self.nVehicles
         n = len(vehicles)
 
-        scale = float(self.nVehicles/n) # This accounts for downsampling
+        scale = float(self.nVehicles/(len(unused)+len(vehicles))) # This accounts for downsampling
+        #scale = 1.0
         pMax = pMax*scale
-        
+
+        print pMax
+
         for i in range(0,len(b)):
             b[i] = b[i]*scale#*0.000001
-
+            print b[i]
+            
         t = nHours*pointsPerHour
 
         if len(baseLoad) > t:
@@ -602,6 +630,10 @@ class EnergyPrediction:
             arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
             departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
             departure += 24*pointsPerHour
+
+            print arrival,
+            print departure,
+            print t
             
             for i in range(0,t):
                 A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
@@ -636,12 +668,16 @@ class EnergyPrediction:
         X = sol['x']
 
         for i in range(0,n):
+            
             load = []
             for j in range(0,t):
                 load.append(X[i*t+j]) # extract each vehicles load
 
             profiles[vehicles[i]] = load
-            
+
+        for i in range(0,len(unused)):
+            profiles[unused[i]] = [0.0]*t
+
         return profiles
 
 class NationalEnergyPrediction:
