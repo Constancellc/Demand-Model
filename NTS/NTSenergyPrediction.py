@@ -33,6 +33,7 @@ class EnergyPrediction:
         self.car = car
         self.regionType = regionType
         self.region = region
+        self.chargingEfficiency = 0.95
 
         # first getting the region types
         
@@ -308,6 +309,7 @@ class EnergyPrediction:
 
                 try:
                     tripEnd = int(row[9])
+                    tripStart = int(row[8])
                     tripDistance = int(float(row[10])*1609.34) # miles -> m
                 except:
                     continue # skip trips without a time or length
@@ -350,7 +352,7 @@ class EnergyPrediction:
                     self.overCapacityTravelDiaries[row[2]] = []
 
                 self.overCapacityTravelDiaries[row[2]].append([tripEnd,energy,
-                                                                location])
+                                                                location,tripStart])
         # sort the travel diaries chronologically
         
         newLogs = {}
@@ -372,11 +374,11 @@ class EnergyPrediction:
         self.overCapacityTravelDiaries = newLogs
               
                 
-    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,
-                               chargingEfficiency=0.95,logOutofCharge=True,
+    def getDumbChargingProfile(self,power,tmax,scaleFactor=1,logOutofCharge=True,
                                highUseHomeCharging=True,highUseWorkCharging=True,
                                highUseShopCharging=True, scalePerHousehold=False,
-                               scalePerVehicle=False,scalePerPerson=False):
+                               scalePerVehicle=False,scalePerPerson=False,
+                               superCharge=False):
         # power: the charging power in kW
         
         # tmax: the no. minutes past 00:00 the simulation is run for
@@ -406,7 +408,7 @@ class EnergyPrediction:
             kWh = self.energy[vehicle]
 
             if highUseHomeCharging == False and highUseWorkCharging == False and highUseShopCharging == False:
-                if kWh > 24:
+                if kWh > self.car.capacity:
                     self.nOutOfCharge += 1
 
                     if logOutofCharge == True:
@@ -414,7 +416,7 @@ class EnergyPrediction:
                             self.outOfChargeLog[vehicle] = []
 
                         self.outOfChargeLog[vehicle].append([kWh-24,vehicle])
-                    kWh = 24
+                    kWh = self.car.capacity
 
             chargeStart = self.endTimes[vehicle]
             chargeTime = int(kWh*60/power)
@@ -441,7 +443,7 @@ class EnergyPrediction:
                 
             self.getOverCapacityTravelDiaries()
                                         
-            for vehicle in self.overCapacityVehicles:
+            for vehicle in self.overCapacityTravelDiaries: #Vehicles:
                 outOfCharge = False
                 
                 journeys = self.overCapacityTravelDiaries[vehicle]
@@ -471,7 +473,7 @@ class EnergyPrediction:
                             
                         chargeStart = journeys[0][0]                        
                         timeRequired = int(energyRequired*60/chargePower) # mins
-                        departure = journeys[1][0]
+                        departure = journeys[1][3]
 
                         if chargeStart+timeRequired < departure:
                             chargeEnd = chargeStart+timeRequired
@@ -505,11 +507,29 @@ class EnergyPrediction:
                 timeRequired = int(energyRequired*60/power) # mins
                 
                 for i in range(chargeStart,chargeStart+timeRequired):
+                    if i >= len(profile):
+                        continue
                     profile[i] += scaleFactor*power
+                                            
 
                 if outOfCharge is True:
                     self.nOutOfCharge += 1
+                    
+            if superCharge == True:
+                scPower = 72 # kW
+                for vehicle in self.outOfChargeLog:
+                    for log in self.outOfChargeLog[vehicle]:
+                        timeReq = int(log[0]*60/scPower)
+                        for i in range(log[1],log[1]+timeReq):
+                            try:
+                                profile[i] += scaleFactor*scPower
+                            except:
+                                continue
 
+        # acale for charging efficiency
+        for i in range(0,tmax):
+            profile[i] = profile[i]/self.chargingEfficiency
+            
         if scalePerHousehold == True:
             for i in range(0,tmax):
                 profile[i] = profile[i]/self.nHouseholds
@@ -574,7 +594,7 @@ class EnergyPrediction:
         
         # I'm going to need to downsample
         for vehicle in self.energy:
-            if random.random() < 0.001:
+            if random.random() < 0.005:
                 
                 
                 if self.energy[vehicle] == 0.0:
@@ -583,14 +603,13 @@ class EnergyPrediction:
                 if self.energy[vehicle] >= self.car.capacity:
                     print self.energy[vehicle],
                     print ' is higher than battery capacity'
-                    b.append(baseScale*self.car.capacity)
-                else:
-                    b.append(baseScale*self.energy[vehicle])
+                    b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
 
-                vehicles.append(vehicle)
-                
-                
-                
+                    #b.append(baseScale*self.car.capacity/self.chargingEfficiency)
+                else:
+                    b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
+
+                vehicles.append(vehicle)               
 
         self.getNextDayStartTimes()
 
@@ -601,11 +620,8 @@ class EnergyPrediction:
         #scale = 1.0
         pMax = pMax*scale
 
-        print pMax
-
         for i in range(0,len(b)):
             b[i] = b[i]*scale#*0.000001
-            print b[i]
             
         t = nHours*pointsPerHour
 
@@ -630,10 +646,6 @@ class EnergyPrediction:
             arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
             departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
             departure += 24*pointsPerHour
-
-            print arrival,
-            print departure,
-            print t
             
             for i in range(0,t):
                 A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
@@ -715,13 +727,17 @@ class NationalEnergyPrediction:
 
         # get the scaled dumb charging profiles
         ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.ucScale)
+                                                   scaleFactor=self.ucScale,
+                                                   superCharge=True)
         utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.utScale)
+                                                   scaleFactor=self.utScale,
+                                                   superCharge=True)
         rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.rtScale)
+                                                   scaleFactor=self.rtScale,
+                                                   superCharge=True)
         rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.rvScale)
+                                                   scaleFactor=self.rvScale,
+                                                   superCharge=True)
 
         dumbProfile = []
 

@@ -38,9 +38,8 @@ titles = {'1':'January','4':'April','7':'July','10':'October'}
 nHours = 36
 t = np.linspace(0,nHours,nHours*60)
 
-x = np.linspace(8,32,num=7)
-my_xticks = ['08:00 \n Wed','12:00','16:00','20:00','0:00',
-             '04:00','08:00 \n Thu']
+x = np.linspace(8,32,num=5)
+my_xticks = ['08:00 \n Wed','14:00','20:00','02:00','08:00 \n Thu']
 
 pointsPerHour = 1
 
@@ -82,7 +81,7 @@ for month in ['1','4','7','10']:
 
         # baseLoad is in GW
 
-    smartProfiles = run.getNationalOptimalChargingProfiles(3.5,baseLoad,
+    smartProfiles = run.getNationalOptimalChargingProfiles(72.0,baseLoad,
                                                            pointsPerHour=pointsPerHour)
 
     summed = [0.0]*36
@@ -97,10 +96,10 @@ for month in ['1','4','7','10']:
 
     plt.subplot(2,2,plotMonths[month])
     plt.plot(t,dumbProfile,label='Dumb Charging')
-    plt.plot(t,baseLoad,label='Base Load')
-    plt.plot(summed,label='Smart Charging')
+    plt.plot(t,baseLoad,label='Base Load',ls=':')
+    plt.plot(summed,label='Smart Charging',ls='--')
     if month == '1':
-        plt.legend(loc=[0.5,1.1],ncol=3)
+        plt.legend(loc=[0.1,1.1],ncol=3)
 
     plt.grid()
         
@@ -108,8 +107,8 @@ for month in ['1','4','7','10']:
     plt.xlabel('time')
     plt.ylabel('power demand (GW)')
     plt.xlim(6,34)
-    plt.ylim(20,80)
-    plt.title(titles[month],y=0.85)
+    plt.ylim(20,85)
+    plt.title(titles[month],y=0.8)
 
 '''
 plt.figure(2)

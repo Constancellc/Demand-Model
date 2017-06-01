@@ -15,7 +15,7 @@ dumb = run.getDumbChargingProfile(3.5,nHours*60)
 baseLoad = []
 
 for i in range(0,pointsPerHour*nHours):
-    baseLoad.append(random.random()*4.0)
+    baseLoad.append(random.random()*6000)
     
 smartProfiles = run.getOptimalChargingProfiles(7.0,baseLoad,
                                                pointsPerHour=pointsPerHour)
@@ -29,6 +29,7 @@ for vehicle in smartProfiles:
 plt.figure(1)
 plt.plot(dumb)
 plt.plot(range(0,36*60,60/pointsPerHour),smart)
+plt.plot(range(0,36*60,60/pointsPerHour),baseLoad)
 '''
 run = NationalEnergyPrediction('3','2')
 dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours)

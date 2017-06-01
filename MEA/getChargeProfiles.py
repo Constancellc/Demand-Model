@@ -33,7 +33,7 @@ networkProfiles = {}
 power = 3.5 # kW
 pMax = 4.0 # kW
 #pDiffMax = 1.0 # kW
-deadline = 10 # AM
+deadline = 9 # AM
 interval = 1 # minutes, for the network optimization
 
 startDates = {}
@@ -212,10 +212,12 @@ for vehicle in allVehicles:
         start = chargeStarts[vehicle][day]+day*24*60
 
         end = tripStarts[vehicle][day+1]
-        if end < 60*deadline: # be charged by 9AM regardless
+        
+        lim = int(60*(deadline+np.random.normal(0,0.5)))
+        if end < lim: # be charged by morning deadline regardless
             end += (day+1)*24*60
         else:
-            end = 60*deadline+(day+1)*24*60
+            end = lim+(day+1)*24*60
         
         if energyReq == 0:
             continue

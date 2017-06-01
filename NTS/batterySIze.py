@@ -63,7 +63,7 @@ for i in range(0,len(breaks)-1):
     print float(tot)/s,
     print '% between ' + str(breaks[i]-1) + ' and ' + str(breaks[i+1]-1)
 
-print float(energy[-1])/s,
+print float(sum(energy[101:]))/s,
 print '% need more than 100 kWh'
 
 print '....'
