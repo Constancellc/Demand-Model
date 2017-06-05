@@ -1,11 +1,6 @@
-from cvxopt import matrix, spdiag, solvers, sparse
+import csv
 
-t = 3
-n = 2
-
-A_sv = matrix(0,(t,t*n)) # sv: stack vehicles - calculates total v(t)
-for i in range(0,t):
-    for j in range(0,n):
-        A_sv[t*t*j+i+i*t] = 1
-
-print A_sv
+with open('../../Documents/My_Electric_avenue_Technical_Data/constance/charges2.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        print row

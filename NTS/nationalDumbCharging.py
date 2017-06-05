@@ -95,11 +95,11 @@ for month in ['1','4','7','10']:
             summed[i/60] += baseLoad[i]
 
     plt.subplot(2,2,plotMonths[month])
-    plt.plot(t,dumbProfile,label='Dumb Charging')
-    plt.plot(t,baseLoad,label='Base Load',ls=':')
-    plt.plot(summed,label='Smart Charging',ls='--')
+    plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
+    plt.plot(t,dumbProfile,label='Uncontrolled Charging')
+    plt.plot(summed,ls='--',label='Controlled Charging',)
     if month == '1':
-        plt.legend(loc=[0.1,1.1],ncol=3)
+        plt.legend(loc=[-0.2,1.1],ncol=3)
 
     plt.grid()
         

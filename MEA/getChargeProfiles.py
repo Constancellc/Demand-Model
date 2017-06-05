@@ -88,6 +88,8 @@ with open(chargeData,'rU') as csvfile:
 
         startTime = int(row[2])+dayNo*24*60
         endTime = int(row[3])+dayNo*24*60
+        iSOC = float(row[4])
+        fSOC = float(row[5])
 
         if int(row[2]) > chargeStarts[row[0]][dayNo]:
             chargeStarts[row[0]][dayNo] = int(row[2])
@@ -98,12 +100,43 @@ with open(chargeData,'rU') as csvfile:
             print 'fuck'
             continue
 
-        for i in range(startTime,endTime):
-            if i >= 72*60:
-                continue
-            dumbProfiles[row[0]][i] = power
+        if fSOC < 0.8: # you can assume constant power
+            for i in range(startTime,endTime):
+                if i >= 72*60:
+                    continue
+                dumbProfiles[row[0]][i] = power
 
-        energy[row[0]][dayNo] += float(endTime-startTime)*power/60 # kWh
+            energy[row[0]][dayNo] += float(endTime-startTime)*power/60 # kWh
+
+        else:
+            # after around 80% the charging starts to taper down
+            
+            # first we need to work out the amount of time which it would take
+            # to get to 80%
+
+            constPowerTime = int(24*(0.8-iSOC)*60/power)
+
+            for i in range(startTime,startTime+constPowerTime):
+                if i >= 72*60:
+                    continue
+                dumbProfiles[row[0]][i] = power
+                energy[row[0]][dayNo] += float(power)/60 # kWh
+
+            # then begin to taper down the power
+
+            # first work out the time we have left
+            taperTime = endTime-startTime-constPowerTime # mins
+            
+            # then get the time constant
+            a = float(power)/(0.2*24*60)            
+            t = 0
+
+            for i in range(endTime-taperTime,endTime):
+                if i >= 72*60:
+                    continue
+                dumbProfiles[row[0]][i] = float(power)*(np.exp(-a*t))
+                energy[row[0]][dayNo] += float(power)*(np.exp(-a*t))/60
+                t += 1
 
 # now I want to get rid of all but 55 profiles
 
