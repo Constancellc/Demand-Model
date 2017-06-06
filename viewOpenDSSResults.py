@@ -74,9 +74,20 @@ for phase in range(1,4):
     for style in styles:
         print style
         print 'max: ',
-        print max(I[style][3])
+        print max(I[style][phase])
         print 'min: ',
-        print min(I[style][3])
+        print min(I[style][phase])
         print '-------'
-                               
+
+plt.figure(2)
+for style in styles:
+    I2 = [0.0]*1440
+    for phase in range(1,4):
+        for i in range(0,1440):
+            I2[i] += I[style][phase][i]*I[style][phase][i]
+    plt.plot(t,I2,label=style)
+plt.xlim(0,24)
+plt.xticks(xaxis2,my_xticks2)
+plt.legend()
+    
 plt.show()
