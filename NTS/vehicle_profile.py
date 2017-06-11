@@ -52,11 +52,12 @@ num_plot = 3
 
 plotted_profiles = {}
 plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
 t = np.linspace(0,24*7,num=24*60*7)
 x = np.linspace(120,1320,num=6)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
-y_ticks = ['M','T','W','T','F','S','S']
+y_ticks = ['M','','W','','F','','S']
 for i in range(0,num_plot):
     plt.subplot(num_plot,1,i+1)
 
