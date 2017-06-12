@@ -32,6 +32,7 @@ months = {'1':'-Jan-16','2':'-Feb-16','3':'-Mar-16','4':'-Apr-16','5':'-May-16',
 nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 
 plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
 plotMonths = {'1':1,'4':2,'7':3,'10':4}
 titles = {'1':'January','4':'April','7':'July','10':'October'}
 
@@ -105,7 +106,7 @@ for month in ['1','4','7','10']:
         
     plt.xticks(x, my_xticks)
     plt.xlabel('time')
-    plt.ylabel('power demand (GW)')
+    plt.ylabel('Power Demand (GW)')
     plt.xlim(6,34)
     plt.ylim(20,85)
     plt.title(titles[month],y=0.8)

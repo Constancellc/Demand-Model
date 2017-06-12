@@ -68,7 +68,7 @@ air_temp = 10 # celcius
 # cable properties - currently mole, with turkey commented out
 aluminium_area = 0.0165#0.0206 # square inch
 diameter = 0.177#0.198 # inch
-emissivity = 0.23
+emissivity = 0.5
 
 aluminium_area = aluminium_area*0.00064516 # square inch -> square m
 diameter = diameter*0.0254 # inch -> m
