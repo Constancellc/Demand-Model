@@ -24,6 +24,22 @@ def distance_si(x,y):
     for i in range(0,len(x)):
         d = best_y[i]-x[i]
         diff += d*d
+
+    return diff
+
+def distance(x,y):
+    
+    if len(x) != len(y):
+        raise Exception('two input vectors are different lengths')
+
+    diff = 0
+    for i in range(0,len(x)):
+        d = x[i]-y[i]
+        diff += d*d
+
+    return diff
+
+    
     
 class Cluster:
 
@@ -39,6 +55,7 @@ class Cluster:
             
             if mean is not None:
                 self.mean = mean
+                self.nFeatures = len(mean)
                 
             if x0 is not None:
                 self.nFeatures = len(x0)
@@ -61,6 +78,16 @@ class Cluster:
         self.points[xname] = x
         self.nPoints += 1
 
+    def remove_point(self,xname):
+        try:
+            del self.points[xname]
+            self.nPoints -= 1
+        except:
+            raise Exception('I cant find that point to be deleted')
+
+    def remove_all(self):
+        self.points = {}
+
     def update_centroid(self,centroid=None):
         
         if centroid != None:
@@ -70,8 +97,37 @@ class Cluster:
             mean = [0.0]*self.nFeatures
             
             for i in self.points:
-                for j in range(0,nFeatures):
-                    mean[j] += self.points[i][j]/self.nPoints        
+                for j in range(0,self.nFeatures):
+                    mean[j] += self.points[i][j]/self.nPoints
+
+    def update_centroid_si(self):
+
+        mean = [0.0]*self.nFeatures
+        x = 0
+
+        for i in self.points:
+            if x == 0:
+                x = self.points[i]
+                for j in range(0,self.nFeatures):
+                    mean[j] += x[j]/self.nPoints 
+            else:
+                y = self.points[i]
+            
+                # first find shift with highest correlation
+                highest = 0
+                for j in range(0,self.nFeatures):
+                    y2 = y[j:]+y[:j]
+                        
+                    c = 0
+                    for k in range(0,len(x)):
+                        c += y2[k]*x[k]
+
+                    if c > highest:
+                        highest = c
+                        best_y = y2
+
+                for j in range(0,self.nFeatures):
+                    mean[j] += best_y[j]/self.nPoints           
             
 class ClusteringExercise:
 
@@ -87,6 +143,29 @@ class ClusteringExercise:
         self.clusters = {}
         self.labels = ['']*len(self.data)
 
+    def add_to_nearest(self,x,xname):
+
+        current_cluster = self.labels[int(xname)]
+
+        dist = 10000000
+        for j in range(0,len(self.clusters)):
+            d = distance(x,self.clusters[str(j)].mean)#distance_si(x,self.clusters[str(j)].mean)
+            if d < dist:
+                dist = d
+                nearest = str(j)
+
+        if nearest == self.labels[int(xname)]:
+            return False
+
+        else:
+            self.clusters[nearest].add_point(x,xname)
+
+            if current_cluster != '':
+                self.clusters[current_cluster].remove_point(xname)
+            self.labels[int(xname)] = nearest
+            return True
+        
+
     def k_means(self,k):
 
         centroid, label, inertia = clst.k_means(self.data,k)
@@ -99,4 +178,58 @@ class ClusteringExercise:
         for i in range(0,len(label)):
             self.clusters[str(label[i])].add_point(self.data[i],str(i))
             self.labels[i] = str(label[i])
+
+    def k_means_si(self,k):
+
+        # first initiate clusters
+        rn = int(random.random()*len(self.data)/k)
+        for i in range(0,k):
+            self.clusters[str(i)] = Cluster(str(i),mean=self.data[i*rn])
+
+        data_subset = []
+
+        for i in range(0,len(self.data)):
+            if random.random() < 1:#0.0005:
+                data_subset.append(self.data[i])
+
+        # assign all points to clusters
+        for i in range(0,len(data_subset)):
+            self.add_to_nearest(data_subset[i],str(i))
+
+        # update the mean values of all clusters
+        for i in range(0,k):
+            self.clusters[str(i)].update_centroid()
+
+        loop = True
+
+        while loop is True:
+
+            pointsMoving = 0
+
+            # now i need to find the points which want to move cluster
+            for i in range(0,len(data_subset)):
+                moved = self.add_to_nearest(data_subset[i],str(i))
+
+                if moved is True:
+                    pointsMoving += 1
+
+            if pointsMoving == 0:
+                loop = False
+            else:
+                print pointsMoving,
+                print 'points moved'
+
+            # update the mean values of all clusters
+            for i in range(0,k):
+                self.clusters[str(i)].update_centroid()
+
+        # once clusters chosen assign all points to a cluster
+        for i in range(0,k):
+            self.clusters[str(i)].remove_all()
+        self.labels = ['']*len(self.data)
+
+        for i in range(0,len(self.data)):
+            self.add_to_nearest(self.data[i],str(i))
+            
         
+                

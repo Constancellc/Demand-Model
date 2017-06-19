@@ -81,8 +81,8 @@ for vehicle in weProfiles:
         weTotal[i] += weProfiles[vehicle][i]
         
 data = []
-for vehicle in weProfiles:
-    data.append(weProfiles[vehicle])
+for vehicle in wProfiles:
+    data.append(wProfiles[vehicle])
 
 
 x = np.arange(8,48,8)
@@ -109,7 +109,12 @@ plt.xlim(0,48)
 
 CE = ClusteringExercise(data)
 
+
+CE.k_means(4)
 plt.figure(2)
+for i in range(0,4):
+    plt.plot(CE.clusters[str(i)].mean)
+'''
 for i in range(1,7):
     plt.subplot(3,2,i)
     CE.k_means(i+1)
@@ -124,5 +129,5 @@ for i in range(1,7):
     print 'k = ',
     print i+1,
     print ' done'
-
+'''
 plt.show()
