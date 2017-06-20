@@ -59,6 +59,7 @@ class Cluster:
                 
             if x0 is not None:
                 self.nFeatures = len(x0)
+                self.mean = x0
                 
                 if x0name == None:
                     raise Exception('please name the initial point')
@@ -178,6 +179,29 @@ class ClusteringExercise:
         for i in range(0,len(label)):
             self.clusters[str(label[i])].add_point(self.data[i],str(i))
             self.labels[i] = str(label[i])
+
+    def DB_scan(self):
+
+        db = clst.DBSCAN().fit(self.data)
+
+        label = db.labels_
+        n_clusters_ = len(set(label))
+
+        print n_clusters_
+
+        for i in range(0,len(label)):
+            self.labels[i] = str(label[i])
+            
+            if str(label[i]) not in self.clusters:
+                print label[i]
+                self.clusters[str(label[i])] = Cluster(str(label[i]),
+                                                       x0=self.data[i],
+                                                       x0name=str(i))
+            else:
+                self.clusters[str(label[i])].add_point(self.data[i],str(i))
+
+        for label in self.clusters:
+            self.clusters[label].update_centroid()
 
     def k_means_si(self,k):
 

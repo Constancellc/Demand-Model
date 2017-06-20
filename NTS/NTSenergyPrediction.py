@@ -261,7 +261,7 @@ class EnergyPrediction:
             plt.ylabel('# vehicles')
             plt.title('Histogram of vehicle predicted energy consumption')
             
-        plt.bar(np.arange(offset,101+offset,1),dailyEnergy,width=width,label=label)
+        #plt.bar(np.arange(offset,101+offset,1),dailyEnergy,width=width,label=label)
     
 
         if wait == False:

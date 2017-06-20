@@ -107,13 +107,15 @@ plt.title('Weekend')
 plt.xticks(x,x_ticks)
 plt.xlim(0,48)
 
-CE = ClusteringExercise(data)
+CE = ClusteringExercise(data[:10000])
 
 
-CE.k_means(4)
+#CE.k_means(4)
+CE.DB_scan()
 plt.figure(2)
-for i in range(0,4):
-    plt.plot(CE.clusters[str(i)].mean)
+for label in CE.clusters:
+    plt.plot(CE.clusters[label].mean,label=str(CE.clusters[label].nPoints))
+plt.legend()
 '''
 for i in range(1,7):
     plt.subplot(3,2,i)
