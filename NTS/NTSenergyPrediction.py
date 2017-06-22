@@ -13,7 +13,8 @@ trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 class EnergyPrediction:
 
-    def __init__(self, day, month=None, car=None, regionType=None, region=None):
+    def __init__(self, day, month=None, car=None, regionType=None, region=None,
+                 model='full'):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
@@ -141,27 +142,32 @@ class EnergyPrediction:
                 if tripEnd > self.endTimes[vehicle]:
                     self.endTimes[vehicle] = tripEnd
 
-                # if the trip is really long, run the motorway artemis
-                if tripDistance > 30000:
-                    cycle = Drivecycle(tripDistance,'motorway')
+                if model == 'full':
+                    # if the trip is really long, run the motorway artemis
+                    if tripDistance > 30000:
+                        cycle = Drivecycle(tripDistance,'motorway')
 
-                # otherwise run the rural/urban depending on the location
-                elif self.reg1[row[1]] == '1':
-                    cycle = Drivecycle(tripDistance,'rural')
-                elif self.reg1[row[1]] == '2':
-                    cycle = Drivecycle(tripDistance,'urban')
-                else:
-                    # not really sure what to do here..?
-                    continue
-                    #cycle = Drivecycle(tripDistance,'rural')
-                accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,
-                                 '6':0.0,'7':0.0,'8':0.0,'9':0.0,'10':0.2,
-                                 '11':0.7,'12':1.3}
+                    # otherwise run the rural/urban depending on the location
+                    elif self.reg1[row[1]] == '1':
+                        cycle = Drivecycle(tripDistance,'rural')
+                    elif self.reg1[row[1]] == '2':
+                        cycle = Drivecycle(tripDistance,'urban')
+                    else:
+                        # not really sure what to do here..?
+                        #continue
+                        cycle = Drivecycle(tripDistance,'urban')
+                    accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,
+                                     '6':0.0,'7':0.0,'8':0.0,'9':0.0,'10':0.2,
+                                     '11':0.7,'12':1.3}
 
-                car.load = passengers*75 # add appropriate load to vehicle
-                self.energy[vehicle] += car.getEnergyExpenditure(cycle,
-                                                                 accessoryLoad[row[6]])
-                car.load = 0
+                    car.load = passengers*75 # add appropriate load to vehicle
+                    self.energy[vehicle] += car.getEnergyExpenditure(cycle,
+                                                                     accessoryLoad[row[6]])
+                    car.load = 0
+                    
+                elif model == 'linear':
+                    self.energy[vehicle] += tripDistance*0.23/1609.34
+                
 
 
     def getNextDayStartTimes(self):

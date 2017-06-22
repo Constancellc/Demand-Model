@@ -35,6 +35,14 @@ for region in regionBreakdown:
 
         energy[int(total)] += numbers[region]
 
+run2 = EnergyPrediction('3','1',model='linear')
+energy3 = run2.plotEnergyConsumption(returnResults=True, newFigure=False,wait=True)
+
+# normalise
+nEnergy3 = []
+for i in range(0,len(energy3)):
+    nEnergy3.append(float(energy3[i])/sum(energy3))
+    
 # normalise
 nEnergy = []
 for i in range(0,len(energy)):
@@ -50,18 +58,30 @@ for i in range(0,len(energy2)):
 
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
+plt.subplot(2,1,1)
 width = 0.4
 
+plt.bar(np.arange(-width/2,len(nEnergy3)-width/2,1),nEnergy3,width,
+        label='Affine Mileage-Energy')
+
+
+plt.xlim(-1,40)
+
+plt.bar(np.arange(width/2,len(nEnergy2)+width/2,1),nEnergy2,width,
+        label='Proposed Vehicle Model',hatch='//')
+#plt.xlabel('Predicted Daily Consumption (kWh)')
+plt.ylabel('Probability')
+plt.legend()
+
+plt.subplot(2,1,2)
 plt.bar(np.arange(-width/2,len(nEnergy)-width/2,1),nEnergy,width,
         label='Monte Carlo Simulation')
 
 
 plt.xlim(-1,40)
 
-
-
 plt.bar(np.arange(width/2,len(nEnergy2)+width/2,1),nEnergy2,width,
-        label='Bottom-Up Predictions',color='k')
+        label='Bottom-Up Predictions',hatch='//')
 plt.xlabel('Predicted Daily Consumption (kWh)')
 plt.ylabel('Probability')
 plt.legend()
