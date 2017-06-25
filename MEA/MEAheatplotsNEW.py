@@ -65,7 +65,8 @@ def createHeatmap(vehicle):
 
     # generating axis
     date_list = [dates[vehicle][0] + datetime.timedelta(days=x) for x in range(0,dates[vehicle][1]+2)]
-
+    print date_list[0]
+    print date_list[-1]
     return heatmap, date_list
 
 
@@ -74,15 +75,31 @@ for hour in range(0,24):
     for minute in range(0,60):
         time_list.append(datetime.time(hour,minute))
 
-
 vehicle = 'GC08'
+
 run = createHeatmap(vehicle)
 heatmap = run[0]
 date_list = run[1]
 
+y = np.linspace(0,24*60,num=7)
+x = np.linspace(1,len(date_list),num=10)
+                
+y_ticks = ['00:00','04:00','08:00','12:00','16:00','20:00','23:59']
+x_ticks = ['Jan\n\'14','Mar\n\'14','May\n\'14','Jul\n\'14','Sep\n\'14',
+           'Nov\n\'14','Jan\n\'15','Mar\n\'15','May\n\'15','Jul\n\'15']
+
+
+
+plt.rcParams["font.family"] = 'serif'
+plt.imshow(heatmap, cmap='bwr', aspect=0.2, interpolation='nearest')
+plt.yticks(y,y_ticks)
+plt.xticks(x,x_ticks)
+
+plt.show()
+'''
 data = [go.Heatmap(z=heatmap,x=date_list,y=time_list,colorscale='Viridis')]
 layout = go.Layout(title=vehicle, yaxis=dict(ticks = '', nticks=12))
 fig = go.Figure(data=data, layout=layout)
         
 plotly.offline.plot(fig, filename='basic-heatmap.html')
-
+'''
