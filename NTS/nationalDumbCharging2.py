@@ -6,6 +6,8 @@ import csv
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
 
+# This one 'tells the story' of the various levels of optimality
+
 accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,'6':-0.2,'7':-0.2,
                  '8':-0.1,'9':-0.1,'10':0.2,'11':0.7,'12':1.3}
 day = '3'
@@ -31,8 +33,7 @@ months = {'1':'-Jan-16','2':'-Feb-16','3':'-Mar-16','4':'-Apr-16','5':'-May-16',
 
 nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 
-plt.figure(1)
-plt.rcParams["font.family"] = 'serif'
+
 plotMonths = {'1':1,'4':2,'7':3,'10':4}
 titles = {'1':'January','4':'April','7':'July','10':'October'}
 
@@ -82,6 +83,9 @@ for month in ['1','4','7','10']:
 
         # baseLoad is in GW
 
+    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,baseLoad)
+
+    
     smartProfiles = run.getNationalOptimalChargingProfiles(72.0,baseLoad,
                                                            pointsPerHour=pointsPerHour)
 
@@ -90,27 +94,36 @@ for month in ['1','4','7','10']:
         for i in range(0,len(summed)):
             summed[i] += smartProfiles[vehicle][i]
     
+    
     for i in range(0,len(baseLoad)):
         dumbProfile[i] += baseLoad[i]
+        smartProfile[i] += baseLoad[i]
         if i%60 == 0:
             summed[i/60] += baseLoad[i]
 
-    plt.subplot(2,2,plotMonths[month])
-    plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
-    plt.plot(t,dumbProfile,label='Uncontrolled Charging')
-    #plt.plot(summed,ls='--',label='Controlled Charging',)
-    if month == '1':
-        #plt.legend(loc=[-0.2,1.1],ncol=3)
-        plt.legend(loc=[0.2,1.1],ncol=2)
+    for i in range(1,5):
+        plt.figure(i)   
+        plt.rcParams["font.family"] = 'serif'
+        plt.subplot(2,2,plotMonths[month])
+        plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
+        if i > 1:
+            plt.plot(t,dumbProfile,label='Uncontrolled Charging')
+            if i > 2:
+                    plt.plot(summed,ls='--',label='Optimal Charging')
+                    if i > 3:
+                        plt.plot(t,smartProfile,ls='-',label='Psuedo-Optimal Charging')
+        if month == '1':
+            #plt.legend(loc=[-0.2,1.1],ncol=3)
+            plt.legend(loc=[0.2,1.1],ncol=2)
 
-    plt.grid()
-        
-    plt.xticks(x, my_xticks)
-    plt.xlabel('time')
-    plt.ylabel('Power Demand (GW)')
-    plt.xlim(6,34)
-    plt.ylim(20,85)
-    plt.title(titles[month],y=0.8)
+        plt.grid()
+            
+        plt.xticks(x, my_xticks)
+        plt.xlabel('time')
+        plt.ylabel('Power Demand (GW)')
+        plt.xlim(6,34)
+        plt.ylim(20,85)
+        plt.title(titles[month],y=0.8)
 
 '''
 plt.figure(2)

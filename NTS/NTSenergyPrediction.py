@@ -1,6 +1,7 @@
 # packages
 import csv
 import random
+import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from cvxopt import matrix, spdiag, solvers, sparse
@@ -384,7 +385,7 @@ class EnergyPrediction:
                                highUseHomeCharging=True,highUseWorkCharging=True,
                                highUseShopCharging=True, scalePerHousehold=False,
                                scalePerVehicle=False,scalePerPerson=False,
-                               superCharge=False):
+                               superCharge=False,individuals=[]):
         # power: the charging power in kW
         
         # tmax: the no. minutes past 00:00 the simulation is run for
@@ -392,6 +393,8 @@ class EnergyPrediction:
         uncharged = 0
         self.nOutOfCharge = 0
         self.dumbScaleFactor = scaleFactor
+
+        individualProfiles = {}
 
         if logOutofCharge == True:
             self.outOfChargeLog = {}
@@ -406,6 +409,9 @@ class EnergyPrediction:
             self.findOverCapacityVehicles()
 
         for vehicle in self.energy:
+
+
+                
 
             if highUseHomeCharging == True:
                 if vehicle in self.overCapacityVehicles:
@@ -426,6 +432,17 @@ class EnergyPrediction:
 
             chargeStart = self.endTimes[vehicle]
             chargeTime = int(kWh*60/power)
+
+            if vehicle in individuals:
+                prof = [0]*tmax
+                for i in range(chargeStart, chargeStart+chargeTime):
+                    try:
+                        prof[i] = power
+                    except:
+                        continue
+
+                individualProfiles[vehicle] = prof
+                
 
             chargeEnd = chargeStart+chargeTime
 
@@ -553,7 +570,10 @@ class EnergyPrediction:
         print self.nVehicles
         print ' vehicles ran out of charge'
 
-        return profile
+        if individuals != []:
+            return profile, individualProfiles
+        else:
+            return profile
 
     def getMissingCapacity(self,nHours):
         try:
@@ -576,7 +596,68 @@ class EnergyPrediction:
                  print extraCapacity
                  
         return extraRequirements
+    
+    def getPsuedoOptimalProfile(self,pMax,baseLoad,scaleFactor=1,
+                                returnIndividual=False):
+
+        if returnIndividual == True:
+            individualProfiles = {}
+
+        pointsPerHour = len(baseLoad)/36
+        profile = [0.0]*len(baseLoad)
+
+        # first calculate the target charging shape.
+        target = [0.0]*len(baseLoad)
+        lim = max(baseLoad)+1
+
+        for i in range(0,len(baseLoad)):
+            target[i] = lim-baseLoad[i]
             
+        self.getNextDayStartTimes()
+        
+        for vehicle in self.energy:
+            kWh = self.energy[vehicle]/self.chargingEfficiency
+            chargeStart = self.endTimes[vehicle]
+            chargeEnd = self.startTimes[vehicle]+24*pointsPerHour
+
+            if chargeEnd >= 36*pointsPerHour:
+                chargeEnd = 36*pointsPerHour-1
+
+            chargeProfile = copy.copy(target)
+            
+            chargeProfile = chargeProfile[chargeStart:chargeEnd]
+
+            try:
+                energySF = kWh/(sum(chargeProfile)/pointsPerHour)
+            except:
+                print chargeStart
+                print chargeEnd
+                print kWh
+                continue
+
+            for i in range(0,len(chargeProfile)):
+                chargeProfile[i] = chargeProfile[i]*energySF
+                if chargeProfile[i] > pMax:
+                    chargeProfile[i] = pMax
+
+            if returnIndividual == True:
+                if len(individualProfiles) < 4:
+                    individualProfiles[vehicle] = [copy.copy(chargeProfile),
+                                                   chargeStart]
+
+            for i in range(chargeStart,chargeEnd):
+                profile[i] += chargeProfile[i-chargeStart]*scaleFactor
+
+
+            del chargeProfile
+
+        if returnIndividual == True:
+            return profile, individualProfiles
+
+        else:
+            return profile
+
+        
     def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale=1,nHours=36,
                                    pointsPerHour=1):
         # pMax is the maximum charging power allowed in kW
@@ -775,6 +856,26 @@ class NationalEnergyPrediction:
             # unit of thousands of vehicles (I think)
 
         return missingCapacity
+
+    def getNationalPsuedoOptimalProfile(self,pMax,baseLoad):
+
+        # get the scaled charging profiles
+        ucProfile = self.uc.getPsuedoOptimalProfile(pMax,baseLoad,
+                                                   scaleFactor=self.ucScale)
+        utProfile = self.ut.getPsuedoOptimalProfile(pMax,baseLoad,
+                                                   scaleFactor=self.utScale)
+        rtProfile = self.rt.getPsuedoOptimalProfile(pMax,baseLoad,
+                                                   scaleFactor=self.rtScale)
+        rvProfile = self.rv.getPsuedoOptimalProfile(pMax,baseLoad,
+                                                   scaleFactor=self.rvScale)
+
+        profile = []
+
+        for i in range(0,len(ucProfile)):
+            profile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
+                               rvProfile[i])
+
+        return profile
 
     def getNationalOptimalChargingProfiles(self,pMax,baseLoad,nHours=36,
                                            pointsPerHour=1):

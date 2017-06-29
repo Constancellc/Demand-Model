@@ -176,7 +176,7 @@ def getLocations(day,month,normalise=True,smooth=False):
 
         for vector in totals:
             for i in range(0,48*60):
-                totals[vector][i] = float(totals[vector][i])/fleetSize
+                totals[vector][i] = float(totals[vector][i])*100/fleetSize
 
 
 
@@ -226,25 +226,29 @@ totals = run[0]
 others = run[1]
 
 t = np.linspace(0,48,num=len(totals[1]))
-labels = {3:'home',1:'in transit',2:'work',4:'shops',5:'other'}
-styles = {1:'-',2:'--',4:'-.',5:':'}
+labels = {3:'Home',1:'in transit',2:'Work',4:'Shops',5:'other'}
+styles = {1:'-',2:'--',3:'-',4:'-.',5:':'}
 plt.figure(1)
 #plt.style.use('classic')
 plt.rcParams["font.family"] = 'serif'
 #plt.subplot(1,2,1)
-for line in totals:
-    if line == 3:
-        plt.plot(t,totals[line],label=labels[line],lw=2)
+for line in [3,2,4]:#totals:
+    if line == 1:
+        continue
+    elif line == 5:
+        continue
+    #if line == 3:
+        #plt.plot(t,totals[line],label=labels[line],lw=2)
     else:
         plt.plot(t,totals[line],label=labels[line],ls=styles[line])
-plt.ylabel('percentage of vehicles')
+plt.ylabel('Percentage of Vehicles')
 #plt.title('Vehicle Location')
 
 # and x axis
 x = np.linspace(26,46,num=6)
 my_xticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 plt.xticks(x, my_xticks)
-plt.xlabel('time')
+plt.xlabel('Time')
 plt.xlim(24,48)
 plt.legend(loc='upper center')
 plt.grid()
