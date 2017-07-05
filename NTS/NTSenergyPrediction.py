@@ -659,7 +659,8 @@ class EnergyPrediction:
 
         
     def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale=1,nHours=36,
-                                   pointsPerHour=1):
+                                   pointsPerHour=1,individuals=[],
+                                   sampleScale=True):
         # pMax is the maximum charging power allowed in kW
         
         # baseLoad is the non-ev demand that we're trying to valley fill
@@ -681,7 +682,7 @@ class EnergyPrediction:
         
         # I'm going to need to downsample
         for vehicle in self.energy:
-            if random.random() < 0.005:
+            if random.random() < 0.02 or vehicle in individuals:
                 
                 
                 if self.energy[vehicle] == 0.0:
@@ -703,8 +704,10 @@ class EnergyPrediction:
         #n = self.nVehicles
         n = len(vehicles)
 
-        scale = float(self.nVehicles/(len(unused)+len(vehicles))) # This accounts for downsampling
-        #scale = 1.0
+        if sampleScale == True:
+            scale = float(self.nVehicles/(len(unused)+len(vehicles))) # This accounts for downsampling
+        else:
+            scale = 1.0
         pMax = pMax*scale
 
         for i in range(0,len(b)):

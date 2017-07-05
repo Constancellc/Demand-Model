@@ -71,12 +71,20 @@ for vehicle in profiles[1]:
 run2 = EnergyPrediction(day,month,region='1')
 
 profiles2 = run.getDumbChargingProfile(3.5,36*60,individuals=vehicles)
+profiles3 = run.getOptimalChargingProfiles(3.5,baseLoad,individuals=vehicles,
+                                           sampleScale=False)
+
+t = np.linspace(0,36,num=36*60)
+
+x = np.arange(10,38,6)
+x_ticks = ['10:00\nWed','16:00','22:00','04:00\nThu','10:00']
 
 plt.figure(1)
 n = 1
 for vehicle in vehicles:
     plt.subplot(2,2,n)
-    plt.plot(profiles2[1][vehicle])
+    plt.plot(t,profiles2[1][vehicle],label='Uncontrolled')
+    plt.plot(profiles3[vehicle],label='Optimal')
     smart = [0.0]*36*60
 
     chargeStart = int(profiles[1][vehicle][1])
@@ -87,7 +95,13 @@ for vehicle in vehicles:
         except:
             continue
         
-    plt.plot(smart)
+    plt.plot(t,smart,label='Psuedo-optimal')
+    plt.xlim(8,36)
+    plt.xticks(x,x_ticks)
+    plt.ylabel('Power (kW)')
+    plt.grid()
+    if n == 1:
+        plt.legend(loc=[0.3,1.1],ncol=3)
     n += 1
 
 plt.show()

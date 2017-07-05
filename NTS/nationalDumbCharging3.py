@@ -6,8 +6,8 @@ import csv
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
 
-# This one is going to compare the new optimal if the correct date or the week
-# before is used
+# This one 'tells the story' of the various levels of optimality, with only 1 month
+
 accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,'6':-0.2,'7':-0.2,
                  '8':-0.1,'9':-0.1,'10':0.2,'11':0.7,'12':1.3}
 day = '3'
@@ -49,13 +49,12 @@ shortfalls = {}
 
 for month in ['1']:#,'4','7','10']:
     run = NationalEnergyPrediction(day,month)
-    #dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
+    dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
+ #   shortfalls[month] = run.getNationalMissingCapacity()
 
     # getting the baseLoad to compare against
     dayOne = []
     dayTwo = []
-    approxDayOne = []
-    approxDayTwo = []
 
     with open('../ng-data/Demand_Data2016.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
@@ -64,18 +63,12 @@ for month in ['1']:#,'4','7','10']:
                 dayOne.append(float(row[4]))
             elif row[0] == str(calender[month][nextDay[day]])+months[month]:
                 dayTwo.append(float(row[4]))
-            elif row[0] == str(calender[month][day]-7)+months[month]:
-                approxDayOne.append(float(row[4]))
-            elif row[0] == str(calender[month][nextDay[day]]-7)+months[month]:
-                approxDayTwo.append(float(row[4]))
 
     halfHourly = dayOne+dayTwo[:(nHours-24)*2]
-    ApproxHalfHourly = approxDayOne+approxDayTwo[:(nHours-24)*2]
 
-    realBaseLoad = [0.0]*nHours*60
-    approxBaseLoad = [0.0]*nHours*60
+    baseLoad = [0.0]*nHours*60
 
-    for i in range(0,len(realBaseLoad)):
+    for i in range(0,len(baseLoad)):
         p1 = int(i/30)
         if p1 == len(halfHourly)-1:
             p2 = p1
@@ -85,55 +78,54 @@ for month in ['1']:#,'4','7','10']:
         f2 = float(i)/30 - p1
         f1 = 1.0-f2
         
-        realBaseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
-        realBaseLoad[i] = float(int(realBaseLoad[i]))/1000 # MW -> rounded GW
-        
-        approxBaseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
-        approxBaseLoad[i] = float(int(approxBaseLoad[i]))/1000 # MW -> rounded GW
+        baseLoad[i] = f1*float(halfHourly[p1])+f2*float(halfHourly[p2])
+        baseLoad[i] = float(int(baseLoad[i]))/1000 # MW -> rounded GW
 
         # baseLoad is in GW
 
-    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,realBaseLoad)
+    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,baseLoad)
+
     
-    run2 = NationalEnergyPrediction(day,month)
-    smartProfile2 = run2.getNationalPsuedoOptimalProfile(4.0,approxBaseLoad)
+    smartProfiles = run.getNationalOptimalChargingProfiles(72.0,baseLoad,
+                                                           pointsPerHour=pointsPerHour)
+
+    summed = [0.0]*36
+    for vehicle in smartProfiles:
+        for i in range(0,len(summed)):
+            summed[i] += smartProfiles[vehicle][i]
     
-    for i in range(0,len(realBaseLoad)):
-        smartProfile[i] += realBaseLoad[i]
-        smartProfile2[i] += approxBaseLoad[i]
+    
+    for i in range(0,len(baseLoad)):
+        dumbProfile[i] += baseLoad[i]
+        smartProfile[i] += baseLoad[i]
+        if i%60 == 0:
+            summed[i/60] += baseLoad[i]
 
+    for i in range(1,5):
+        plt.figure(i)   
+        plt.rcParams["font.family"] = 'serif'
+        #plt.subplot(2,2,plotMonths[month])
+        plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
+        if i > 1:
+            plt.plot(t,dumbProfile,label='Uncontrolled')
+            if i > 2:
+                plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
+                #plt.plot(summed,ls='--',label='Optimal')
+                if i > 3:
+                    plt.plot(summed,ls='--',label='Optimal')
+                    #plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
+        if month == '1':
+            #plt.legend(loc=[-0.2,1.1],ncol=3)
+            plt.legend(loc=[-0.1,1.05],ncol=2)
 
-    plt.figure(1)
-    plt.rcParams["font.family"] = 'serif'
-    #plt.subplot(2,2,plotMonths[month])
-    #plt.plot(t,realBaseLoad,ls=':',c='g',label='Base Load')
-    plt.subplot(2,1,1)
-    plt.title('Charging Profile',y=0.85)
-    plt.plot(t,smartProfile,ls='-',label='Perfect Knowledge')
-    plt.plot(t,smartProfile2,ls='-',label='Similar Day Approx')
-    if month == '1':
-        #plt.legend(loc=[-0.2,1.1],ncol=3)
-        plt.legend(loc=[0.2,1.1],ncol=2)
-
-    plt.grid()
-    plt.xticks(x, my_xticks)
-    plt.xlabel('time')
-    plt.ylabel('Power Demand (GW)')
-    plt.xlim(6,34)
-
-    plt.subplot(2,1,2)
-    plt.title('Base Load',y=0.85)
-    plt.plot(t,realBaseLoad,ls='-',label='Actual')
-    plt.plot(t,approxBaseLoad,ls='-',label='Forecast')
-    if month == '1':
-        #plt.legend(loc=[-0.2,1.1],ncol=3)
-        plt.legend(loc=[0.2,1.1],ncol=2)
-
-    plt.grid()
-    plt.xticks(x, my_xticks)
-    plt.xlabel('time')
-    plt.ylabel('Power Demand (GW)')
-    plt.xlim(6,34)
+        plt.grid()
+            
+        plt.xticks(x, my_xticks)
+        plt.xlabel('time')
+        plt.ylabel('Power Demand (GW)')
+        plt.xlim(6,34)
+        plt.ylim(20,85)
+        plt.title(titles[month],y=0.85)
 
 '''
 plt.figure(2)
