@@ -78,6 +78,7 @@ for i in range(0,16):
 
 # and let's make sure the energy looks convincing
 plt.figure(2)
+plt.rcParams["font.family"] = 'serif'
 plt.subplot(2,1,1)
 plt.plot(t,summedDumb,label='dumb',lw=1.0)
 plt.plot(t,summedNational,label='national',ls='--',lw=1.0)
@@ -87,6 +88,7 @@ plt.plot(t,summedNetwork,alpha=0.8,label='network',ls=':',lw=1.5)
 plt.xticks(x2,x_ticks2)
 plt.xlim(0,24)
 plt.ylabel('Charging Power\n per Vehicle (kW)')
+plt.grid()
 
 # let's get the aggregate values
 summedDomestic = [0.0]*(24*60)
@@ -106,6 +108,8 @@ for i in range(1,56):
             j += 1       
 
 plt.subplot(2,1,2)
+plt.rcParams["font.family"] = 'serif'
+plt.grid()
 plt.plot(t,summedDumb,label='Uncontrolled',lw=1.0)
 plt.plot(t,summedNational,label='National',ls='--',lw=1.0)
 plt.plot(t,summedHousehold,label='Household',ls='-.',lw=1.0)
@@ -119,14 +123,16 @@ plt.xlabel('Time')
 
 
 plt.figure(3)
+plt.rcParams["font.family"] = 'serif'
+plt.grid()
 plt.plot(t,dumbProfiles[2],label='Uncontrolled',lw=1.5)
 plt.plot(t,nationalProfiles[2],label='National',ls='--',lw=1.5)
 plt.plot(t,householdProfiles[2],label='Household',ls='-.',lw=1.5)
 plt.plot(t,networkProfiles[2],alpha=0.8,label='Network',ls=':',lw=1.5)
-plt.legend(ncol=2)
+plt.legend(loc=[0,1.05],ncol=2)
 plt.xticks(x2,x_ticks2)
 plt.xlim(0,24)
-plt.ylim(0,5)
+plt.ylim(0,4)
 plt.ylabel('Power')
 plt.xlabel('Time')
 
