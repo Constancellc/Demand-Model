@@ -48,7 +48,7 @@ class EnergyPrediction:
             self.reg3 = {} # 1:NE, 2:NW, 3:Y+H, 4:EM, 5:WM, 6:E, 7:L, 8:SE, 9:SW,
                       # 10: Wales, 11: Scotland
                       
-        # setting up counters whihc will be used to scale predictions
+        # setting up counters which will be used to scale predictions
         self.nVehicles = 0 
         self.nHouseholds = 0
         self.nPeople = 0
@@ -596,6 +596,8 @@ class EnergyPrediction:
                  print extraCapacity
                  
         return extraRequirements
+
+    #def getProbabilityAvaliableToCharge(self,pMax
     
     def getPsuedoOptimalProfile(self,pMax,baseLoad,scaleFactor=1,
                                 returnIndividual=False):

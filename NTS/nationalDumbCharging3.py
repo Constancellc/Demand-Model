@@ -34,7 +34,8 @@ months = {'1':'-Jan-16','2':'-Feb-16','3':'-Mar-16','4':'-Apr-16','5':'-May-16',
 nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 
 
-plotMonths = {'1':1,'4':2,'7':3,'10':4}
+#plotMonths = {'1':1,'4':2,'7':,'10':4}
+plotMonths = {'1':1,'4':2,'7':2,'10':4}
 titles = {'1':'January','4':'April','7':'July','10':'October'}
 
 nHours = 36
@@ -47,7 +48,7 @@ pointsPerHour = 1
 
 shortfalls = {}
 
-for month in ['1']:#,'4','7','10']:
+for month in ['1','7']:#,'4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
  #   shortfalls[month] = run.getNationalMissingCapacity()
@@ -105,9 +106,10 @@ for month in ['1']:#,'4','7','10']:
         plt.figure(i)   
         plt.rcParams["font.family"] = 'serif'
         #plt.subplot(2,2,plotMonths[month])
+        plt.subplot(1,2,plotMonths[month])
         plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
         if i > 1:
-            plt.plot(t,dumbProfile,label='Uncontrolled')
+            plt.plot(t,dumbProfile,label='Uncontrolled Charging')
             if i > 2:
                 plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
                 #plt.plot(summed,ls='--',label='Optimal')
@@ -116,7 +118,8 @@ for month in ['1']:#,'4','7','10']:
                     #plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
         if month == '1':
             #plt.legend(loc=[-0.2,1.1],ncol=3)
-            plt.legend(loc=[-0.1,1.05],ncol=2)
+            plt.legend(loc=[0.1,1.05],ncol=2)
+#           plt.legend(loc=[-0.1,1.05],ncol=2)
 
         plt.grid()
             
