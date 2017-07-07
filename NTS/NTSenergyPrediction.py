@@ -8,10 +8,114 @@ from cvxopt import matrix, spdiag, solvers, sparse
 # my code
 from vehicleModelCopy import Drivecycle, Vehicle
 
+
+# CONTENTS:
+# classes: BaseLoad, EnergyPrediction, NationalEnergyPrediction,
+#          AreaEnergyPrediction
+
 # these are the csv files containing the data
 households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
+class BaseLoad:
+
+    def __init__(self,day,month,nHours,unit='G',pointsPerHour=60):
+
+        units = {'':1,'k':1000,'M':1000000,'G':1000000000}
+
+        nDays = int(nHours/24)+1
+
+        # find right date for day of the week
+        calender = {'1':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                    '2':{'1':15,'2':16,'3':17,'4':18,'5':19,'6':20,'7':21},
+                    '3':{'1':14,'2':15,'3':16,'4':17,'5':18,'6':19,'7':20},
+                    '4':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                    '5':{'1':16,'2':17,'3':18,'4':19,'5':20,'6':21,'7':22},
+                    '6':{'1':13,'2':14,'3':15,'4':16,'5':17,'6':18,'7':19},
+                    '7':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                    '8':{'1':15,'2':16,'3':17,'4':18,'5':19,'6':20,'7':21},
+                    '9':{'1':12,'2':13,'3':14,'4':15,'5':16,'6':17,'7':18},
+                    '10':{'1':17,'2':18,'3':19,'4':20,'5':21,'6':22,'7':23},
+                    '11':{'1':14,'2':15,'3':16,'4':17,'5':18,'6':19,'7':20},
+                    '12':{'1':12,'2':13,'3':14,'4':15,'5':16,'6':17,'7':18}}
+
+        months = {'1':'-Jan-2016','2':'-Feb-2016','3':'-Mar-2016',
+                  '4':'-Apr-2016','5':'-May-2016','6':'-Jun-2016',
+                  '7':'-Jul-2016','8':'-Aug-2016','9':'-Sep-2016',
+                  '10':'-Oct-2016','11':'-Nov-2016','12':'-Dec-2016'}
+
+        nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
+
+        dates = {}
+        n = 0
+
+        profiles = []
+        for i in range(0,nDays):
+            profiles.append([])
+
+        while nDays > 0:
+            dates[str(calender[month][day])+months[month]] = n
+            n += 1
+            day = nextDay[day]
+            nDays -= 1
+
+
+        with open('../../Documents/DemandData_2011-2016.csv','rU') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if row[0] not in dates:
+                    continue
+
+                profiles[dates[row[0]]].append(float(row[4]))
+
+                                                
+
+        profile = []
+
+        for i in range(0,len(profiles)):
+            profile += profiles[i]
+
+        profile = profile[:nHours*2] # half-hourly
+
+
+        interpolatedLoad = [0.0]*nHours*pointsPerHour
+
+        for i in range(0,len(interpolatedLoad)):
+            p1 = int(2*i/pointsPerHour)
+            if p1 == len(profile)-1:
+                p2 = p1
+            else:
+                p2 = p1+1
+
+            f2 = 2*float(i)/pointsPerHour - p1
+            f1 = 1.0-f2
+
+            interpolatedLoad[i] = f1*float(profile[p1])+\
+                                  f2*float(profile[p2])
+
+            # Change the units to the specified ones
+            interpolatedLoad[i] = interpolatedLoad[i]*float(1000000)/units[unit]
+            
+            # round to 3dp
+            interpolatedLoad[i] = float(int(1000000*interpolatedLoad[i]))/1000000
+
+        self.baseLoad = interpolatedLoad
+
+    def getLoad(self,population='full'):
+
+        if population == 'full':
+            return self.baseLoad
+
+        else:
+            scale = float(population)/65140000
+            for i in range(0,len(self.baseLoad)):
+                # scale then round
+                self.baseLoad[i] = self.baseLoad[i]*scale
+                self.baseLoad[i] = float(int(1000000*self.baseLoad[i]))/1000000
+
+            return self.baseLoad
+
+        
 class EnergyPrediction:
 
     def __init__(self, day, month=None, car=None, regionType=None, region=None,
@@ -66,13 +170,18 @@ class EnergyPrediction:
 
                     self.reg1[row[0]] = row[148]
 
-                    # bug: can't currently specify BOTH regiontype and region
-
                     if regionType is not None:
                         self.reg2[row[0]] = row[149]
-                        if row[149] == regionType:
-                            self.nHouseholds += 1
-                            self.nPeople += int(row[32])
+
+                        if region is None:
+                            if row[149] == regionType:
+                                self.nHouseholds += 1
+                                self.nPeople += int(row[32])
+                        else:
+                            self.reg3[row[0]] = row[28]
+                            if row[149] == regionType and row[28] == region:
+                                self.nHouseholds += 1
+                                self.nPeople += int(row[32])
 
                     elif region is not None:
                         self.reg3[row[0]] = row[28]
@@ -684,7 +793,7 @@ class EnergyPrediction:
         
         # I'm going to need to downsample
         for vehicle in self.energy:
-            if random.random() < 0.02 or vehicle in individuals:
+            if random.random() < 0.52 or vehicle in individuals:
                 
                 
                 if self.energy[vehicle] == 0.0:
@@ -693,9 +802,9 @@ class EnergyPrediction:
                 if self.energy[vehicle] >= self.car.capacity:
                     print self.energy[vehicle],
                     print ' is higher than battery capacity'
-                    b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
+                    #b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
 
-                    #b.append(baseScale*self.car.capacity/self.chargingEfficiency)
+                    b.append(baseScale*self.car.capacity/self.chargingEfficiency)
                 else:
                     b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
 
@@ -943,8 +1052,173 @@ class NationalEnergyPrediction:
         
         return profiles
         
-        
-        
+class AreaEnergyPrediction:
 
-                
+    def __init__(self,region,ucPopulation,utPopulation,rtPopulation,
+                 rvPopulation,day,month,vehicle=None):
+
+        self.day = day
+        self.month = month
+
+        self.ucPopulation = ucPopulation
+        self.utPopulation = utPopulation
+        self.rtPopulation = rtPopulation
+        self.rvPopulation = rvPopulation
+        
+        if vehicle == None:
+            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
+            vehicle = nissanLeaf
+
+        # run a simulation filtering for each of the region types
+        if ucPopulation > 0:
+            self.uc = EnergyPrediction(day,month,nissanLeaf,region=region,
+                                       regionType='1')
+            self.ucScale = float(ucPopulation)/self.uc.nPeople
+            
+        if utPopulation > 0:
+            self.ut = EnergyPrediction(day,month,nissanLeaf,region=region,
+                                       regionType='2')
+            self.utScale = float(utPopulation)/self.ut.nPeople
+            
+        if rtPopulation > 0:
+            self.rt = EnergyPrediction(day,month,nissanLeaf,region=region,
+                                       regionType='3')
+            self.rtScale = float(rtPopulation)/self.rt.nPeople
+            
+        if rvPopulation > 0:
+            self.rv = EnergyPrediction(day,month,nissanLeaf,region=region,
+                                       regionType='4')
+            self.rvScale = float(rvPopulation)/self.rv.nPeople
+
+
+    def getDumbChargingProfile(self,power,nHours):
+
+        self.nHours = nHours
+
+        if self.ucPopulation > 0:
+            ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
+                                                       scaleFactor=self.ucScale,
+                                                       superCharge=False)
+        else:
+            ucProfile = [0.0]*nHours*60
+            
+        if self.utPopulation > 0:
+            utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
+                                                       scaleFactor=self.utScale,
+                                                       superCharge=False)
+        else:
+            utProfile = [0.0]*nHours*60
+            
+        if self.rtPopulation > 0:
+            rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
+                                                       scaleFactor=self.rtScale,
+                                                       superCharge=False)
+        else:
+            rtProfile = [0.0]*nHours*60
+            
+        if self.rvPopulation > 0:
+            rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
+                                                       scaleFactor=self.rvScale,
+                                                       superCharge=False)
+        else:
+            rvProfile = [0.0]*nHours*60
+            
+        
+        dumbProfile = []
+
+        for i in range(0,nHours*60):
+           dumbProfile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
+                               rvProfile[i])
+
+        return dumbProfile
+
+    def getOptimalChargingProfiles(self,pMax,nHours=36,pointsPerHour=1):
+
+        # baseLoad is in GW
+
+        profiles = {}
+
+        if self.ucPopulation > 0:
+            ucBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            ucBaseLoad = ucBase.getLoad(population=self.uc.nPeople)
+
+            print ucBaseLoad
+
+            ucProfiles = self.uc.getOptimalChargingProfiles(pMax,ucBaseLoad,
+                                                            nHours=nHours,
+                                                            pointsPerHour=1)
+        else:
+            ucProfiles = {}
+            ucBaseLoad = [0.0]*nHours*60
+
+
+        if self.utPopulation > 0:
+            utBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            utBaseLoad = utBase.getLoad(population=self.ut.nPeople)
+            
+            utProfiles = self.ut.getOptimalChargingProfiles(pMax,utBaseLoad,
+                                                            nHours=nHours,
+                                                            pointsPerHour=1)
+        else:
+            utProfiles = {}
+            utBaseLoad = [0.0]*nHours*60
+
+
+        if self.rtPopulation > 0:
+            rtBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            rtBaseLoad = rtBase.getLoad(population=self.rt.nPeople)
+
+            rtProfiles = self.rt.getOptimalChargingProfiles(pMax,rtBaseLoad,
+                                                            nHours=nHours,
+                                                            pointsPerHour=1)
+        else:
+            rtProfiles = {}
+            rtBaseLoad = [0.0]*nHours*60
+
+
+        if self.rvPopulation > 0:
+            rvBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            rvBaseLoad = rvBase.getLoad(population=self.rv.nPeople)
+
+            rvProfiles = self.rv.getOptimalChargingProfiles(pMax,rvBaseLoad,
+                                                            nHours=nHours,
+                                                            pointsPerHour=1)
+        else:
+            rvProfiles = {}
+            rvBaseLoad = [0.0]*nHours*60
+
+        totalBaseLoad = [0.0]*nHours*60
+        for i in range(0,len(totalBaseLoad)):
+            totalBaseLoad[i] = ucBaseLoad[i]+utBaseLoad[i]+rtBaseLoad[i]+\
+                               rvBaseLoad[i]
+        self.baseLoad = totalBaseLoad
+
+        for vehicle in ucProfiles:
+            load = ucProfiles[vehicle]
+            for i in range(0,len(load)):
+                load[i] = load[i]*self.ucScale
+            profiles[vehicle] = load
+
+            
+        for vehicle in utProfiles:
+            load = utProfiles[vehicle]
+            for i in range(0,len(load)):
+                load[i] = load[i]*self.utScale
+            profiles[vehicle] = load
+
+            
+        for vehicle in rtProfiles:
+            load = rtProfiles[vehicle]
+            for i in range(0,len(load)):
+                load[i] = load[i]*self.rtScale
+            profiles[vehicle] = load
+
+            
+        for vehicle in rvProfiles:
+            load = rvProfiles[vehicle]
+            for i in range(0,len(load)):
+                load[i] = load[i]*self.rvScale
+            profiles[vehicle] = load
+        
+        return profiles
                 

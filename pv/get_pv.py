@@ -51,15 +51,15 @@ def main():
 
         if len(data[0]["data"]) > 0:
             columns = [x["column"] for x in data[0]["meta"]]
-            if not quiet:
-                print "    " + ",".join(columns)
+            #if not quiet:
+                #print "    " + ",".join(columns)
             if len(printer) == 0:
                 printer.append(",".join(columns))
             for row in data[0]["data"]:
-                print row
+                #print row
                 row = [str(x) for x in row]
-                if not quiet:
-                    print "    " + ",".join(row)
+                #if not quiet:
+                    #print "    " + ",".join(row)
                 printer.append(",".join(row))
         request_start += timedelta(days=block_size)
 
