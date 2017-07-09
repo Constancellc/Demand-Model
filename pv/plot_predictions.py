@@ -18,6 +18,6 @@ for i in range(0,len(months)):
             profile = []
             for j in range(0,48):
                 profile.append(float(row[j]))
-            plt.plot(profile)
+            plt.plot(profile,c='#f49842')
 
 plt.show()
