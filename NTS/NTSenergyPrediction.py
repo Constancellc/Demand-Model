@@ -1137,6 +1137,24 @@ class AreaEnergyPrediction:
         else:
             self.rvScale = 0.0
 
+    def getNumberOfVehicles(self):
+
+        numberVehicles = 0
+
+        if self.ucPopulation > 0:
+            numberVehicles += self.uc.nVehicles*self.ucScale
+
+        if self.utPopulation > 0:
+            numberVehicles += self.ut.nVehicles*self.utScale
+
+        if self.rtPopulation > 0:
+            numberVehicles += self.rt.nVehicles*self.rtScale
+
+        if self.rvPopulation > 0:
+            numberVehicles += self.rv.nVehicles*self.rvScale
+
+        return numberVehicles
+
 
     def getDumbChargingProfile(self,power,nHours,sCharge=True):
 
