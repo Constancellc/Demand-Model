@@ -119,7 +119,7 @@ class BaseLoad:
 class EnergyPrediction:
 
     def __init__(self, day, month=None, car=None, regionType=None, region=None,
-                 model='full'):
+                 model='full',penetration=1.0):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
@@ -140,6 +140,7 @@ class EnergyPrediction:
         self.regionType = regionType
         self.region = region
         self.chargingEfficiency = 0.95
+        self.penetration = 1.0
 
         # first getting the region types
         
@@ -557,7 +558,7 @@ class EnergyPrediction:
                 uncharged += 1
 
             for i in range(chargeStart,chargeEnd):
-                profile[i] += scaleFactor*power
+                profile[i] += scaleFactor*power*self.penetration
 
         # now for the high acheivers:
         if highUseHomeCharging == True:
@@ -613,7 +614,7 @@ class EnergyPrediction:
                         energyRequired -= chargePower*(chargeEnd-chargeStart)/60
 
                         for i in range(chargeStart,chargeEnd):
-                            profile[i] += scaleFactor*chargePower
+                            profile[i] += scaleFactor*chargePower*self.penetration
 
                     journeys.remove(journeys[0])
 
@@ -638,7 +639,7 @@ class EnergyPrediction:
                 for i in range(chargeStart,chargeStart+timeRequired):
                     if i >= len(profile):
                         continue
-                    profile[i] += scaleFactor*power
+                    profile[i] += scaleFactor*power*self.penetration
                                             
 
                 if outOfCharge is True:
@@ -651,7 +652,7 @@ class EnergyPrediction:
                         timeReq = int(log[0]*60/scPower)
                         for i in range(log[1],log[1]+timeReq):
                             try:
-                                profile[i] += scaleFactor*scPower
+                                profile[i] += scaleFactor*scPower*self.penetration
                             except:
                                 continue
 
@@ -754,7 +755,8 @@ class EnergyPrediction:
                                                    chargeStart]
 
             for i in range(chargeStart,chargeEnd):
-                profile[i] += chargeProfile[i-chargeStart]*scaleFactor
+                profile[i] += chargeProfile[i-chargeStart]*scaleFactor*\
+                              self.penetration
 
 
             del chargeProfile
@@ -821,10 +823,10 @@ class EnergyPrediction:
         n = len(vehicles)
 
         if sampleScale == True:
-            scale = float(self.nVehicles)/(len(unused)+len(vehicles)) # This accounts for downsampling
+            scale = float(self.nVehicles*self.penetration)/(len(unused)+len(vehicles)) # This accounts for downsampling
         else:
-            scale = 1.0
-        pMax = pMax*scale
+            scale = self.penetration
+        pMax = pMax*scale*baseScale#added this
 
         for i in range(0,len(b)):
             b[i] = b[i]*scale#*0.000001
@@ -1074,7 +1076,7 @@ class NationalEnergyPrediction:
 class AreaEnergyPrediction:
 
     def __init__(self,region,ucPopulation,utPopulation,rtPopulation,
-                 rvPopulation,day,month,vehicle=None):
+                 rvPopulation,day,month,vehicle=None,penetration=1.0):
 
         # region:
 
@@ -1095,8 +1097,15 @@ class AreaEnergyPrediction:
         self.rtPopulation = float(rtPopulation)
         self.rvPopulation = float(rvPopulation)
 
+        self.penetration = penetration
+
         self.totalPopulation = ucPopulation + utPopulation + rtPopulation +\
                                rvPopulation
+
+        self.ucPer = float(ucPopulation)/self.totalPopulation
+        self.utPer = float(utPopulation)/self.totalPopulation
+        self.rtPer = float(rtPopulation)/self.totalPopulation
+        self.rvPer = float(rvPopulation)/self.totalPopulation
         
         if vehicle == None or vehicle == 'nissanLeaf':
             vehicle = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
@@ -1109,49 +1118,65 @@ class AreaEnergyPrediction:
         if ucPopulation > 0:
             self.uc = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='1')
-            self.ucScale = float(ucPopulation)/self.uc.nPeople
+            #self.ucScale = float(ucPopulation)/self.uc.nPeople
+            self.ucScale = float(self.totalPopulation)/self.uc.nPeople
         else:
             self.ucScale = 0.0
+            self.uc = None
 
             
         if utPopulation > 0:
             self.ut = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='2')
-            self.utScale = float(utPopulation)/self.ut.nPeople
+            #self.utScale = float(utPopulation)/self.ut.nPeople
+            self.utScale = float(self.totalPopulation)/self.ut.nPeople
         else:
             self.utScale = 0.0
+            self.ut = None
 
             
         if rtPopulation > 0:
             self.rt = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='3')
-            self.rtScale = float(rtPopulation)/self.rt.nPeople
+            #self.rtScale = float(rtPopulation)/self.rt.nPeople
+            self.rtScale = float(self.totalPopulation)/self.rt.nPeople
         else:
             self.rtScale = 0.0
+            self.rt = None
 
             
         if rvPopulation > 0:
             self.rv = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='4')
-            self.rvScale = float(rvPopulation)/self.rv.nPeople
+            #self.rvScale = float(rvPopulation)/self.rv.nPeople
+            self.rvScale = float(self.totalPopulation)/self.rv.nPeople
         else:
             self.rvScale = 0.0
+            self.rv = None
 
     def getNumberOfVehicles(self):
 
         numberVehicles = 0
 
         if self.ucPopulation > 0:
-            numberVehicles += self.uc.nVehicles*self.ucScale
+            #numberVehicles += self.uc.nVehicles*self.ucScale
+            ucVehicles = self.uc.nVehicles*self.ucScale
+            numberVehicles += ucVehicles*self.ucPer
 
         if self.utPopulation > 0:
-            numberVehicles += self.ut.nVehicles*self.utScale
+            #numberVehicles += self.ut.nVehicles*self.utScale
+            utVehicles = self.ut.nVehicles*self.utScale
+            numberVehicles += utVehicles*self.utPer
 
         if self.rtPopulation > 0:
-            numberVehicles += self.rt.nVehicles*self.rtScale
+            #numberVehicles += self.rt.nVehicles*self.rtScale
+            rtVehicles = self.rt.nVehicles*self.rtScale
+            numberVehicles += rtVehicles*self.rtPer
 
         if self.rvPopulation > 0:
-            numberVehicles += self.rv.nVehicles*self.rvScale
+            #numberVehicles += self.rv.nVehicles*self.rvScale
+            rvVehicles = self.rv.nVehicles*self.rvScale
+            numberVehicles += rvVehicles*self.rvPer
 
         return numberVehicles
 
@@ -1263,6 +1288,38 @@ class AreaEnergyPrediction:
         else:
             profiles = {'':{}}
 
+        areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
+        baseLoad = areaBase.getLoad(population=self.totalPopulation)
+
+        for key in profiles:
+            newBase = copy.copy(baseLoad)
+
+            if solar != None:
+                for i in range(0,len(newBase)):
+                    newBase[i] -= chosenProfiles[key][i]
+                    
+            scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
+            per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
+            sim = [self.uc,self.ut,self.rt,self.rv]
+
+            for i in range(0,4):
+                if scale[i] > 0:
+                    newProfiles = sim[i].getOptimalChargingProfiles(pMax,newBase,
+                                                                    baseScale=scale[i],
+                                                                    nHours=nHours,
+                                                                    pointsPerHour=pointsPerHour,
+                                                                    deadline=deadline,
+                                                                    perturbDeadline=perturbDeadline,
+                                                                    allowOverCap=allowOverCap)
+
+                    for vehicle in newProfiles:
+                        load = newProfiles[vehicle]
+                        for j in range(0,len(load)):
+                            load[j] = load[j]*per[i]
+                        profiles[key][vehicle] = load
+
+        '''
+
         if self.ucPopulation > 0:
             ucBase = BaseLoad(self.day,self.month,nHours,unit='k')
             ucBaseLoad = ucBase.getLoad(population=self.uc.nPeople)
@@ -1294,13 +1351,16 @@ class AreaEnergyPrediction:
             rvProfiles = {}
             rvBaseLoad = [0.0]*nHours*60
 
+
+
         for key in profiles:
             if 'ucBase' in locals():
                 newBase = copy.copy(ucBaseLoad)
                 if solar != None:
                     for i in range(0,len(newBase)):
-                        newBase[i] -= (chosenProfiles[key][i]/self.ucScale)*\
-                                      (self.ucPopulation/self.totalPopulation)
+                        newBase[i] -= (chosenProfiles[key][i]*\
+                                         self.utPopulation/self.totalPopulation)/\
+                                         self.utScale
                     
 
                 ucProfiles = self.uc.getOptimalChargingProfiles(pMax,newBase,
@@ -1324,6 +1384,10 @@ class AreaEnergyPrediction:
                         newBase[i] -= (chosenProfiles[key][i]*\
                                          self.utPopulation/self.totalPopulation)/\
                                          self.utScale
+                    if min(newBase) < 0:
+                        offset = copy.copy(min(newBase))*-1
+                        for i in range(0,len(newBase)):
+                            newBase[i] += offset
                     
 
                 utProfiles = self.ut.getOptimalChargingProfiles(pMax,newBase,
@@ -1347,6 +1411,10 @@ class AreaEnergyPrediction:
                         newBase[i] -= (chosenProfiles[key][i]*\
                                          self.rtPopulation/self.totalPopulation)/\
                                          self.rtScale
+                    if min(newBase) < 0:
+                        offset = copy.copy(min(newBase))*-1
+                        for i in range(0,len(newBase)):
+                            newBase[i] += offset
                     
 
                 rtProfiles = self.rt.getOptimalChargingProfiles(pMax,newBase,
@@ -1370,6 +1438,10 @@ class AreaEnergyPrediction:
                         newBase[i] -= (chosenProfiles[key][i]*\
                                          self.rvPopulation/self.totalPopulation)/\
                                          self.rvScale
+                    if min(newBase) < 0:
+                        offset = copy.copy(min(newBase))*-1
+                        for i in range(0,len(newBase)):
+                            newBase[i] += offset
                     
 
                 rvProfiles = self.rv.getOptimalChargingProfiles(pMax,newBase,
@@ -1387,11 +1459,13 @@ class AreaEnergyPrediction:
 
         totalBaseLoad = [0.0]*nHours*60
         for i in range(0,len(totalBaseLoad)):
-            totalBaseLoad[i] = ucBaseLoad[i]*self.ucScale+\
+            totalBaseLoad[i] = (ucBaseLoad[i]*self.ucScale+\
                                utBaseLoad[i]*self.utScale+\
                                rtBaseLoad[i]*self.rtScale+\
-                               rvBaseLoad[i]*self.rvScale
-        self.baseLoad = totalBaseLoad
+                               rvBaseLoad[i]*self.rvScale)
+
+        '''
+        self.baseLoad = baseLoad
 
         return profiles
                 

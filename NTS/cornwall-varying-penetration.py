@@ -19,11 +19,11 @@ months = {'1':'January','2':'February','3':'March','4':'April','5':'May',
 
 n = 4
 
-penetrationLevel = [1,0.3,0.1,0.03]
+penetrationLevel = [1.0]
 
 for level in penetrationLevel:
-    cornwall = AreaEnergyPrediction('9',0,level*205591,level*146060,
-                                    level*180622,'3',month,vehicle='teslaS60D')
+    cornwall = AreaEnergyPrediction('9',0,205591,146060,180622,'3',month,
+                                    vehicle='teslaS60D',penetration=level)
     print 'in this simulation I had',
     print cornwall.getNumberOfVehicles(),
     print 'vehicles'
@@ -33,27 +33,24 @@ for level in penetrationLevel:
                                                         pointsPerHour=pph,
                                                         allowOverCap=False)
     '''
-    smartProfiles2 = cornwall.getOptimalChargingProfiles(4,deadline=10,
-                                                         solar=solarData[month],
+    smartProfiles2 = cornwall.getOptimalChargingProfiles(7,deadline=10,#  solar=solarData[month],
                                                          perturbDeadline=True,
                                                          pointsPerHour=pph,
                                                          allowOverCap=False)
 
     #smartProfiles.update(smartProfiles2)
     smartProfiles = smartProfiles2
-    dumb = cornwall.getDumbChargingProfile(3.5,36,sCharge=False)
+    #dumb = cornwall.getDumbChargingProfile(3.5,36,sCharge=False)
 
     base = cornwall.baseLoad
-
-    for i in range(0,len(base)):
-        base[i] = float(base[i])/level
-
+    '''
     solar = {}
     for key in cornwall.solar:
         profile = cornwall.solar[key]
         for i in range(0,len(profile)):
             profile[i] = profile[i]/1000 # kW -> MW
         solar[key] = profile
+    '''
 
     smartProfile = {}
 
@@ -65,14 +62,14 @@ for level in penetrationLevel:
                 smartProfile[key][i] += smartProfiles[key][sprofile][i]
 
     for i in range(0,36*60):
-        dumb[i] += base[i]
+        #dumb[i] += base[i]
         if i%(60/pph) == 0:
             for key in smartProfile:
                 smartProfile[key][pph*i/60] += base[i]
 
     # convert from kW to MW
-    for i in range(0,len(dumb)):
-        dumb[i] = float(dumb[i])/1000
+    for i in range(0,36*60):
+        #dumb[i] = float(dumb[i])/1000
         base[i] = float(base[i])/1000
     for key in smartProfile:
         for i in range(0,len(smartProfile[key])):
@@ -91,12 +88,16 @@ for level in penetrationLevel:
     n -= 1
     for key in smartProfile:
         if key == '':
+            plt.plot(np.linspace(0+float(pph)/60,36+float(pph)/60,num=36*pph),
+                     smartProfile[key])
             continue
         plt.plot(np.linspace(0+float(pph)/60,36+float(pph)/60,num=36*pph),
                  smartProfile[key],color=clrs[key],label=EVlbls[key])
+        '''
     for key in solar:
         plt.plot(np.linspace(0,36,num=60*36),solar[key],ls='--',c=clrs[key],
                  label=lbls[key])
+                 '''
     plt.plot(np.linspace(0,36,num=60*36),base,c='k',ls=':',alpha=0.8,
              label='base load')
     plt.xlim(11,35)
