@@ -140,7 +140,7 @@ class EnergyPrediction:
         self.regionType = regionType
         self.region = region
         self.chargingEfficiency = 0.95
-        self.penetration = 1.0
+        self.penetration = penetration
 
         # first getting the region types
         
@@ -823,7 +823,7 @@ class EnergyPrediction:
         n = len(vehicles)
 
         if sampleScale == True:
-            scale = float(self.nVehicles*self.penetration)/(len(unused)+len(vehicles)) # This accounts for downsampling
+            scale = float(self.nVehicles)*self.penetration/(len(unused)+len(vehicles)) # This accounts for downsampling
         else:
             scale = self.penetration
         pMax = pMax*scale*baseScale#added this
@@ -854,8 +854,6 @@ class EnergyPrediction:
             arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
             departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
             departure += 24*pointsPerHour
-
-
 
             if deadline != None:
                 if departure > (24+deadline)*pointsPerHour:
@@ -1117,7 +1115,7 @@ class AreaEnergyPrediction:
         # run a simulation filtering for each of the region types
         if ucPopulation > 0:
             self.uc = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='1')
+                                       regionType='1',penetration=penetration)
             #self.ucScale = float(ucPopulation)/self.uc.nPeople
             self.ucScale = float(self.totalPopulation)/self.uc.nPeople
         else:
@@ -1127,7 +1125,7 @@ class AreaEnergyPrediction:
             
         if utPopulation > 0:
             self.ut = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='2')
+                                       regionType='2',penetration=penetration)
             #self.utScale = float(utPopulation)/self.ut.nPeople
             self.utScale = float(self.totalPopulation)/self.ut.nPeople
         else:
@@ -1137,7 +1135,7 @@ class AreaEnergyPrediction:
             
         if rtPopulation > 0:
             self.rt = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='3')
+                                       regionType='3',penetration=penetration)
             #self.rtScale = float(rtPopulation)/self.rt.nPeople
             self.rtScale = float(self.totalPopulation)/self.rt.nPeople
         else:
@@ -1147,7 +1145,7 @@ class AreaEnergyPrediction:
             
         if rvPopulation > 0:
             self.rv = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='4')
+                                       regionType='4',penetration=penetration)
             #self.rvScale = float(rvPopulation)/self.rv.nPeople
             self.rvScale = float(self.totalPopulation)/self.rv.nPeople
         else:
@@ -1297,6 +1295,16 @@ class AreaEnergyPrediction:
             if solar != None:
                 for i in range(0,len(newBase)):
                     newBase[i] -= chosenProfiles[key][i]
+
+                    #if newBase[i] < 0:
+                    #    newBase[i] = 0
+                if min(newBase) < 0:
+                    offset = -1*min(newBase)+0.01
+                    print 'I HAVE AN OFFSET'
+                    print 'it is: ',
+                    print offset
+                    for i in range(0,len(newBase)):
+                        newBase[i] + offset
                     
             scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
             per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
