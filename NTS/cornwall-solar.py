@@ -23,16 +23,31 @@ n = 1
 for month in simulationMonth:
     cornwall = AreaEnergyPrediction('9',0,205591,146060,180622,'3',month,
                                     vehicle='teslaS60D')
-    
-    smartProfiles = cornwall.getOptimalChargingProfiles(7,deadline=10,
+    '''
+    smartProfiles = cornwall.getOptimalChargingProfiles(7,deadline=None,
                                                         perturbDeadline=True,
                                                         pointsPerHour=pph,
                                                         allowOverCap=False)
+    '''
+    smartProfiles2 = cornwall.getOptimalChargingProfiles(7,deadline=10,
+                                                         solar=solarData[month],
+                                                         perturbDeadline=True,
+                                                         pointsPerHour=pph,
+                                                         allowOverCap=False)
 
-
+    #smartProfiles.update(smartProfiles2)
+    smartProfiles = smartProfiles2
     dumb = cornwall.getDumbChargingProfile(3.5,36,sCharge=False)
 
     base = cornwall.baseLoad
+
+    solar = {}
+    net = {}
+    for key in cornwall.solar:
+        profile = cornwall.solar[key]
+        for i in range(0,len(profile)):
+            profile[i] = -1.0*profile[i]/1000 # kW -> MW
+        solar[key] = profile
 
     smartProfile = {}
 
@@ -43,7 +58,7 @@ for month in simulationMonth:
             for i in range(0,len(smartProfiles[key][sprofile])):
                 smartProfile[key][i] += smartProfiles[key][sprofile][i]
 
-
+    '''
 
     for i in range(0,36*60):
         dumb[i] += base[i]
@@ -51,38 +66,50 @@ for month in simulationMonth:
             for key in smartProfile:
                 smartProfile[key][pph*i/60] += base[i]
 
-
+    '''
 
     # convert from kW to MW
     for i in range(0,len(dumb)):
         dumb[i] = float(dumb[i])/1000
         base[i] = float(base[i])/1000
     for key in smartProfile:
+        net[key] = []
         for i in range(0,len(smartProfile[key])):
             smartProfile[key][i] = float(smartProfile[key][i])/1000
+            net[key].append(solar[key][i*60/pph]+base[i*60/pph]+smartProfile[key][i])
 
-    x_ticks = ['08:00\nWed','14:00','20:00','02:00','08:00\nThu']
-    x = np.arange(8,38,6)
+    x_ticks = ['12:00\nWed','15:00','18:00','21:00','00:00\nThu','03:00','06:00',
+               '09:00']
+    x = np.arange(12,36,3)
 
     clrs = {'h':'#f49842','m':'#83e041','l':'#4286f4'}
+    lbls = {'h':'Solar Generation (H)','m':'Solar Generation (M)',
+            'l':'Solar Generation (L)'}
+    EVlbls = {'h':'EV Demand (H)','m':'EV Demand (M)',
+              'l':'EV Demand (L)'}
+    netlbls = {'h':'Net Demand (H)','m':'Net Demand (M)','l':'Net Demand (L)'}
     plt.figure(1)
     plt.rcParams["font.family"] = 'serif'
     plt.subplot(2,2,n)
     n += 1
-    plt.plot(np.linspace(0,36,num=60*36),base,c='g',ls=':',
-             label='Base Load')
-    plt.plot(np.linspace(0,36,num=60*36),dumb,label='Uncontrolled Charging')
     for key in smartProfile:
         if key == '':
-            plt.plot(np.linspace(0+float(pph)/60,36+float(pph)/60,num=36*pph),
-                 smartProfile[key],ls='--',label='Controlled Charging')
-    plt.xlim(6,34)
+            continue
+        plt.plot(np.linspace(0+float(pph)/60,36+float(pph)/60,num=36*pph),
+                 smartProfile[key],color=clrs[key],label=EVlbls[key])
+    for key in solar:
+        plt.plot(np.linspace(0,36,num=60*36),solar[key],ls='--',c=clrs[key],
+                 label=lbls[key])
+        plt.plot(np.linspace(0,36,num=36*pph),net[key],color=clrs[key],ls=':',label=netlbls[key])
+    plt.plot(np.linspace(0,36,num=60*36),base,c='k',ls=':',alpha=0.8,
+             label='Base Load')
+    plt.xlim(11,35)
     plt.xticks(x,x_ticks)
     plt.ylabel('Power (MW)')
-    plt.ylim(150,800)
-    plt.title(months[month],y=0.85)
+    plt.ylim(-500,550)
+    plt.title(months[month],y=0.9)
     if n == 2:
-        plt.legend(ncol=3,loc=[-0.3,1.1])
+        plt.legend(ncol=5,loc=[-0.2,1.1])
     plt.grid()
 
 '''

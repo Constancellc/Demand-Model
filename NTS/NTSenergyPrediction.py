@@ -1179,7 +1179,10 @@ class AreaEnergyPrediction:
         return numberVehicles
 
 
-    def getDumbChargingProfile(self,power,nHours,sCharge=True):
+    def getDumbChargingProfile(self,power,nHours,sCharge=True,
+                               highUseHomeCharging=False,
+                               highUseWorkCharging=False,
+                               highUseShopsCharging=False):
 
         self.nHours = nHours
 
@@ -1187,9 +1190,9 @@ class AreaEnergyPrediction:
             ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.ucScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=highUseHomeCharging,
+                                                       highUseWorkCharging=highUseWorkCharging,
+                                                       highUseShopCharging=highUseShopsCharging)
         else:
             ucProfile = [0.0]*nHours*60
             
@@ -1197,9 +1200,9 @@ class AreaEnergyPrediction:
             utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.utScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=highUseHomeCharging,
+                                                       highUseWorkCharging=highUseWorkCharging,
+                                                       highUseShopCharging=highUseShopsCharging)
         else:
             utProfile = [0.0]*nHours*60
             
@@ -1207,9 +1210,9 @@ class AreaEnergyPrediction:
             rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.rtScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=highUseHomeCharging,
+                                                       highUseWorkCharging=highUseWorkCharging,
+                                                       highUseShopCharging=highUseShopsCharging)
         else:
             rtProfile = [0.0]*nHours*60
             
@@ -1217,9 +1220,9 @@ class AreaEnergyPrediction:
             rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.rvScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=highUseHomeCharging,
+                                                       highUseWorkCharging=highUseWorkCharging,
+                                                       highUseShopCharging=highUseShopsCharging)
         else:
             rvProfile = [0.0]*nHours*60
             
@@ -1227,8 +1230,8 @@ class AreaEnergyPrediction:
         dumbProfile = []
 
         for i in range(0,nHours*60):
-           dumbProfile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
-                               rvProfile[i])
+           dumbProfile.append(ucProfile[i]*self.ucPer+utProfile[i]*self.utPer+\
+                              rtProfile[i]*self.rtPer+rvProfile[i]*self.rvPer)
 
         return dumbProfile
 
@@ -1296,8 +1299,9 @@ class AreaEnergyPrediction:
                 for i in range(0,len(newBase)):
                     newBase[i] -= chosenProfiles[key][i]
 
-                    #if newBase[i] < 0:
-                    #    newBase[i] = 0
+                    if newBase[i] <= 0:
+                        newBase[i] = 0.01
+                '''
                 if min(newBase) < 0:
                     offset = -1*min(newBase)+0.01
                     print 'I HAVE AN OFFSET'
@@ -1305,6 +1309,7 @@ class AreaEnergyPrediction:
                     print offset
                     for i in range(0,len(newBase)):
                         newBase[i] + offset
+                '''
                     
             scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
             per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
