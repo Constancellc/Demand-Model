@@ -1,17 +1,23 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
-from NTSvehicleLocation import LocationPrediction
+from NTSenergyPrediction import NationalEnergyPrediction, NationalEnergyPrediction2
 
-test = LocationPrediction('3',month='5')
-locations = test.getVehicleLocations()
-p = test.getPAvaliableToCharge()
+old = NationalEnergyPrediction('3','1')
+oldPro = old.getNationalOptimalChargingProfiles(4)
+new = NationalEnergyPrediction2('3','1')
+newPro = new.getOptimalChargingProfiles(4)
+
+oldSummed = [0.0]*36
+for vehicle in oldPro:
+    for i in range(0,36):
+        oldSummed[i] += oldPro[vehicle][i]
+newSummed = [0.0]*36
+for vehicle in newPro['']:
+    for i in range(0,36):
+        newSummed[i] += newPro[''][vehicle][i]/1000000
 
 plt.figure(1)
-for l in locations:
-    plt.plot(locations[l][24*60:],label=l)
-plt.legend()
-
-plt.figure(2)
-plt.plot(p)
-plt.ylim(0,1)
+plt.plot(oldSummed)
+plt.plot(newSummed)
 plt.show()

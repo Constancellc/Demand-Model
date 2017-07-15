@@ -8,6 +8,7 @@ import numpy as np
 # these are the csv files containing the data
 # households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
+households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 
 class LocationPrediction:
 
@@ -21,22 +22,42 @@ class LocationPrediction:
         self.regionType = regionType
         self.region = region
 
+        if regionType is not None or region is not None:
+            self.reg2 = {} # 1:uc, 2:ut, 3:rt, 4:rv, 5:scotland
+
+            self.reg3 = {} # 1:NE, 2:NW, 3:Y+H, 4:EM, 5:WM, 6:E, 7:L, 8:SE, 9:SW,
+                      # 10: Wales, 11: Scotland
+                      
         # setting up counters which will be used to scale predictions
         self.nVehicles = 0
 
         self.tripLog = {}
+
+        if regionType is not None or region is not None:
+
+            with open(households,'rU') as csvfile:
+                reader = csv.reader(csvfile,delimiter='\t')
+                reader.next()
+                for row in reader:
+
+                    if month is not None:
+                        if row[9] != month:
+                            continue
+
+                    if row[0] not in self.reg2:
+                        self.reg2[row[0]] = row[149]
+                        self.reg3[row[0]] = row[28]
         
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
             reader.next()
             for row in reader:
-
                 
                 if month is not None:
                     if row[6] != self.month:
                         continue
-
-                if self.regionType is not None:
+                    
+                if regionType is not None:                   
                     if self.reg2[row[1]] != self.regionType:
                         continue
 
@@ -132,19 +153,100 @@ class LocationPrediction:
 
         newLocations = {}
 
-        newLocations['home'] = locations['23']
-        newLocations['work'] = locations['1']
+        newLocations['home'] = locations['23'][24*60:]
+        newLocations['work'] = locations['1'][24*60:]
 
         # combine the two types of shopping
         for i in range(0,48*60):
             locations['4'][i] += locations['5'][i]
 
-        newLocations['shops'] = locations['4']
+        newLocations['shops'] = locations['4'][24*60:]
 
         if showTransit == True:
-            newLocations['in transit'] = locations['0']
+            newLocations['in transit'] = locations['0'][24*60:]
 
         return newLocations
+
+    def getPHome(self,nHours,pointsPerHour):
+
+        locations = self.getVehicleLocations()
+
+        home = locations['home']
+        
+        if nHours > 24 and nHours < 48:
+            home += home[:(nHours-24)*60]
+        elif nHours > 48:
+            for i in range(0,(nHours-24)/24):
+                home += home
+            home += home[:((nHours-24)%24)*60]
+
+        # now downsample
+
+        newHome = []
+
+        for i in range(0,nHours*pointsPerHour):
+            av = 0.0
+
+            for j in range(0,60/pointsPerHour):
+                av += float(home[(i*60/pointsPerHour)+j])
+
+            newHome.append(av/(60/pointsPerHour))
+
+        return newHome
+
+    def getPFinished(self,nHours,pointsPerHour,deadline=9):
+        tripEnds = [0]*48*60
+        for vehicle in self.tripLog:
+            log = self.tripLog[vehicle]
+
+            if log == []:
+                continue
+
+            if log[-1][2] == '23':
+                finalTripEnd = log[-1][1]-24*60
+
+                if finalTripEnd < 0: # no trips on day concerned
+                    continue
+
+            else:
+                continue
+            
+            for i in range(finalTripEnd,48*60):
+                tripEnds[i] += 1
+
+        # deadline day 1 - deadline day 2
+        tripEnds = tripEnds[deadline*60:(deadline+24)*60]
+
+        # and shift so midnight to midnight
+        tripEnds = tripEnds[(24-deadline)*60:] + tripEnds[:(24-deadline)*60]
+
+        # make right length
+        if nHours > 24 and nHours < 48:
+            tripEnds += tripEnds[:(nHours-24)*60]
+        elif nHours > 48:
+            for i in range(0,(nHours-24)/24):
+                tripEnds += tripEnds
+            tripEnds += tripEnds[:((nHours-24)%24)*60]
+
+        # now downsample
+        newP = []
+
+        for i in range(0,nHours*pointsPerHour):
+            av = 0.0
+
+            for j in range(0,60/pointsPerHour):
+                av += float(tripEnds[(i*60/pointsPerHour)+j])
+
+            newP.append(av/(60/pointsPerHour))
+
+        
+        # and nornalise
+        p = []
+        total = float(max(newP))#*(24/float(nHours))
+        for i in range(0,nHours*pointsPerHour):
+            p.append(float(newP[i])/total)
+
+        return p
 
     def getPAvaliableToCharge(self,smooth=True):
 

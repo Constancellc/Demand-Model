@@ -6,6 +6,8 @@ import csv
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
 
+# psuedo optimal vs optimal individual vehicles comparison
+
 day = '3'
 month = '1'
 

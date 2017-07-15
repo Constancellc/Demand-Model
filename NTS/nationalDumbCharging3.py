@@ -48,7 +48,7 @@ pointsPerHour = 1
 
 shortfalls = {}
 
-for month in ['1','7']:#,'4','7','10']:
+for month in ['1']:#,'4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
  #   shortfalls[month] = run.getNationalMissingCapacity()
@@ -84,10 +84,15 @@ for month in ['1','7']:#,'4','7','10']:
 
         # baseLoad is in GW
 
-    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,baseLoad)
+    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,baseLoad,
+                                                       deadline=10)
+    smartProfile2 = run.getNationalPsuedoOptimalProfile(4.0,baseLoad,
+                                                        deadline=10,
+                                                        weighted=False)
 
     
     smartProfiles = run.getNationalOptimalChargingProfiles(72.0,baseLoad,
+                                                           deadline=10,
                                                            pointsPerHour=pointsPerHour)
 
     summed = [0.0]*36
@@ -99,6 +104,7 @@ for month in ['1','7']:#,'4','7','10']:
     for i in range(0,len(baseLoad)):
         dumbProfile[i] += baseLoad[i]
         smartProfile[i] += baseLoad[i]
+        smartProfile2[i] += baseLoad[i]
         if i%60 == 0:
             summed[i/60] += baseLoad[i]
 
@@ -106,19 +112,20 @@ for month in ['1','7']:#,'4','7','10']:
         plt.figure(i)   
         plt.rcParams["font.family"] = 'serif'
         #plt.subplot(2,2,plotMonths[month])
-        plt.subplot(1,2,plotMonths[month])
+        #plt.subplot(1,2,plotMonths[month])
         plt.plot(t,baseLoad,ls=':',c='g',label='Base Load')
         if i > 1:
             plt.plot(t,dumbProfile,label='Uncontrolled Charging')
             if i > 2:
-                plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
+                plt.plot(t,smartProfile,ls='-.',c='b',label='Weighted Psuedo')
+                plt.plot(t,smartProfile2,ls='-.',c='r',label='Pusedo')
                 #plt.plot(summed,ls='--',label='Optimal')
                 if i > 3:
                     plt.plot(summed,ls='--',label='Optimal')
                     #plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
         if month == '1':
-            #plt.legend(loc=[-0.2,1.1],ncol=3)
-            plt.legend(loc=[0.1,1.05],ncol=2)
+            plt.legend(loc=[-0.2,1.1],ncol=3)
+#            plt.legend(loc=[0.1,1.05],ncol=2)
 #           plt.legend(loc=[-0.1,1.05],ncol=2)
 
         plt.grid()
