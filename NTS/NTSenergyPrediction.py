@@ -492,8 +492,8 @@ class EnergyPrediction:
               
                 
     def getDumbChargingProfile(self,power,tmax,scaleFactor=1,logOutofCharge=True,
-                               highUseHomeCharging=True,highUseWorkCharging=True,
-                               highUseShopCharging=True, scalePerHousehold=False,
+                               highUseHomeCharging=False,highUseWorkCharging=False,
+                               highUseShopCharging=False, scalePerHousehold=False,
                                scalePerVehicle=False,scalePerPerson=False,
                                superCharge=False,individuals=[]):
         # power: the charging power in kW
@@ -931,195 +931,6 @@ class EnergyPrediction:
             profiles[unused[i]] = [0.0]*t
 
         return profiles
-
-class NationalEnergyPrediction:
-
-    def __init__(self,day,month,vehicle=None):
-
-        self.day = day
-        self.month = month
-
-        if vehicle == None:
-            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
-            vehicle = nissanLeaf
-
-        self.ukPopulation = 64100000
-        
-        self.breakdown = [0.369,0.446,0.092,0.0093] # region type pdf
-
-        # run a simulation filtering for each of the region types
-        self.uc = EnergyPrediction(day,month,nissanLeaf,regionType='1')
-        self.ut = EnergyPrediction(day,month,nissanLeaf,regionType='2')
-        self.rt = EnergyPrediction(day,month,nissanLeaf,regionType='3')
-        self.rv = EnergyPrediction(day,month,nissanLeaf,regionType='4')
-
-        # find the scale required to get a representative population
-        ucScale = float(self.ukPopulation)*self.breakdown[0]/self.uc.nPeople
-        utScale = float(self.ukPopulation)*self.breakdown[1]/self.ut.nPeople
-        rtScale = float(self.ukPopulation)*self.breakdown[2]/self.rt.nPeople
-        rvScale = float(self.ukPopulation)*self.breakdown[3]/self.rv.nPeople
-
-        self.ucScale = ucScale/1000000 # kW -> GW
-        self.utScale = utScale/1000000 # kW -> GW
-        self.rtScale = rtScale/1000000 # kW -> GW
-        self.rvScale = rvScale/1000000 # kW -> GW
-
-    def getNationalDumbChargingProfile(self,power,nHours,sCharge=True):
-
-        self.nHours = nHours
-
-        # get the scaled dumb charging profiles
-        ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.ucScale,
-                                                   superCharge=sCharge)
-        utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.utScale,
-                                                   superCharge=sCharge)
-        rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.rtScale,
-                                                   superCharge=sCharge)
-        rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
-                                                   scaleFactor=self.rvScale,
-                                                   superCharge=sCharge)
-
-        dumbProfile = []
-
-        for i in range(0,len(ucProfile)):
-            dumbProfile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
-                               rvProfile[i])
-
-        return dumbProfile
-
-    def getNationalMissingCapacity(self):
-
-        try:
-            nHours = self.nHours
-        except:
-            raise Exception('please run getNationalDumbChargingProfile first')
-
-        ucMissingCapacity = self.uc.getMissingCapacity(nHours)
-        utMissingCapacity = self.ut.getMissingCapacity(nHours)
-        rtMissingCapacity = self.rt.getMissingCapacity(nHours)
-        rvMissingCapacity = self.rv.getMissingCapacity(nHours)
-
-        missingCapacity = []
-
-        for i in range(0,len(ucMissingCapacity)):
-            missingCapacity.append(ucMissingCapacity[i]*1000+
-                                   utMissingCapacity[i]*1000+
-                                   rtMissingCapacity[i]*1000+
-                                   rvMissingCapacity[i]*1000)
-            # unit of thousands of vehicles (I think)
-
-        return missingCapacity
-
-    def getNationalPsuedoOptimalProfile(self,pMax,nHours=36,weighted=True,
-                                        deadline=9):
-
-        try:
-            baseLoad = self.baseLoad
-        except:
-            nationalProfile = BaseLoad(self.day,self.month,nHours,unit='G')
-            baseLoad = nationalProfile.getLoad(population=self.ukPopulation)
-
-            self.baseLoad = baseLoad
-        
-        # get the scaled charging profiles
-        ucProfile = self.uc.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                    scaleFactor=self.ucScale,
-                                                    weighted=weighted,
-                                                    deadline=deadline)
-        utProfile = self.ut.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                   scaleFactor=self.utScale,
-                                                    weighted=weighted,
-                                                    deadline=deadline)
-        rtProfile = self.rt.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                   scaleFactor=self.rtScale,
-                                                    weighted=weighted,
-                                                    deadline=deadline)
-        rvProfile = self.rv.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                   scaleFactor=self.rvScale,
-                                                    weighted=weighted,
-                                                    deadline=deadline)
-
-        profile = []
-
-        for i in range(0,len(ucProfile)):
-            profile.append(ucProfile[i]+utProfile[i]+rtProfile[i]+
-                               rvProfile[i])
-
-        return profile
-
-    def getNationalOptimalChargingProfiles(self,pMax,nHours=36,
-                                           pointsPerHour=1,deadline=None):
-
-        try:
-            baseLoad = self.baseLoad
-        except:
-            nationalProfile = BaseLoad(self.day,self.month,nHours,unit='G')
-            baseLoad = nationalProfile.getLoad(population=self.ukPopulation)
-
-            self.baseLoad = baseLoad
-
-        profiles = {}
-
-        ucBaseScale = float(self.ukPopulation)/(self.uc.nPeople*1000000)
-        utBaseScale = float(self.ukPopulation)/(self.ut.nPeople*1000000)
-        rtBaseScale = float(self.ukPopulation)/(self.rt.nPeople*1000000)
-        rvBaseScale = float(self.ukPopulation)/(self.rv.nPeople*1000000)
-
-        ucProfiles = self.uc.getOptimalChargingProfiles(pMax,baseLoad,
-                                                        baseScale=ucBaseScale,
-                                                        nHours=nHours,
-                                                        pointsPerHour=1,
-                                                        deadline=deadline)
-
-        utProfiles = self.ut.getOptimalChargingProfiles(pMax,baseLoad,
-                                                        baseScale=utBaseScale,
-                                                        nHours=nHours,
-                                                        pointsPerHour=1,
-                                                        deadline=deadline)
-
-        rtProfiles = self.rt.getOptimalChargingProfiles(pMax,baseLoad,
-                                                        baseScale=rtBaseScale,
-                                                        nHours=nHours,
-                                                        pointsPerHour=1,
-                                                        deadline=deadline)
-
-        rvProfiles = self.rv.getOptimalChargingProfiles(pMax,baseLoad,
-                                                        baseScale=rvBaseScale,
-                                                        nHours=nHours,
-                                                        pointsPerHour=1,
-                                                        deadline=deadline)
-
-        for vehicle in ucProfiles:
-            load = ucProfiles[vehicle]
-            for i in range(0,len(load)):
-                load[i] = load[i]*self.breakdown[0]
-            profiles[vehicle] = load
-
-            
-        for vehicle in utProfiles:
-            load = utProfiles[vehicle]
-            for i in range(0,len(load)):
-                load[i] = load[i]*self.breakdown[1]
-            profiles[vehicle] = load
-
-            
-        for vehicle in rtProfiles:
-            load = rtProfiles[vehicle]
-            for i in range(0,len(load)):
-                load[i] = load[i]*self.breakdown[2]
-            profiles[vehicle] = load
-
-            
-        for vehicle in rvProfiles:
-            load = rvProfiles[vehicle]
-            for i in range(0,len(load)):
-                load[i] = load[i]*self.breakdown[3]
-            profiles[vehicle] = load
-        
-        return profiles
         
 class AreaEnergyPrediction:
 
@@ -1428,8 +1239,34 @@ class AreaEnergyPrediction:
                         profiles[key][vehicle] = load
 
         return profiles
+    
+    def getMissingCapacity(self):
+
+        try:
+            nHours = self.nHours
+        except:
+            raise Exception('please run get DumbChargingProfile first')
+
+        scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
+        per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
+        sim = [self.uc,self.ut,self.rt,self.rv]
+
+        missingCapacity = [0.0]*100
+
+        for i in range(0,4):
+            if scale[i] > 0:
+                mc = sim[i].getMissingCapacity(nHours)
+
+                for j in range(0,len(missingCapacity)):
+                    try:
+                        missingCapacity[j] += mc[j]*per[i]
+                    except:
+                        missingCapacity.append(mc[j]*per[i])
+
+
+        return missingCapacity
                 
-class NationalEnergyPrediction2(AreaEnergyPrediction):
+class NationalEnergyPrediction(AreaEnergyPrediction):
 
     def __init__(self,day,month,vehicle=None,penetration=1.0):
         AreaEnergyPrediction.__init__(self,None,24037000,29052000,5993000,
