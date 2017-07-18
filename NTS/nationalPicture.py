@@ -21,7 +21,7 @@ x = np.linspace(8,32,num=5)
 my_xticks = ['08:00 \n Wed','14:00','20:00','02:00','08:00 \n Thu']
 
 for month in ['1','4','7','10']:
-    run = NationalEnergyPrediction2(day,month)
+    run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getDumbChargingProfile(3.5,nHours) # kW
     smart = run.getOptimalChargingProfiles(4,deadline=9)
 
@@ -37,8 +37,8 @@ for month in ['1','4','7','10']:
         dumbProfile[i] = dumbProfile[i]/1000000 # kW -> GW
 
         if i%(60/pointsPerHour) == 0:
-            smartProfile[i*pointsPerHour/60] += base[i]
-            smartProfile[i*pointsPerHour/60] = smartProfile[i*pointsPerHour/60]\
+            smartProfile[int(i*pointsPerHour/60)] += base[i]
+            smartProfile[int(i*pointsPerHour/60)] = smartProfile[int(i*pointsPerHour/60)]\
                                                /1000000 # kW -> GW
         base[i] = base[i]/1000000 # kW -> GW
 

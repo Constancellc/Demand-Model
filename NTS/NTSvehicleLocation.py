@@ -37,7 +37,7 @@ class LocationPrediction:
 
             with open(households,'rU') as csvfile:
                 reader = csv.reader(csvfile,delimiter='\t')
-                reader.next()
+                next(reader)
                 for row in reader:
 
                     if month is not None:
@@ -50,7 +50,7 @@ class LocationPrediction:
         
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
-            reader.next()
+            next(reader)
             for row in reader:
                 
                 if month is not None:
@@ -136,7 +136,7 @@ class LocationPrediction:
                         try:
                             locations[purpose][i] += 1
                         except:
-                            print i
+                            print(i)
                             continue
                 else:
                     for i in range(log[n][1],log[n+1][0]):
@@ -231,11 +231,11 @@ class LocationPrediction:
         # now downsample
         newP = []
 
-        for i in range(0,nHours*pointsPerHour):
+        for i in range(0,int(nHours*pointsPerHour)):
             av = 0.0
 
-            for j in range(0,60/pointsPerHour):
-                av += float(tripEnds[(i*60/pointsPerHour)+j])
+            for j in range(0,int(60/pointsPerHour)):
+                av += float(tripEnds[int((i*60/pointsPerHour)+j)])
 
             newP.append(av/(60/pointsPerHour))
 
@@ -243,7 +243,7 @@ class LocationPrediction:
         # and nornalise
         p = []
         total = float(max(newP))#*(24/float(nHours))
-        for i in range(0,nHours*pointsPerHour):
+        for i in range(0,int(nHours*pointsPerHour)):
             p.append(float(newP[i])/total)
 
         return p

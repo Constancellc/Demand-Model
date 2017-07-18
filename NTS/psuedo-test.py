@@ -7,7 +7,7 @@ from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction, BaseLoad
 
 day = '3'
-month = '7'
+month = '6'
 '''
 run = EnergyPrediction(day,month=month,region='8')
 
@@ -20,8 +20,8 @@ psuedoW = run.getPsuedoOptimalProfile(4,base)
 '''
 run = NationalEnergyPrediction(day,month)
 
-psuedo = run.getNationalPsuedoOptimalProfile(4,weighted=False)
-psuedoW = run.getNationalPsuedoOptimalProfile(4)
+psuedo = run.getPsuedoOptimalProfile(4,weighted=False)
+psuedoW = run.getPsuedoOptimalProfile(4)
 
 base = run.baseLoad
 
@@ -29,7 +29,10 @@ base = run.baseLoad
 
 for i in range(0,len(base)):
     psuedo[i] += base[i]
+    psuedo[i] = psuedo[i]/1000000
     psuedoW[i] += base[i]
+    psuedoW[i] = psuedoW[i]/1000000
+    base[i] = base[i]/1000000
 
 t = np.linspace(0,36,num=36*60)
 x = np.arange(10,38,4)

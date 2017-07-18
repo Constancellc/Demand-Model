@@ -161,7 +161,7 @@ class EnergyPrediction:
 
         with open(households,'rU') as csvfile:
             reader = csv.reader(csvfile,delimiter='\t')
-            reader.next()
+            next(reader)
             for row in reader:
 
                 if month is not None:
@@ -206,7 +206,7 @@ class EnergyPrediction:
 
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
-            reader.next()
+            next(reader)
             for row in reader:
                 
                 if month is not None:
@@ -294,7 +294,7 @@ class EnergyPrediction:
 
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
-            reader.next()
+            next(reader)
             for row in reader:
                 if row[5] != nextDay[self.day]:
                     continue
@@ -510,7 +510,7 @@ class EnergyPrediction:
             self.outOfChargeLog = {}
 
         if tmax < 24*60:
-            print 'please choose a simulation length greater than a day'
+            print('please choose a simulation length greater than a day')
             tmax = 24*60
 
         profile = [0.0]*tmax
@@ -672,10 +672,10 @@ class EnergyPrediction:
             for i in range(0,tmax):
                 profile[i] = profile[i]/self.nPeople
 
-        print self.nOutOfCharge,
-        print ' out of '
-        print self.nVehicles
-        print ' vehicles ran out of charge'
+        print(self.nOutOfCharge,end='')
+        print(' out of ',end='')
+        print(self.nVehicles,end='')
+        print(' vehicles ran out of charge')
 
         if individuals != []:
             return profile, individualProfiles
@@ -699,8 +699,8 @@ class EnergyPrediction:
             try:
                 extraRequirements[int(extraCapacity)] += self.dumbScaleFactor
             except:
-                 print vehicle,
-                 print extraCapacity
+                 print(vehicle,end='')
+                 print(extraCapacity)
                  
         return extraRequirements
 
@@ -748,22 +748,27 @@ class EnergyPrediction:
         
         for vehicle in self.energy:
             kWh = self.energy[vehicle]*scaleFactor/self.chargingEfficiency
-            chargeStart = self.endTimes[vehicle]
-            chargeEnd = self.startTimes[vehicle]+24*pointsPerHour
+            chargeStart = int(self.endTimes[vehicle])
+            chargeEnd = int(self.startTimes[vehicle]+24*pointsPerHour)
 
             if chargeEnd >= (24+deadline)*pointsPerHour:
-                chargeEnd = (24+deadline)*pointsPerHour-1
+                chargeEnd = int((24+deadline)*pointsPerHour-1)
 
             chargeProfile = copy.copy(target)
             
-            chargeProfile = chargeProfile[chargeStart:chargeEnd]
+            try:
+                chargeProfile = chargeProfile[chargeStart:chargeEnd]
+            except:
+                print(chargeStart)
+                print(chargeEnd)
+                continue
 
             try:
                 energySF = kWh/(sum(chargeProfile)/pointsPerHour)
             except:
-                print chargeStart
-                print chargeEnd
-                print kWh
+                print(chargeStart)
+                print(chargeEnd)
+                print(kWh)
                 continue
 
             for i in range(0,len(chargeProfile)):
@@ -826,8 +831,8 @@ class EnergyPrediction:
                     unused += [vehicle]
                     continue
                 if self.energy[vehicle] >= self.car.capacity:
-                    print self.energy[vehicle],
-                    print ' is higher than battery capacity'
+                    print(self.energy[vehicle],end='')
+                    print(' is higher than battery capacity')
                     if allowOverCap == True:
                         b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
                     else:
@@ -858,7 +863,7 @@ class EnergyPrediction:
             newBaseLoad = []
             
             for i in range(0,t):
-                newBaseLoad.append(baseLoad[i*f])
+                newBaseLoad.append(baseLoad[int(i*f)])
             baseLoad = newBaseLoad
             
         elif len(baseLoad) < t:
@@ -884,7 +889,7 @@ class EnergyPrediction:
 
                         # check if constraint is feasible
             if (departure-arrival)*pMax < b[j]:
-                print 'i have found an infeasible constraint'
+                print('i have found an infeasible constraint')
                 b[j] = (departure-arrival)*pMax
             
             for i in range(0,t):
@@ -1212,9 +1217,9 @@ class AreaEnergyPrediction:
                     #    newBase[i] = 0
                 if min(newBase) < 0:
                     offset = -1*min(newBase)+0.01
-                    print 'I HAVE AN OFFSET'
-                    print 'it is: ',
-                    print offset
+                    print('I HAVE AN OFFSET')
+                    print('it is: ',end='')
+                    print(offset)
                     for i in range(0,len(newBase)):
                         newBase[i] + offset
                     
