@@ -50,7 +50,7 @@ shortfalls = {}
 
 for month in ['1']:#,'4','7','10']:
     run = NationalEnergyPrediction(day,month)
-    dumbProfile = run.getNationalDumbChargingProfile(3.5,nHours) # GW
+    dumbProfile = run.getDumbChargingProfile(3.5,nHours) # GW
  #   shortfalls[month] = run.getNationalMissingCapacity()
 
     # getting the baseLoad to compare against
@@ -84,29 +84,26 @@ for month in ['1']:#,'4','7','10']:
 
         # baseLoad is in GW
 
-    smartProfile = run.getNationalPsuedoOptimalProfile(4.0,baseLoad,
-                                                       deadline=10)
-    smartProfile2 = run.getNationalPsuedoOptimalProfile(4.0,baseLoad,
-                                                        deadline=10,
-                                                        weighted=False)
+    #smartProfile = run.getPsuedoOptimalProfile(4.0,baseLoad,
+#                                                       deadline=10)
+    smartProfile = run.getPsuedoOptimalProfile(4.0,deadline=10,weighted=False)
 
     
-    smartProfiles = run.getNationalOptimalChargingProfiles(72.0,baseLoad,
-                                                           deadline=10,
-                                                           pointsPerHour=pointsPerHour)
+    smartProfiles = run.getOptimalChargingProfiles(72.0,deadline=10,
+                                                   pointsPerHour=pointsPerHour)
 
     summed = [0.0]*36
-    for vehicle in smartProfiles:
+    for vehicle in smartProfiles['']:
         for i in range(0,len(summed)):
-            summed[i] += smartProfiles[vehicle][i]
+            summed[i] += smartProfiles[''][vehicle][i]
     
     
     for i in range(0,len(baseLoad)):
         dumbProfile[i] += baseLoad[i]
         smartProfile[i] += baseLoad[i]
-        smartProfile2[i] += baseLoad[i]
+        #smartProfile2[i] += baseLoad[i]
         if i%60 == 0:
-            summed[i/60] += baseLoad[i]
+            summed[int(i/60)] += baseLoad[i]
 
     for i in range(1,5):
         plt.figure(i)   
@@ -117,15 +114,15 @@ for month in ['1']:#,'4','7','10']:
         if i > 1:
             plt.plot(t,dumbProfile,label='Uncontrolled Charging')
             if i > 2:
-                plt.plot(t,smartProfile,ls='-.',c='b',label='Weighted Psuedo')
-                plt.plot(t,smartProfile2,ls='-.',c='r',label='Pusedo')
-                #plt.plot(summed,ls='--',label='Optimal')
+                #plt.plot(t,smartProfile,ls='-.',c='b',label='Weighted Psuedo')
+                #plt.plot(t,smartProfile2,ls='-.',c='r',label='Pusedo')
+                plt.plot(summed,ls='--',label='Optimal')
                 if i > 3:
-                    plt.plot(summed,ls='--',label='Optimal')
-                    #plt.plot(t,smartProfile,ls='-.',c='b',label='Decentralised')
+                    #plt.plot(summed,ls='--',label='Optimal')
+                    plt.plot(t,smartProfile,ls='-.',c='b',label='Approximation')
         if month == '1':
-            plt.legend(loc=[-0.2,1.1],ncol=3)
-#            plt.legend(loc=[0.1,1.05],ncol=2)
+#            plt.legend(loc=[-0.2,1.1],ncol=3)
+            plt.legend(loc=[0.1,1.05],ncol=2)
 #           plt.legend(loc=[-0.1,1.05],ncol=2)
 
         plt.grid()
@@ -135,7 +132,7 @@ for month in ['1']:#,'4','7','10']:
         plt.ylabel('Power Demand (GW)')
         plt.xlim(6,34)
         plt.ylim(20,85)
-        plt.title(titles[month],y=0.85)
+        #plt.title(titles[month],y=0.85)
 
 '''
 plt.figure(2)

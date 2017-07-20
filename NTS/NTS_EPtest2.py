@@ -63,7 +63,8 @@ for i in range(0,len(baseLoad)):
 
 run = EnergyPrediction(day,month,region='1')
 
-profiles = run.getPsuedoOptimalProfile(4,baseLoad,returnIndividual=True)
+profiles = run.getPsuedoOptimalProfile(4,baseLoad,weighted=False,
+                                       returnIndividual=True)
 
 vehicles = []
 
@@ -72,8 +73,8 @@ for vehicle in profiles[1]:
 
 run2 = EnergyPrediction(day,month,region='1')
 
-profiles2 = run.getDumbChargingProfile(3.5,36*60,individuals=vehicles)
-profiles3 = run.getOptimalChargingProfiles(3.5,baseLoad,individuals=vehicles,
+profiles2 = run2.getDumbChargingProfile(3.5,36*60,individuals=vehicles)
+profiles3 = run2.getOptimalChargingProfiles(3.5,baseLoad,individuals=vehicles,
                                            sampleScale=False)
 
 t = np.linspace(0,36,num=36*60)
@@ -107,3 +108,4 @@ for vehicle in vehicles:
     n += 1
 
 plt.show()
+

@@ -492,8 +492,8 @@ class EnergyPrediction:
               
                 
     def getDumbChargingProfile(self,power,tmax,scaleFactor=1,logOutofCharge=True,
-                               highUseHomeCharging=False,highUseWorkCharging=False,
-                               highUseShopCharging=False, scalePerHousehold=False,
+                               highUseHomeCharging=True,highUseWorkCharging=True,
+                               highUseShopCharging=True, scalePerHousehold=False,
                                scalePerVehicle=False,scalePerPerson=False,
                                superCharge=False,individuals=[]):
         # power: the charging power in kW
@@ -541,12 +541,33 @@ class EnergyPrediction:
             chargeTime = int(kWh*60/power)
 
             if vehicle in individuals:
+                iSOC = 1-float(kWh)/self.car.capacity
+                if iSOC < 0:
+                    iSOC = 0
+
                 prof = [0]*tmax
-                for i in range(chargeStart, chargeStart+chargeTime):
+
+                if iSOC >= 0.8:
+                    constPowerTime = 0
+                else:
+                    constPowerTime = int(self.car.capacity*(0.8-iSOC)*60/power)
+                
+                for i in range(chargeStart,chargeStart+constPowerTime):
                     try:
                         prof[i] = power
                     except:
                         continue
+
+                # then get the time constant
+                a = float(power)/(0.2*24*60)
+                t_lim = int(tmax-(chargeStart+constPowerTime))
+
+                t = 0                
+                p_t = float(power)*(np.exp(-a*t))
+
+                while p_t > 0.1 and t < t_lim:
+                    prof[t+chargeStart+constPowerTime] = p_t
+                    t = int(t+1)
 
                 individualProfiles[vehicle] = prof
                 
@@ -819,9 +840,9 @@ class EnergyPrediction:
         if sampleScale == True:
             # pick probability to cut down with:
             p_sample = float(150)/len(self.energy)
+        else:
+            p_sample = 1
 
-            
-        
         # I'm going to need to downsample
         for vehicle in self.energy:
             if random.random() < p_sample or vehicle in individuals:
@@ -846,13 +867,13 @@ class EnergyPrediction:
 
         #n = self.nVehicles
         n = len(vehicles)
-
+        
         if sampleScale == True:
             scale = float(self.nVehicles)*self.penetration/(len(unused)+len(vehicles)) # This accounts for downsampling
         else:
             scale = self.penetration
         pMax = pMax*scale*baseScale#added this
-
+        
         for i in range(0,len(b)):
             b[i] = b[i]*scale#*0.000001
             
@@ -1045,7 +1066,7 @@ class AreaEnergyPrediction:
         return numberVehicles
 
 
-    def getDumbChargingProfile(self,power,nHours,sCharge=True):
+    def getDumbChargingProfile(self,power,nHours,sCharge=True,extraCharge=True):
 
         self.nHours = nHours
 
@@ -1053,9 +1074,9 @@ class AreaEnergyPrediction:
             ucProfile = self.uc.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.ucScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=extraCharge,
+                                                       highUseWorkCharging=extraCharge,
+                                                       highUseShopCharging=extraCharge)
         else:
             ucProfile = [0.0]*nHours*60
             
@@ -1063,9 +1084,9 @@ class AreaEnergyPrediction:
             utProfile = self.ut.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.utScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=extraCharge,
+                                                       highUseWorkCharging=extraCharge,
+                                                       highUseShopCharging=extraCharge)
         else:
             utProfile = [0.0]*nHours*60
             
@@ -1073,9 +1094,9 @@ class AreaEnergyPrediction:
             rtProfile = self.rt.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.rtScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=extraCharge,
+                                                       highUseWorkCharging=extraCharge,
+                                                       highUseShopCharging=extraCharge)
         else:
             rtProfile = [0.0]*nHours*60
             
@@ -1083,9 +1104,9 @@ class AreaEnergyPrediction:
             rvProfile = self.rv.getDumbChargingProfile(power,nHours*60,
                                                        scaleFactor=self.rvScale,
                                                        superCharge=sCharge,
-                                                       highUseHomeCharging=False,
-                                                       highUseWorkCharging=False,
-                                                       highUseShopCharging=False)
+                                                       highUseHomeCharging=extraCharge,
+                                                       highUseWorkCharging=extraCharge,
+                                                       highUseShopCharging=extraCharge)
         else:
             rvProfile = [0.0]*nHours*60
             
@@ -1098,7 +1119,7 @@ class AreaEnergyPrediction:
 
         return dumbProfile
 
-    def getPsuedoOptimalProfile(self,pMax,nHours=36,deadline=9,weighted=True):
+    def getPsuedoOptimalProfile(self,pMax,nHours=36,deadline=9,weighted=False):
 
         try:
             baseLoad = self.baseLoad
@@ -1107,19 +1128,29 @@ class AreaEnergyPrediction:
             baseLoad = areaBase.getLoad(population=self.totalPopulation)
             self.baseLoad = baseLoad
 
-        if self.ucPopulation > 0:
-            ucProfile = self.uc.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                        scaleFactor=self.ucScale,
-                                                        weighted=weighted,
-                                                        deadline=deadline)
-        else:
-            ucProfile = [0.0]*len(baseLoad)
-            
+        pops = [self.ucPopulation,self.utPopulation,self.rtPopulation,
+                self.rvPopulation,]
+        objs = [self.uc,self.ut,self.rt,self.rv]
+        scales = [self.ucScale,self.utScale,self.rvScale,self.rvScale]
+
+        profiles = []
+
+        for i in range(0,4):
+
+            if pops[i] > 0:
+                profiles.append(objs[i].getPsuedoOptimalProfile(pMax,baseLoad,
+                                                                scaleFactor=scales[i],
+                                                                weighted=weighted,
+                                                                deadline=deadline))
+            else:
+                profiles.append([0.0]*len(baseLoad))
+        '''            
         if self.utPopulation > 0:
             utProfile = self.ut.getPsuedoOptimalProfile(pMax,baseLoad,
                                                        scaleFactor=self.utScale,
                                                         weighted=weighted,
-                                                        deadline=deadline)
+                                                        deadline=deadline,
+                                                        returnIndividual=returnIndividual)
         else:
             utProfile = [0.0]*len(baseLoad)
             
@@ -1127,7 +1158,8 @@ class AreaEnergyPrediction:
             rtProfile = self.rt.getPsuedoOptimalProfile(pMax,baseLoad,
                                                        scaleFactor=self.rtScale,
                                                         weighted=weighted,
-                                                        deadline=deadline)
+                                                        deadline=deadline,
+                                                        returnIndividual=returnIndividual)
         else:
             rtProfile = [0.0]*len(baseLoad)
             
@@ -1135,15 +1167,16 @@ class AreaEnergyPrediction:
             rvProfile = self.rv.getPsuedoOptimalProfile(pMax,baseLoad,
                                                        scaleFactor=self.rvScale,
                                                         weighted=weighted,
-                                                        deadline=deadline)
+                                                        deadline=deadline,
+                                                        returnIndividual=returnIndividual)
         else:
             rvProfile = [0.0]*len(baseLoad)
-            
+        '''            
         profile = []
 
         for i in range(0,len(baseLoad)):
-            profile.append(ucProfile[i]*self.ucPer+utProfile[i]*self.utPer+\
-                           rtProfile[i]*self.rtPer+rvProfile[i]*self.rvPer)
+            profile.append(profiles[0][i]*self.ucPer+profiles[1][i]*self.utPer+\
+                           profiles[1][i]*self.rtPer+profiles[1][i]*self.rvPer)
 
         return profile
 
@@ -1170,7 +1203,7 @@ class AreaEnergyPrediction:
 
             nProfiles = len(allProfiles)
             chosenProfiles['l'] = allProfiles[0]
-            chosenProfiles['m'] = allProfiles[nProfiles/2]
+            chosenProfiles['m'] = allProfiles[int(nProfiles/2)]
             chosenProfiles['h'] = allProfiles[-1]
 
             self.solar = {}
@@ -1181,7 +1214,7 @@ class AreaEnergyPrediction:
 
                 # first I need the right number of hours
                 chosenProfiles[profile] = chosenProfiles[profile] +\
-                                          chosenProfiles[profile][:(nHours-24)*2]
+                                          chosenProfiles[profile][:int((nHours-24)*2)]
                 # now I need the right number of points
                 newProfile = [0.0]*nHours*60
 

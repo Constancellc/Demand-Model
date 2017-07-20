@@ -43,6 +43,7 @@ for month in simulationMonth:
 
     solar = {}
     net = {}
+    oldNet = {}
     for key in cornwall.solar:
         profile = cornwall.solar[key]
         for i in range(0,len(profile)):
@@ -74,9 +75,12 @@ for month in simulationMonth:
         base[i] = float(base[i])/1000
     for key in smartProfile:
         net[key] = []
+        oldNet[key] = []
         for i in range(0,len(smartProfile[key])):
             smartProfile[key][i] = float(smartProfile[key][i])/1000
-            net[key].append(solar[key][i*60/pph]+base[i*60/pph]+smartProfile[key][i])
+            net[key].append(solar[key][int(i*60/pph)]+base[int(i*60/pph)]+
+                            smartProfile[key][i])
+            oldNet[key].append(solar[key][int(i*60/pph)]+base[int(i*60/pph)])
 
     x_ticks = ['12:00\nWed','15:00','18:00','21:00','00:00\nThu','03:00','06:00',
                '09:00']
@@ -92,24 +96,23 @@ for month in simulationMonth:
     plt.rcParams["font.family"] = 'serif'
     plt.subplot(2,2,n)
     n += 1
-    for key in smartProfile:
-        if key == '':
-            continue
-        plt.plot(np.linspace(0+float(pph)/60,36+float(pph)/60,num=36*pph),
-                 smartProfile[key],color=clrs[key],label=EVlbls[key])
-    for key in solar:
-        plt.plot(np.linspace(0,36,num=60*36),solar[key],ls='--',c=clrs[key],
-                 label=lbls[key])
-        plt.plot(np.linspace(0,36,num=36*pph),net[key],color=clrs[key],ls=':',label=netlbls[key])
+    plt.plot(np.linspace(0,36,num=36*pph),net['m'],color='b',label='With EVs')
+    plt.fill_between(np.linspace(0,36,num=36*pph),net['h'],net['l'],alpha=0.2,
+                     color='b')
+    
+    plt.plot(np.linspace(0,36,num=36*pph),oldNet['m'],color='g',
+             label='Without EVs')
+    plt.fill_between(np.linspace(0,36,num=36*pph),oldNet['h'],oldNet['l'],
+                     alpha=0.2,color='g')
     plt.plot(np.linspace(0,36,num=60*36),base,c='k',ls=':',alpha=0.8,
              label='Base Load')
     plt.xlim(11,35)
     plt.xticks(x,x_ticks)
     plt.ylabel('Power (MW)')
-    plt.ylim(-500,550)
+    plt.ylim(-200,550)
     plt.title(months[month],y=0.9)
     if n == 2:
-        plt.legend(ncol=5,loc=[-0.2,1.1])
+        plt.legend(ncol=5,loc=[0.6,1.05])
     plt.grid()
 
 '''

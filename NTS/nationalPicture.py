@@ -24,6 +24,7 @@ for month in ['1','4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getDumbChargingProfile(3.5,nHours) # kW
     smart = run.getOptimalChargingProfiles(4,deadline=9)
+    psuedo = run.getgetPsuedoOptimalProfile(7.0,deadline=9)
 
     smartProfile = [0.0]*nHours*pointsPerHour
     for vehicle in smart['']:
@@ -34,7 +35,9 @@ for month in ['1','4','7','10']:
 
     for i in range(0,len(dumbProfile)):
         dumbProfile[i] += base[i]
+        psuedo[i] += base[i]
         dumbProfile[i] = dumbProfile[i]/1000000 # kW -> GW
+        psuedo[i] = psuedo[i]/1000000
 
         if i%(60/pointsPerHour) == 0:
             smartProfile[int(i*pointsPerHour/60)] += base[i]
@@ -45,10 +48,11 @@ for month in ['1','4','7','10']:
     plt.subplot(2,2,plotMonths[month])
     plt.plot(t,base,ls=':',c='g',label='Base Load')
     plt.plot(t,dumbProfile,label='Uncontrolled Charging')
-    plt.plot(t_smart,smartProfile,label='Controlled Charging')
+    plt.plot(t_smart,smartProfile,label='Optimal')
+    plt.plot(t,psuedo,c='b',ls='-.',label='Approximation')
     
     if month == '1':
-        plt.legend(loc=[-0.2,1.1],ncol=3)
+        plt.legend(loc=[-0.2,1.1],ncol=4)
         
     plt.xticks(x, my_xticks)
     plt.xlabel('time')
