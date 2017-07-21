@@ -541,7 +541,8 @@ class EnergyPrediction:
             chargeTime = int(kWh*60/power)
 
             if vehicle in individuals:
-                iSOC = 1-float(kWh)/self.car.capacity
+                iSOC = 1.0-(float(kWh)/self.car.capacity)
+                print(iSOC)
                 if iSOC < 0:
                     iSOC = 0
 
@@ -551,7 +552,7 @@ class EnergyPrediction:
                     constPowerTime = 0
                 else:
                     constPowerTime = int(self.car.capacity*(0.8-iSOC)*60/power)
-                
+                print(constPowerTime)
                 for i in range(chargeStart,chargeStart+constPowerTime):
                     try:
                         prof[i] = power
@@ -567,7 +568,8 @@ class EnergyPrediction:
 
                 while p_t > 0.1 and t < t_lim:
                     prof[t+chargeStart+constPowerTime] = p_t
-                    t = int(t+1)
+                    t = int(t+1)                
+                    p_t = float(power)*(np.exp(-a*t))
 
                 individualProfiles[vehicle] = prof
                 
@@ -728,7 +730,7 @@ class EnergyPrediction:
     
     def getPsuedoOptimalProfile(self,pMax,baseLoad,nHours=36,scaleFactor=1,
                                 returnIndividual=False,weighted=True,
-                                deadline=9):
+                                allowOverCap=True,deadline=9):
 
         pointsPerHour = len(baseLoad)/nHours
 
@@ -768,7 +770,10 @@ class EnergyPrediction:
         pMax = pMax*scaleFactor
         
         for vehicle in self.energy:
-            kWh = self.energy[vehicle]*scaleFactor/self.chargingEfficiency
+            if allowOverCap == False and self.energy[vehicle] > self.car.capacity:
+                kWh = self.car.capacity*scaleFactor/self.chargingEfficiency
+            else:
+                kWh = self.energy[vehicle]*scaleFactor/self.chargingEfficiency
             chargeStart = int(self.endTimes[vehicle])
             chargeEnd = int(self.startTimes[vehicle]+24*pointsPerHour)
 
@@ -798,7 +803,7 @@ class EnergyPrediction:
                     chargeProfile[i] = pMax
 
             if returnIndividual == True:
-                if len(individualProfiles) < 4:
+                if len(individualProfiles) < 4 and kWh > 0:
                     individualProfiles[vehicle] = [copy.copy(chargeProfile),
                                                    chargeStart]
 
@@ -837,11 +842,8 @@ class EnergyPrediction:
 
         unused = []
 
-        if sampleScale == True:
-            # pick probability to cut down with:
-            p_sample = float(150)/len(self.energy)
-        else:
-            p_sample = 1
+        # pick probability to cut down with:
+        p_sample = float(150)/len(self.energy)
 
         # I'm going to need to downsample
         for vehicle in self.energy:
