@@ -325,6 +325,63 @@ class EnergyPrediction:
                     if tripStart < self.startTimes[vehicle]:
                         self.startTimes[vehicle] = tripStart
 
+    def getCommuters(self):
+
+        self.commutes = {}
+
+        with open(trips,'rU') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)
+            for row in reader:
+                if row[5] != self.day:
+                    continue
+                if row[6] != self.month:
+                    continue
+
+                if self.regionType is not None:
+                    if self.reg2[row[1]] != self.regionType:
+                        continue
+
+                if self.region is not None:
+                    if self.reg3[row[1]] != self.region:
+                        continue
+
+                vehicle = row[2]
+
+                if vehicle == ' ': # skip trips where the vehicle is missing
+                    continue
+
+                try:
+                    purposeTo = int(row[12])
+                    purposeFrom = int(row[11])
+                    start = int(row[8])
+                    end = int(row[9])
+                except:
+                    continue
+
+                if purposeTo != 1 and purposeFrom != 1:
+                    continue
+                
+                if vehicle not in self.commutes:
+                    self.commutes[vehicle] = [-1,-1]
+                    
+                if purposeTo == 1:
+                    self.commutes[vehicle][0] = end
+                elif purposeFrom == 1:
+                    self.commutes[vehicle][1] = start
+
+        # now go through and remove duds
+        toDelete = []
+
+        for vehicle in self.commutes:
+            if self.commutes[vehicle][0] == -1 or self.commutes[vehicle][1] == -1:
+                toDelete.append(vehicle)
+
+            elif self.commutes[vehicle][0] >= self.commutes[vehicle][1]:
+                toDelete.append(vehicle)
+
+        for vehicle in toDelete:
+            del self.commutes[vehicle]
 
     def plotMileage(self,figNo=1,wait=False):
         # figNo (int): the figure number
@@ -822,7 +879,8 @@ class EnergyPrediction:
     def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale=1,nHours=36,
                                    pointsPerHour=1,individuals=[],
                                    sampleScale=True,allowOverCap=True,
-                                   deadline=None,perturbDeadline=False):
+                                   deadline=None,perturbDeadline=False,
+                                   chargeAtWork=False):
         # pMax is the maximum charging power allowed in kW
         
         # baseLoad is the non-ev demand that we're trying to valley fill
@@ -867,6 +925,9 @@ class EnergyPrediction:
 
         self.getNextDayStartTimes()
 
+        if chargeAtWork == True:
+            self.getCommuters()
+
         #n = self.nVehicles
         n = len(vehicles)
         
@@ -903,6 +964,14 @@ class EnergyPrediction:
             departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
             departure += 24*pointsPerHour
 
+            if chargeAtWork == True:
+                if vehicles[j] in self.commutes:
+                    arriveWork = int(float(self.commutes[vehicles[j]][0])*pointsPerHour/60)
+                    leaveWork = int(float(self.commutes[vehicles[j]][1])*pointsPerHour/60)
+                else:
+                    arriveWork = -1
+                    leaveWork = -1
+
             if deadline != None:
                 if departure > (24+deadline)*pointsPerHour:
                     departure = (24+deadline)*pointsPerHour
@@ -910,15 +979,27 @@ class EnergyPrediction:
                     if perturbDeadline == True:
                         departure += int(pointsPerHour*2*(random.random()-1))
 
-                        # check if constraint is feasible
-            if (departure-arrival)*pMax < b[j]:
-                print('i have found an infeasible constraint')
-                b[j] = (departure-arrival)*pMax
+            # check if constraint is feasible
+            if chargeAtWork == False:
+                if (departure-arrival)*pMax/pointsPerHour < b[j]:
+                    print('i have found an infeasible constraint')
+                    b[j] = (departure-arrival)*pMax/pointsPerHour-0.1
+                    
+            else:
+                if (departure-arrival+leaveWork-arriveWork)*pMax/pointsPerHour < b[j]:
+                    print('i have found an infeasible constraint')
+                    b[j] = (departure-arrival+leaveWork-arriveWork)*pMax/pointsPerHour-0.1
             
             for i in range(0,t):
                 A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
                 if i < arrival or i > departure:
                     A2[n*(t*j+i)+j] = 1.0
+                if chargeAtWork == True:
+                    if i >= arriveWork and i <= leaveWork:
+                        A2[n*(t*j+i)+j] = 0.0
+                    elif i >= arriveWork+24*pointsPerHour and i <= leaveWork+24*pointsPerHour:
+                        A2[n*(t*j+i)+j] = 0.0
+                        
 
         A = sparse([A1,A2])
 
@@ -1185,7 +1266,7 @@ class AreaEnergyPrediction:
     def getOptimalChargingProfiles(self,pMax,nHours=36,pointsPerHour=1,
                                    allowOverCap=True,deadline=None,
                                    perturbDeadline=False,
-                                   solar=None):
+                                   solar=None,chargeAtWork=False):
 
         try:
             baseLoad = self.baseLoad
@@ -1270,7 +1351,8 @@ class AreaEnergyPrediction:
                                                                     pointsPerHour=pointsPerHour,
                                                                     deadline=deadline,
                                                                     perturbDeadline=perturbDeadline,
-                                                                    allowOverCap=allowOverCap)
+                                                                    allowOverCap=allowOverCap,
+                                                                    chargeAtWork=chargeAtWork)
 
                     for vehicle in newProfiles:
                         load = newProfiles[vehicle]

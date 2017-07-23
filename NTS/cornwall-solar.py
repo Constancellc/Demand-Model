@@ -23,26 +23,28 @@ n = 1
 for month in simulationMonth:
     cornwall = AreaEnergyPrediction('9',0,205591,146060,180622,'3',month,
                                     vehicle='teslaS60D')
-    '''
-    smartProfiles = cornwall.getOptimalChargingProfiles(7,deadline=None,
-                                                        perturbDeadline=True,
-                                                        pointsPerHour=pph,
-                                                        allowOverCap=False)
-    '''
-    smartProfiles2 = cornwall.getOptimalChargingProfiles(7,deadline=10,
+
+    smartProfiles = cornwall.getOptimalChargingProfiles(7,deadline=12,
                                                          solar=solarData[month],
-                                                         perturbDeadline=True,
                                                          pointsPerHour=pph,
-                                                         allowOverCap=False)
+                                                         allowOverCap=False,
+                                                         chargeAtWork=False)
+
+    smartProfilesWC = cornwall.getOptimalChargingProfiles(7,deadline=12,
+                                                         solar=solarData[month],
+                                                         pointsPerHour=pph,
+                                                         allowOverCap=False,
+                                                         chargeAtWork=True)
 
     #smartProfiles.update(smartProfiles2)
-    smartProfiles = smartProfiles2
+    #smartProfiles = smartProfiles2
     dumb = cornwall.getDumbChargingProfile(3.5,36,sCharge=False)
 
     base = cornwall.baseLoad
 
     solar = {}
     net = {}
+    netWC = {}
     oldNet = {}
     for key in cornwall.solar:
         profile = cornwall.solar[key]
@@ -51,6 +53,7 @@ for month in simulationMonth:
         solar[key] = profile
 
     smartProfile = {}
+    smartProfileWC = {}
 
     for key in smartProfiles:
         smartProfile[key] = [0.0]*36*pph
@@ -58,6 +61,13 @@ for month in simulationMonth:
         for sprofile in smartProfiles[key]:
             for i in range(0,len(smartProfiles[key][sprofile])):
                 smartProfile[key][i] += smartProfiles[key][sprofile][i]
+                
+    for key in smartProfilesWC:
+        smartProfileWC[key] = [0.0]*36*pph
+
+        for sprofile in smartProfilesWC[key]:
+            for i in range(0,len(smartProfilesWC[key][sprofile])):
+                smartProfileWC[key][i] += smartProfilesWC[key][sprofile][i]
 
     '''
 
@@ -73,6 +83,7 @@ for month in simulationMonth:
     for i in range(0,len(dumb)):
         dumb[i] = float(dumb[i])/1000
         base[i] = float(base[i])/1000
+        
     for key in smartProfile:
         net[key] = []
         oldNet[key] = []
@@ -81,6 +92,13 @@ for month in simulationMonth:
             net[key].append(solar[key][int(i*60/pph)]+base[int(i*60/pph)]+
                             smartProfile[key][i])
             oldNet[key].append(solar[key][int(i*60/pph)]+base[int(i*60/pph)])
+
+    for key in smartProfileWC:
+        netWC[key] = []
+        for i in range(0,len(smartProfileWC[key])):
+            smartProfileWC[key][i] = float(smartProfileWC[key][i])/1000
+            netWC[key].append(solar[key][int(i*60/pph)]+base[int(i*60/pph)]+
+                            smartProfileWC[key][i])
 
     x_ticks = ['12:00\nWed','15:00','18:00','21:00','00:00\nThu','03:00','06:00',
                '09:00']
@@ -100,6 +118,11 @@ for month in simulationMonth:
     plt.fill_between(np.linspace(0,36,num=36*pph),net['h'],net['l'],alpha=0.2,
                      color='b')
     
+    plt.plot(np.linspace(0,36,num=36*pph),netWC['m'],color='r',
+             label='With EVs + Work Charging')
+    plt.fill_between(np.linspace(0,36,num=36*pph),netWC['h'],netWC['l'],alpha=0.2,
+                     color='r')
+    
     plt.plot(np.linspace(0,36,num=36*pph),oldNet['m'],color='g',
              label='Without EVs')
     plt.fill_between(np.linspace(0,36,num=36*pph),oldNet['h'],oldNet['l'],
@@ -112,7 +135,7 @@ for month in simulationMonth:
     plt.ylim(-200,550)
     plt.title(months[month],y=0.9)
     if n == 2:
-        plt.legend(ncol=5,loc=[0.6,1.05])
+        plt.legend(ncol=5,loc=[0.2,1.05])
     plt.grid()
 
 '''

@@ -15,7 +15,8 @@ baseload = base.getLoad(population=int(150.0*65/28))
 
 profiles = run.getPsuedoOptimalProfile(4,baseload,weighted=False,
                                        returnIndividual=True,
-                                       allowOverCap=False)
+                                       allowOverCap=False,
+                                       deadline=12)
 
 vehicles = []
 
@@ -42,12 +43,6 @@ for vehicle in vehicles[1:]:
     plt.subplot(3,1,n)
     plt.plot(t,profiles2[1][vehicle],label='Uncontrolled')
 
-    opt = []
-    for i in range(0,36):
-        for j in range(0,60):
-            opt.append(profiles3[vehicle][i])
-#    plt.plot(profiles3[vehicle],label='Optimal')
-    plt.plot(t,opt,label='Optimal')
     smart = [0.0]*36*60
 
     chargeStart = int(profiles[1][vehicle][1])
@@ -58,6 +53,34 @@ for vehicle in vehicles[1:]:
         except:
             continue
         
+    opt_profile = profiles3[vehicle]
+    # find first non zero element
+    c = 0
+    while opt_profile[c] < 0.1:
+        c += 1
+
+    opt = []
+
+    for i in range(0,chargeStart):
+        opt.append(0.0)
+
+    print(opt_profile[c:])
+
+    for i in range(c,36):
+        for j in range(0,60):
+            if len(opt) < 36*60:
+                opt.append(opt_profile[i])
+
+    while len(opt) < 36*60:
+        opt.append(0.0)
+
+    print(len(t))
+    print(len(opt))
+    
+
+#    plt.plot(profiles3[vehicle],label='Optimal')
+    plt.plot(t,opt,label='Optimal')
+
     plt.plot(t,smart,label='Approximate')
     plt.xlim(8,36)
     plt.xticks(x,x_ticks)
