@@ -26,8 +26,7 @@ for month in simulationMonth:
     
     smartProfiles = cornwall.getOptimalChargingProfiles(7,deadline=10,
                                                         perturbDeadline=True,
-                                                        pointsPerHour=pph,
-                                                        allowOverCap=False)
+                                                        pointsPerHour=pph)
 
 
     dumb = cornwall.getDumbChargingProfile(3.5,36,sCharge=False)
@@ -49,7 +48,7 @@ for month in simulationMonth:
         dumb[i] += base[i]
         if i%(60/pph) == 0:
             for key in smartProfile:
-                smartProfile[key][pph*i/60] += base[i]
+                smartProfile[key][int(pph*i/60)] += base[i]
 
 
 

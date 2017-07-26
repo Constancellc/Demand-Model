@@ -10,6 +10,8 @@ day = '3'
 pointsPerHour = 1
 nHours = 36
 
+plotPsuedo = False
+
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
 plotMonths = {'1':1,'4':2,'7':3,'10':4}
@@ -23,8 +25,8 @@ my_xticks = ['08:00 \n Wed','14:00','20:00','02:00','08:00 \n Thu']
 for month in ['1','4','7','10']:
     run = NationalEnergyPrediction(day,month)
     dumbProfile = run.getDumbChargingProfile(3.5,nHours) # kW
-    smart = run.getOptimalChargingProfiles(4,deadline=10,allowOverCap=False)
-    psuedo = run.getPsuedoOptimalProfile(7.0,deadline=10)
+    smart = run.getOptimalChargingProfiles(7,deadline=10)#,allowOverCap=False)
+    #psuedo = run.getPsuedoOptimalProfile(7.0,deadline=10)
 
     smartProfile = [0.0]*nHours*pointsPerHour
     for vehicle in smart['']:
@@ -35,9 +37,10 @@ for month in ['1','4','7','10']:
 
     for i in range(0,len(dumbProfile)):
         dumbProfile[i] += base[i]
-        psuedo[i] += base[i]
         dumbProfile[i] = dumbProfile[i]/1000000 # kW -> GW
-        psuedo[i] = psuedo[i]/1000000
+        if plotPsuedo == True:
+            psuedo[i] += base[i]
+            psuedo[i] = psuedo[i]/1000000
 
         if i%(60/pointsPerHour) == 0:
             smartProfile[int(i*pointsPerHour/60)] += base[i]
@@ -48,11 +51,17 @@ for month in ['1','4','7','10']:
     plt.subplot(2,2,plotMonths[month])
     plt.plot(t,base,ls=':',c='g',label='Base Load')
     plt.plot(t,dumbProfile,label='Uncontrolled Charging')
-    plt.plot(t_smart,smartProfile,label='Optimal')
-    plt.plot(t,psuedo,c='b',ls='-.',label='Approximation')
+    if plotPsuedo == True:
+        plt.plot(t,psuedo,c='b',ls='-.',label='Approximation')       
+        plt.plot(t_smart,smartProfile,label='Optimal')
+    else:
+        plt.plot(t_smart,smartProfile,ls='--',label='Controlled Charging')
     
     if month == '1':
-        plt.legend(loc=[0.1,1.1],ncol=2)
+        if plotPsuedo == True:
+            plt.legend(loc=[0.1,1.1],ncol=2)
+        else:
+            plt.legend(loc=[-0.2,1.1],ncol=3)
         
     plt.xticks(x, my_xticks)
     plt.xlabel('time')
