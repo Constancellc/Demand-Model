@@ -16,7 +16,7 @@ accessoryLoad = {'1':1.5,'2':1.3,'3':0.8,'4':0.4,'5':0.1,'6':0.0,'7':0.0,
 tesla = Vehicle(2273.0,37.37,0.1842,0.01508,0.94957,60.0)
 tesla.load = 80.0
 
-chargePower = [3.5,50.0]
+chargePower = [3.5,7.0]
 
 uCycle = Drivecycle(10000,'urban')
 mCycle = Drivecycle(10000,'motorway')
@@ -75,13 +75,15 @@ with open('../../Documents/JLRCompanyCars/trips_useful.csv','rU') as csvfile:
 
 longestTrips = {}
 
+per = 90
+
 for userID in energyLogs:
     
     log = copy.copy(energyLogs[userID])
     
     # find number of journeys
     N = len(log)
-    n = int(N/20) # 5% of journeys
+    n = int(N*(100-per)/100) # 5% of journeys
 
     if n == 0:
         longestTrips[userID] = [[0.0,0.0]]
@@ -91,12 +93,7 @@ for userID in energyLogs:
 
     # now i need to find the longest N journeys:
     for trip in log:
-        try:
-            a = trip[2]
-            b = longestTrips[userID][0]
-        except:
-            print(trip[2])
-            print(longestTrips[userID][0])
+
         if trip[2] > longestTrips[userID][0][0]:
             longestTrips[userID][0] = [trip[2],trip[0]]
 
@@ -105,8 +102,8 @@ for userID in energyLogs:
    
     
 
-maxCap = 300
-capStep = 30
+maxCap = 200
+capStep = 20
 
 x = np.arange(capStep/2,maxCap+capStep/2,capStep)
 x_ticks = []
@@ -118,70 +115,80 @@ x_ticks[-1] = str(maxCap)+'+'
     
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
+plt.suptitle('Required capacity of vehicles in order to carry out',y=1)
 
-plotNumbers = {'home':1,'work':2,'both':3}
+
+plotNumbers = {'home':[1,2],'work':[3,4],'both':[5,6]}
 
 
-for chargeLoc in ['home','work','both']:
-    plt.subplot(3,1,plotNumbers[chargeLoc])
+for p in [0,1]:
+    for chargeLoc in ['home','work','both']:
+        plt.subplot(3,2,plotNumbers[chargeLoc][p])
 
-    batterySize = [[0]*int(maxCap/capStep),[0]*int(maxCap/capStep)]
-    # now I need to size the required battery for each vehicle
-    for userID in energyLogs:
-        
-        log = sorted(energyLogs[userID])
-        
-
-        for j in range(0,len(chargePower)):
-
-            requiredCap = 0.0
-            energySpent = 0.0
+        batterySize = [[0]*int(maxCap/capStep),[0]*int(maxCap/capStep)]
+        # now I need to size the required battery for each vehicle
+        for userID in energyLogs:
             
-            for i in range(0,len(log)):
+            log = sorted(energyLogs[userID])
+            
 
-                if [log[i][2],log[i][0]] in longestTrips[userID]:
-                    continue
+            for j in range(0,len(chargePower)):
 
-                energySpent += log[i][2]
-                if energySpent > requiredCap:
-                    requiredCap = energySpent
-                    
+                requiredCap = 0.0
+                energySpent = 0.0
+                
+                for i in range(0,len(log)):
 
-                if chargeLoc == 'home':
-                    if log[i][3] != 1 or i == len(log)-1:
-                        continue
-                elif chargeLoc == 'work':
-                    if log[i][4] != 1 or i == len(log)-1:
-                        continue
-                else:
-                    if (log[i][3] != 1 and log[i][4] != 1) or i == len(log)-1:
-                        continue
+                    if p == 1:
+                        if [log[i][2],log[i][0]] in longestTrips[userID]:
+                            continue
 
-                timeAvaliable = log[i+1][0]-log[i][1]
-                maxPower = float(timeAvaliable)*chargePower[j]/60
+                    energySpent += log[i][2]
+                    if energySpent > requiredCap:
+                        requiredCap = energySpent
+                        
 
-                if maxPower > energySpent:
-                    energySpent = 0.0
-                else:
-                    energySpent -= maxPower
+                    if chargeLoc == 'home':
+                        if log[i][3] != 1 or i == len(log)-1:
+                            continue
+                    elif chargeLoc == 'work':
+                        if log[i][4] != 1 or i == len(log)-1:
+                            continue
+                    else:
+                        if (log[i][3] != 1 and log[i][4] != 1) or i == len(log)-1:
+                            continue
 
-            try:
-                batterySize[j][int(requiredCap/capStep)] += 1
-            except:
-                batterySize[j][-1] += 1
+                    timeAvaliable = log[i+1][0]-log[i][1]
+                    maxPower = float(timeAvaliable)*chargePower[j]/60
+
+                    if maxPower > energySpent:
+                        energySpent = 0.0
+                    else:
+                        energySpent -= maxPower
+
+                try:
+                    batterySize[j][int(requiredCap/capStep)] += 1
+                except:
+                    batterySize[j][-1] += 1
 
 
-    plt.bar(np.arange(0,maxCap,capStep)+0.275*capStep,batterySize[0],
-            width=0.45*capStep)
-    plt.bar(np.arange(0,maxCap,capStep)+0.725*capStep,batterySize[1],
-            width=0.45*capStep)
+        plt.bar(np.arange(0,maxCap,capStep)+0.275*capStep,batterySize[0],
+                width=0.45*capStep,label=str(chargePower[0])+'kW')
+        plt.bar(np.arange(0,maxCap,capStep)+0.725*capStep,batterySize[1],
+                width=0.45*capStep,label=str(chargePower[1])+'kW')
 
-    plt.xticks(x,x_ticks,rotation=70)
-    plt.ylabel('number of vehicles')
-    plt.xlabel('battery capacity (kWh)')
-    plt.title('required capacity with charging at '+chargeLoc,y=0.85)
-    plt.ylim(0,400)
-    plt.xlim(0,maxCap)
+        plt.xticks(x,x_ticks,rotation=70)
+        plt.ylabel('number of vehicles')
+        plt.xlabel('battery capacity (kWh)')
+        if p == 0:
+            plt.title('100% of journeys\ncharging at '+chargeLoc,y=0.7)
+        elif p == 1:
+            plt.title(str(per)+'% of journeys\ncharging at '+chargeLoc,y=0.7)
+        plt.ylim(0,400)
+        plt.xlim(0,maxCap)
+
+        if chargeLoc == 'home' and p == 0:
+            plt.legend(ncol=2,loc=[1.7,1.1])
     
 plt.show()
 
