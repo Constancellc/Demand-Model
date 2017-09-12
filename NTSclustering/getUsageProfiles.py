@@ -9,9 +9,11 @@ data = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 wProfiles = {}
 weProfiles = {}
 
+nDays = {}
+
 with open(data,'rU') as csvfile:
     reader = csv.reader(csvfile)
-    reader.next()
+    next(reader)
     for row in reader:
         vehicle = row[2]
         
@@ -41,7 +43,7 @@ with open(data,'rU') as csvfile:
         else:
             l = end+24*60-start
 
-        start_index = start/30
+        start_index = int(start/30)
         delay = start%30
 
         if l < 30-delay:
@@ -69,22 +71,21 @@ wTotal = [0]*48
 weTotal = [0]*48
 
 for vehicle in wProfiles:
-    s = sum(wProfiles[vehicle])
     for i in range(0,48):
-        wProfiles[vehicle][i] = float(wProfiles[vehicle][i])/s
+        wProfiles[vehicle][i] = float(wProfiles[vehicle][i])/150 # 5days*30mins
         wTotal[i] += wProfiles[vehicle][i]
 
 for vehicle in weProfiles:
-    s = sum(weProfiles[vehicle])
     for i in range(0,48):
-        weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/s
+        weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/150 # 5days*30mins
         weTotal[i] += weProfiles[vehicle][i]
-        
+
+    
 data = []
 for vehicle in wProfiles:
     data.append(wProfiles[vehicle])
 
-
+'''
 x = np.arange(8,48,8)
 x_ticks = range(4,24,4)
 for i in range(0,len(x_ticks)):
@@ -92,44 +93,23 @@ for i in range(0,len(x_ticks)):
         x_ticks[i] = '0'+str(x_ticks[i])+':00'
     else:
         x_ticks[i] = str(x_ticks[i])+':00'
+'''
 
 
-plt.figure(1)
-plt.subplot(2,1,1)
-plt.bar(range(0,48),wTotal)
-plt.title('Week Day')
-plt.xticks(x,x_ticks)
-plt.xlim(0,48)
-
-plt.subplot(2,1,2)
-plt.bar(range(0,48),weTotal)
-plt.title('Weekend')
-plt.xticks(x,x_ticks)
-plt.xlim(0,48)
 
 CE = ClusteringExercise(data[:10000])
 
 
-#CE.k_means(4)
-CE.DB_scan()
-plt.figure(2)
-for label in CE.clusters:
-    plt.plot(CE.clusters[label].mean,label=str(CE.clusters[label].nPoints))
-plt.legend()
-'''
-for i in range(1,7):
-    plt.subplot(3,2,i)
-    CE.k_means(i+1)
-    for j in range(0,i+1):
-        plt.plot(CE.clusters[str(j)].mean,
-                 label=str(CE.clusters[str(j)].nPoints))
-    CE.reset_clusters()
-    plt.title('k='+str(i+1),y=0.8)
-    plt.xticks(x,x_ticks)
-    plt.xlim(0,48)
+plt.figure(1)
+for k in range(2,8):
+    plt.subplot(3,2,k-1)
+
+    CE.k_means(k)
+    for label in CE.clusters:
+        plt.plot(CE.clusters[label].mean,label=str(CE.clusters[label].nPoints))
     plt.legend()
-    print 'k = ',
-    print i+1,
-    print ' done'
-'''
+
+    CE.reset_clusters()
+    plt.title('k='+str(k),y=0.8)
+
 plt.show()

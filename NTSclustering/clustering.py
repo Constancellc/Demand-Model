@@ -2,45 +2,12 @@ import csv
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import sys
+#import sklearn.cluster as clst
+
+sys.path.append('/Users/constance/scikit-learn')
 import sklearn.cluster as clst
-
-def distance_si(x,y):
-    if len(x) != len(y):
-        raise Exception('two input vectors are different lengths')
-
-    highest = 0
-    # first find shift with highest correlation
-    for i in range(0,len(x)):
-        y2 = y[i:]+y[:i]
-        c = 0
-        for j in range(0,len(x)):
-            c += y2[j]*x[j]
-
-        if c > highest:
-            highest = c
-            best_y = y2
-
-    diff = 0
-    for i in range(0,len(x)):
-        d = best_y[i]-x[i]
-        diff += d*d
-
-    return diff
-
-def distance(x,y):
-    
-    if len(x) != len(y):
-        raise Exception('two input vectors are different lengths')
-
-    diff = 0
-    for i in range(0,len(x)):
-        d = x[i]-y[i]
-        diff += d*d
-
-    return diff
-
-    
-    
+   
 class Cluster:
 
     def __init__(self,cName,mean=None,x0=None,x0name=None):
@@ -180,80 +147,3 @@ class ClusteringExercise:
             self.clusters[str(label[i])].add_point(self.data[i],str(i))
             self.labels[i] = str(label[i])
 
-    def DB_scan(self):
-
-        db = clst.DBSCAN().fit(self.data)
-
-        label = db.labels_
-        n_clusters_ = len(set(label))
-
-        print n_clusters_
-
-        for i in range(0,len(label)):
-            self.labels[i] = str(label[i])
-            
-            if str(label[i]) not in self.clusters:
-                print label[i]
-                self.clusters[str(label[i])] = Cluster(str(label[i]),
-                                                       x0=self.data[i],
-                                                       x0name=str(i))
-            else:
-                self.clusters[str(label[i])].add_point(self.data[i],str(i))
-
-        for label in self.clusters:
-            self.clusters[label].update_centroid()
-
-    def k_means_si(self,k):
-
-        # first initiate clusters
-        rn = int(random.random()*len(self.data)/k)
-        for i in range(0,k):
-            self.clusters[str(i)] = Cluster(str(i),mean=self.data[i*rn])
-
-        data_subset = []
-
-        for i in range(0,len(self.data)):
-            if random.random() < 1:#0.0005:
-                data_subset.append(self.data[i])
-
-        # assign all points to clusters
-        for i in range(0,len(data_subset)):
-            self.add_to_nearest(data_subset[i],str(i))
-
-        # update the mean values of all clusters
-        for i in range(0,k):
-            self.clusters[str(i)].update_centroid()
-
-        loop = True
-
-        while loop is True:
-
-            pointsMoving = 0
-
-            # now i need to find the points which want to move cluster
-            for i in range(0,len(data_subset)):
-                moved = self.add_to_nearest(data_subset[i],str(i))
-
-                if moved is True:
-                    pointsMoving += 1
-
-            if pointsMoving == 0:
-                loop = False
-            else:
-                print pointsMoving,
-                print 'points moved'
-
-            # update the mean values of all clusters
-            for i in range(0,k):
-                self.clusters[str(i)].update_centroid()
-
-        # once clusters chosen assign all points to a cluster
-        for i in range(0,k):
-            self.clusters[str(i)].remove_all()
-        self.labels = ['']*len(self.data)
-
-        for i in range(0,len(self.data)):
-            self.add_to_nearest(self.data[i],str(i))
-            
-        
-                
