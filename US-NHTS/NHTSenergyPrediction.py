@@ -116,7 +116,7 @@ class BaseLoad:
             return self.baseLoad
 
         else:
-            scale = float(population)/65140000
+            scale = float(population)/323100000
             for i in range(0,len(self.baseLoad)):
                 # scale then round
                 self.baseLoad[i] = self.baseLoad[i]*scale
@@ -302,7 +302,6 @@ class EnergyPrediction:
                     
                 elif model == 'linear':
                     self.energy[vehicle] += tripDistance*0.23/1609.34
-                
 
 
     def getNextDayStartTimes(self):
@@ -323,15 +322,15 @@ class EnergyPrediction:
             next(reader)
             for row in reader:
                 
-                if row[7] != self.day:
+                if int(row[7]) != int(self.day):
                     continue
                 
-                if month is not None:
-                    if row[8] != self.month:
+                if self.month is not None:
+                    if int(row[8]) != int(self.month):
                         continue
 
                 if self.rurUrb is not None:
-                    if row[3] != self.rurUrb:
+                    if int(row[3]) != int(self.rurUrb):
                         continue
 
                 if self.state is not None:
@@ -602,6 +601,8 @@ class EnergyPrediction:
                 oldLog.remove(earliest)
 
             newLogs[vehicle] = newLog
+
+            print(newLog)
 
         self.overCapacityTravelDiaries = newLogs
               
@@ -958,6 +959,12 @@ class EnergyPrediction:
 
         unused = []
 
+        # converting units of baseLoad
+        
+        for i in range(0,len(baseLoad)):
+            baseLoad[i] = baseLoad[i]/100
+       
+
         # pick probability to cut down with:
         p_sample = float(150)/len(self.energy)
 
@@ -1170,6 +1177,27 @@ class AreaEnergyPrediction:
 
         return numberVehicles
 
+    def getEnergyConsumptionHistogram(self):
+
+        if self.uPopulation > 0:
+            uEnergy = self.u.plotEnergyConsumption(newFigure=False,wait=True,
+                                                   returnResults=True)
+        else:
+            uEnergy = [0]*100
+
+        if self.rPopulation > 0:
+            rEnergy = self.r.plotEnergyConsumption(newFigure=False,wait=True,
+                                                   returnResults=True)
+        else:
+            rEnergy = [0]*100
+
+        energy = []
+
+        for i in range(0,len(uEnergy)):
+            energy.append(uEnergy[i]+rEnergy[i])
+
+        return energy
+
 
     def getDumbChargingProfile(self,power,nHours,sCharge=True,extraCharge=True):
 
@@ -1227,34 +1255,7 @@ class AreaEnergyPrediction:
                                                                 deadline=deadline))
             else:
                 profiles.append([0.0]*len(baseLoad))
-        '''            
-        if self.utPopulation > 0:
-            utProfile = self.ut.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                       scaleFactor=self.utScale,
-                                                        weighted=weighted,
-                                                        deadline=deadline,
-                                                        returnIndividual=returnIndividual)
-        else:
-            utProfile = [0.0]*len(baseLoad)
-            
-        if self.rtPopulation > 0:
-            rtProfile = self.rt.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                       scaleFactor=self.rtScale,
-                                                        weighted=weighted,
-                                                        deadline=deadline,
-                                                        returnIndividual=returnIndividual)
-        else:
-            rtProfile = [0.0]*len(baseLoad)
-            
-        if self.rvPopulation < 0:
-            rvProfile = self.rv.getPsuedoOptimalProfile(pMax,baseLoad,
-                                                       scaleFactor=self.rvScale,
-                                                        weighted=weighted,
-                                                        deadline=deadline,
-                                                        returnIndividual=returnIndividual)
-        else:
-            rvProfile = [0.0]*len(baseLoad)
-        '''            
+                
         profile = []
 
         for i in range(0,len(baseLoad)):
@@ -1266,7 +1267,8 @@ class AreaEnergyPrediction:
     def getOptimalChargingProfiles(self,pMax,nHours=36,pointsPerHour=1,
                                    allowOverCap=True,deadline=None,
                                    perturbDeadline=False,
-                                   solar=None,chargeAtWork=False):
+                                   solar=None,chargeAtWork=False,
+                                   summed=True):
 
         try:
             baseLoad = self.baseLoad
@@ -1339,14 +1341,14 @@ class AreaEnergyPrediction:
                     for i in range(0,len(newBase)):
                         newBase[i] + offset
                     
-            scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
-            per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
-            sim = [self.uc,self.ut,self.rt,self.rv]
+            scale = [self.uScale,self.rScale]
+            per = [self.uPer,self.rPer]
+            sim = [self.u,self.r]
 
-            for i in range(0,4):
+            for i in range(0,2):
                 if scale[i] > 0:
                     newProfiles = sim[i].getOptimalChargingProfiles(pMax,newBase,
-                                                                    baseScale=scale[i],
+                                                                    baseScale=scale[i]*per[i],
                                                                     nHours=nHours,
                                                                     pointsPerHour=pointsPerHour,
                                                                     deadline=deadline,
@@ -1356,11 +1358,24 @@ class AreaEnergyPrediction:
 
                     for vehicle in newProfiles:
                         load = newProfiles[vehicle]
+                        '''
                         for j in range(0,len(load)):
                             load[j] = load[j]*per[i]
+                        '''
                         profiles[key][vehicle] = load
 
-        return profiles
+        if summed == True:
+            totalProfile = [0]*nHours*pointsPerHour
+            for key in profiles:
+                for vehicle in profiles[key]:
+                    for i in range(0,len(profiles[key][vehicle])):
+                        totalProfile[i] += profiles[key][vehicle][i]
+
+            # now adding base load
+
+            return totalProfile
+        else:
+            return profiles
     
     def getMissingCapacity(self):
 
@@ -1391,7 +1406,7 @@ class AreaEnergyPrediction:
 class NationalEnergyPrediction(AreaEnergyPrediction):
 
     def __init__(self,day,month,vehicle=None,penetration=1.0):
-        AreaEnergyPrediction.__init__(self,None,2260741700,62358300,day,
+        AreaEnergyPrediction.__init__(self,None,260741700,62358300,day,
                                       month,vehicle=vehicle,
                                       penetration=penetration)
         

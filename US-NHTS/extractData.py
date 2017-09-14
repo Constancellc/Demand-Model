@@ -25,8 +25,8 @@ with open(households,'rU') as csvfile:
         householdID = row[0]
 
         weekday = row[24]
-        year = '20'+row[29][4:6]
-        month = int(row[29][2:4])
+        year = row[29][:4]
+        month = int(row[29][4:6])
 
         nPeople = int(row[12])
         CENSUS_D = row[5]

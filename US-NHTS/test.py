@@ -3,33 +3,55 @@ import matplotlib.pyplot as plt
 import csv
 import numpy as np
 # my code
-from NHTSenergyPrediction import NationalEnergyPrediction, BaseLoad
+from NHTSenergyPrediction import NationalEnergyPrediction, EnergyPrediction, BaseLoad
 
-
+'''
+test = EnergyPrediction('3','4',car='tesla')
+base = BaseLoad('3','3',36)
+profiles = test.getOptimalChargingProfiles(22,base.baseLoad)
+plt.figure(1)
+summed = [0]*36
+n = 0
+for v in profiles:
+    n += 1
+    for i in range(0,36):
+        summed[i] += profiles[v][i]
+plt.plot(summed)
+plt.plot(np.linspace(0,36,num=36*60), base.baseLoad)
+print(n)
+plt.show()
+'''
 plotN = {'1':1,'4':2,'7':3,'10':4}
 plotTitle = {'1':'Jan','4':'Apr','7':'Jul','10':'Oct'}
 
-x_ticks = ['08:00','10:00','12:00','14:00','16:00','18:00','20:00','22:00',
-           '00:00','02:00','04:00','06:00','08:00']
-x = np.arange(8,34,2)
+x_ticks = ['08:00','12:00','16:00','20:00','00:00','04:00','08:00']
+x = np.arange(8,36,4)
 t = np.linspace(0,36,num=36*60)
 plt.figure(1)
-for month in ['8']:#,'4','7','10']:
-    #plt.subplot(2,2,plotN[month])
-    plt.title('Wednesday in August')#plotTitle[month],y=0.9)
-    base = BaseLoad('3',month,36)
-    test = NationalEnergyPrediction('3',month)
-    dumb = test.getDumbChargingProfile(3.5,36)
+for month in ['1','4','7','10']:
+    plt.subplot(2,2,plotN[month])
+    plt.title(plotTitle[month],y=0.9)
+    #base = BaseLoad('3',month,36,unit='k')
+    test = NationalEnergyPrediction('3',month,vehicle='teslaS60D')
+    dumb = test.getDumbChargingProfile(3.5,36,extraCharge=False)
+    opt =  test.getOptimalChargingProfiles(7,36)
+    base = test.baseLoad
 
-    for i in range(0,len(base.baseLoad)):
+    for i in range(0,len(test.baseLoad)):
+        dumb[i] += base[i]
         dumb[i] = dumb[i]/1000000
-        dumb[i] += base.baseLoad[i]
+        if i%60 == 0:
+            opt[int(i/60)] += base[i]
+            opt[int(i/60)] = opt[int(i/60)]/1000000
+        base[i] = base[i]/1000000
     plt.plot(t,dumb)
-    plt.plot(t,base.baseLoad)
+    plt.plot(t,base,'g',ls=':')
+    plt.plot(opt)
     plt.xticks(x,x_ticks)
     plt.xlim(7,33)
     plt.xlabel('Time')
     plt.ylabel('Power (GW)')
-    plt.ylim(0,1200)
+    #plt.ylim(300,1600)
+    plt.grid()
 plt.show()
 
