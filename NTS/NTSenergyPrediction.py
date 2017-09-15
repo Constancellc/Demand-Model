@@ -109,18 +109,19 @@ class BaseLoad:
 
         else:
             scale = float(population)/65140000
-            for i in range(0,len(self.baseLoad)):
+            base = copy.copy(self.baseLoad)
+            for i in range(0,len(base)):
                 # scale then round
-                self.baseLoad[i] = self.baseLoad[i]*scale
-                self.baseLoad[i] = float(int(1000000*self.baseLoad[i]))/1000000
+                base[i] = base[i]*scale
+                base[i] = float(int(1000000*base[i]))/1000000
 
-            return self.baseLoad
+            return base
 
         
 class EnergyPrediction:
 
     def __init__(self, day, month=None, car=None, regionType=None, region=None,
-                 model='full',penetration=1.0):
+                 model='full',penetration=1.0,smoothTimes=False):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
@@ -142,6 +143,8 @@ class EnergyPrediction:
         self.region = region
         self.chargingEfficiency = 0.95
         self.penetration = penetration
+        self.smoothTimes = smoothTimes
+        
 
         # first getting the region types
         
@@ -247,6 +250,9 @@ class EnergyPrediction:
                     tripDistance = float(row[10])*1609.34 # miles -> m
                 except:
                     continue # skip trips without a time or length
+
+                if smoothTimes == True:
+                    tripEnd = int(30*int(tripEnd/30)+30*random.random())
                 
                 self.distance[vehicle] += int(tripDistance) # m
 
@@ -318,6 +324,9 @@ class EnergyPrediction:
                     tripStart = int(row[8])
                 except:
                     continue
+
+                if self.smoothTimes == True:
+                    tripStart = int(30*int(tripStart/30)+30*random.random())
 
                 if vehicle not in self.startTimes:
                     self.startTimes[vehicle] = tripStart
@@ -1044,7 +1053,8 @@ class EnergyPrediction:
 class AreaEnergyPrediction:
 
     def __init__(self,region,ucPopulation,utPopulation,rtPopulation,
-                 rvPopulation,day,month,vehicle=None,penetration=1.0):
+                 rvPopulation,day,month,vehicle=None,penetration=1.0,
+                 smoothTimes=False):
 
         # region:
 
@@ -1085,7 +1095,8 @@ class AreaEnergyPrediction:
         # run a simulation filtering for each of the region types
         if ucPopulation > 0:
             self.uc = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='1',penetration=penetration)
+                                       regionType='1',penetration=penetration,
+                                       smoothTimes=smoothTimes)
             #self.ucScale = float(ucPopulation)/self.uc.nPeople
             self.ucScale = float(self.totalPopulation)/self.uc.nPeople
         else:
@@ -1095,7 +1106,8 @@ class AreaEnergyPrediction:
             
         if utPopulation > 0:
             self.ut = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='2',penetration=penetration)
+                                       regionType='2',penetration=penetration,
+                                       smoothTimes=smoothTimes)
             #self.utScale = float(utPopulation)/self.ut.nPeople
             self.utScale = float(self.totalPopulation)/self.ut.nPeople
         else:
@@ -1105,7 +1117,8 @@ class AreaEnergyPrediction:
             
         if rtPopulation > 0:
             self.rt = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='3',penetration=penetration)
+                                       regionType='3',penetration=penetration,
+                                       smoothTimes=smoothTimes)
             #self.rtScale = float(rtPopulation)/self.rt.nPeople
             self.rtScale = float(self.totalPopulation)/self.rt.nPeople
         else:
@@ -1115,7 +1128,8 @@ class AreaEnergyPrediction:
             
         if rvPopulation > 0:
             self.rv = EnergyPrediction(day,month,vehicle,region=region,
-                                       regionType='4',penetration=penetration)
+                                       regionType='4',penetration=penetration,
+                                       smoothTimes=smoothTimes)
             #self.rvScale = float(rvPopulation)/self.rv.nPeople
             self.rvScale = float(self.totalPopulation)/self.rv.nPeople
         else:
@@ -1390,8 +1404,9 @@ class AreaEnergyPrediction:
                 
 class NationalEnergyPrediction(AreaEnergyPrediction):
 
-    def __init__(self,day,month,vehicle=None,penetration=1.0):
+    def __init__(self,day,month,vehicle=None,penetration=1.0,smoothTimes=False):
         AreaEnergyPrediction.__init__(self,None,24037000,29052000,5993000,
                                       6058000,day,month,vehicle=vehicle,
-                                      penetration=penetration)
+                                      penetration=penetration,
+                                      smoothTimes=smoothTimes)
         

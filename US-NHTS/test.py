@@ -30,14 +30,21 @@ t = np.linspace(0,36,num=36*60)
 plt.figure(1)
 for month in ['1','4','7','10']:
     plt.subplot(2,2,plotN[month])
-    plt.title(plotTitle[month],y=0.9)
-    #base = BaseLoad('3',month,36,unit='k')
-    test = NationalEnergyPrediction('3',month,vehicle='teslaS60D')
+    plt.title(plotTitle[month],y=0.85)
+    base = BaseLoad('3',month,36,unit='k').getLoad()
+    test = NationalEnergyPrediction('3',month,vehicle='teslaS60D',smoothTimes=True)
+    print(test.getNumberOfVehicles(),end=' ')
+    print('vehicles')
     dumb = test.getDumbChargingProfile(3.5,36,extraCharge=False)
-    opt =  test.getOptimalChargingProfiles(7,36)
-    base = test.baseLoad
+    totalEn = 0
+    for i in range(0,36*60):
+        totalEn += dumb[i]/60
+    print('total energy used: ',end='')
+    print(totalEn,end=' ')
+    print('kWh')
+    opt =  test.getOptimalChargingProfiles(22,36)
 
-    for i in range(0,len(test.baseLoad)):
+    for i in range(0,len(base)):
         dumb[i] += base[i]
         dumb[i] = dumb[i]/1000000
         if i%60 == 0:
@@ -49,9 +56,9 @@ for month in ['1','4','7','10']:
     plt.plot(opt)
     plt.xticks(x,x_ticks)
     plt.xlim(7,33)
+    plt.ylim(300,900)
     plt.xlabel('Time')
     plt.ylabel('Power (GW)')
-    #plt.ylim(300,1600)
     plt.grid()
 plt.show()
 

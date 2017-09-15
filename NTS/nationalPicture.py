@@ -23,8 +23,15 @@ x = np.linspace(8,32,num=5)
 my_xticks = ['08:00 \n Wed','14:00','20:00','02:00','08:00 \n Thu']
 
 for month in ['1','4','7','10']:
-    run = NationalEnergyPrediction(day,month)
+    run = NationalEnergyPrediction(day,month,vehicle='teslaS60D',smoothTimes=True)
     dumbProfile = run.getDumbChargingProfile(3.5,nHours) # kW
+
+    totalEn = 0
+    for i in range(12*60,36*60):
+        totalEn += dumbProfile[i]/60
+    print('total energy used: ',end='')
+    print(totalEn,end=' ')
+    print('kWh')
     smart = run.getOptimalChargingProfiles(7,deadline=10)#,allowOverCap=False)
     #psuedo = run.getPsuedoOptimalProfile(7.0,deadline=10)
 

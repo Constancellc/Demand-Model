@@ -60,7 +60,7 @@ with open(outfile,'w') as csvout:
 
             distance = row[-16] # miles
 
-            if vehType != '01': # only cars
+            if vehType not in ['01','02','03','04','05','06']: # ignoring bikes golf carts
                 continue
 
             if distance == '-1':
