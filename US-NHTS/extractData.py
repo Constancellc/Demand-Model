@@ -86,4 +86,4 @@ with open(outfile,'w') as csvout:
 
             writer.writerow([vehicleID,householdID,individualID,regionType,
                              regionType2,start,end,weekday,month,year,distance,
-                             numPassengers])
+                             numPassengers,purposeTo])
