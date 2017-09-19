@@ -9,6 +9,15 @@ from cvxopt import matrix, spdiag, solvers, sparse
 from vehicleModelCopy import Drivecycle, Vehicle
 #from NTSvehicleLocation import LocationPrediction
 
+timeDifference = {'AK':1,'AL':-2,'AR':-1,'AZ':-2,'CA':0,'CO':-1,
+                  'CT':-3,'DC':-3,'DE':-3,'FL':-3,'GA':-3,'HI':3,
+                  'IA':-2,'ID':-1,'IL':-2,'IN':-3,'KS':-2,'KY':-3,
+                  'LA':-2,'MA':-3,'MD':-3,'ME':-3,'MI':-3,'MN':-2,
+                  'MO':-2,'MS':-2,'MT':-1,'NC':-3,'ND':-2,'NE':-2,
+                  'NH':-3,'NJ':-3,'NM':-1,'NV':0,'NY':-3,'OH':-3,
+                  'OK':-2,'OR':0,'PA':-3,'RI':-3,'SC':-3,'SD':-2,
+                  'TN':-2,'TX':-2,'UT':-1,'VA':-3,'VT':-3,'WA':0,
+                  'WI':-2,'WV':-3,'WY':-1} # -> PDT
 
 # CONTENTS:
 # classes: BaseLoad, EnergyPrediction, NationalEnergyPrediction,
@@ -46,7 +55,7 @@ class BaseLoad:
                   '10':'2016-10-','11':'2016-11-','12':'2016-12-'}
 
         nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
-
+   
         dates = {}
         n = 0
 
@@ -84,7 +93,9 @@ class BaseLoad:
         for i in range(0,len(profiles)):
             profile += profiles[i]
 
-        profile = profile[:nHours] # hourly
+        profile = profile[7:nHours+7] # hourly
+
+        #profile = profile[7:]+profile[:7] # UTC -> PDT
 
 
         interpolatedLoad = [0.0]*nHours*pointsPerHour
@@ -158,8 +169,8 @@ class EnergyPrediction:
 
         # first getting the states and regions if necessary
 
-        if state is not None:
-            self.regS = {}
+        #if state is not None:
+        self.regS = {}
 
         if regionD is not None:
             self.regD = {}
@@ -190,9 +201,9 @@ class EnergyPrediction:
                     if int(row[5]) != int(day):
                         continue
 
-                if state is not None:
-                    if row[0] not in self.regS:
-                        self.regS[row[0]] = row[4]
+                #if state is not None:
+                if row[0] not in self.regS:
+                    self.regS[row[0]] = row[4]
 
                 if regionD is not None:
                     self.regD[row[0]] = row[2]
@@ -249,11 +260,13 @@ class EnergyPrediction:
 
                 vehicle = row[0]
 
+                timeOffset = timeDifference[self.regS[row[1]]]
+
                 if vehicle == ' ': # skip trips where the vehicle is missing
                     continue
 
                 if vehicle not in self.energy:
-                    self.energy[vehicle] = 0.0
+                    self.energy[vehicle] = [0.0,timeOffset]
                     self.distance[vehicle] = 0.0
                     self.endTimes[vehicle] = 0
                     self.nVehicles += 1
@@ -264,7 +277,7 @@ class EnergyPrediction:
                     passengers = 1 # if missing assume only the driver
 
                 try:
-                    tripEnd = int(row[6])
+                    tripEnd = int(row[6])#+timeOffset*60
                     tripDistance = float(row[10])*1609.34 # miles -> m
                 except:
                     continue # skip trips without a time or length
@@ -302,12 +315,12 @@ class EnergyPrediction:
                                      '11':0.7,'12':1.3}
 
                     car.load = passengers*75 # add appropriate load to vehicle
-                    self.energy[vehicle] += car.getEnergyExpenditure(cycle,0)
+                    self.energy[vehicle][0] += car.getEnergyExpenditure(cycle,0)
                                                                      #accessoryLoad[str(int(row[8]))])
                     car.load = 0
                     
                 elif model == 'linear':
-                    self.energy[vehicle] += tripDistance*0.23/1609.34
+                    self.energy[vehicle][0] += tripDistance*0.23/1609.34
 
 
     def getNextDayStartTimes(self):
@@ -353,11 +366,13 @@ class EnergyPrediction:
 
                 vehicle = row[0]
 
+                #timeOffset = timeDifference[self.regS[row[1]]]
+
                 if vehicle == ' ': # skip trips where the vehicle is missing
                     continue
 
                 try:
-                    tripStart = int(row[5])
+                    tripStart = int(row[5])#+60*timeOffset
                 except:
                     continue
 
@@ -645,11 +660,14 @@ class EnergyPrediction:
 
         for vehicle in self.energy:
 
+            timeOffset = self.energy[vehicle][1]
+
             if highUseHomeCharging == True:
                 if vehicle in self.overCapacityVehicles:
                     continue
             
-            kWh = self.energy[vehicle]
+            kWh = self.energy[vehicle][0]
+            offset = self.energy[vehicle][1]
 
             if highUseHomeCharging == False and highUseWorkCharging == False and highUseShopCharging == False:
                 if kWh > self.car.capacity:
@@ -706,7 +724,14 @@ class EnergyPrediction:
                 uncharged += 1
 
             for i in range(chargeStart,chargeEnd):
-                profile[i] += scaleFactor*power*self.penetration
+                try:
+                    profile[i+60*offset] += scaleFactor*power*self.penetration
+                except:
+                    if i+60*offset < 0:
+                        profile[i+60*offset+1440] += scaleFactor*power*self.penetration
+                    else:
+                        profile[i+60*offset-1440] += scaleFactor*power*self.penetration
+
 
         # now for the high acheivers:
         if highUseHomeCharging == True:
@@ -762,7 +787,15 @@ class EnergyPrediction:
                         energyRequired -= chargePower*(chargeEnd-chargeStart)/60
 
                         for i in range(chargeStart,chargeEnd):
-                            profile[i] += scaleFactor*chargePower*self.penetration
+                            try:
+                                profile[i+60*offset] += scaleFactor*power*self.penetration
+                            except:
+                                if i+60*offset < 0:
+                                    profile[i+60*offset+1440] += scaleFactor*power*self.penetration
+                                else:
+                                    profile[i+60*offset-1440] += scaleFactor*power*self.penetration
+
+
 
                     journeys.remove(journeys[0])
 
@@ -787,7 +820,14 @@ class EnergyPrediction:
                 for i in range(chargeStart,chargeStart+timeRequired):
                     if i >= len(profile):
                         continue
-                    profile[i] += scaleFactor*power*self.penetration
+                    try:
+                        profile[i+60*offset] += scaleFactor*power*self.penetration
+                    except:
+                        if i+60*offset < 0:
+                            profile[i+60*offset+1440] += scaleFactor*power*self.penetration
+                        else:
+                            profile[i+60*offset-1440] += scaleFactor*power*self.penetration
+
                                             
 
                 if outOfCharge is True:
@@ -800,9 +840,12 @@ class EnergyPrediction:
                         timeReq = int(log[0]*60/scPower)
                         for i in range(log[1],log[1]+timeReq):
                             try:
-                                profile[i] += scaleFactor*scPower*self.penetration
+                                profile[i+60*offset] += scaleFactor*scPower*self.penetration
                             except:
-                                continue
+                                if i+60*offset < 0:
+                                    profile[i+60*offset+1440] += scaleFactor*scPower*self.penetration
+                                else:
+                                    profile[i+60*offset-1440] += scaleFactor*scPower*self.penetration
 
         # acale for charging efficiency
         for i in range(0,tmax):
@@ -976,19 +1019,21 @@ class EnergyPrediction:
         for vehicle in self.energy:
             if random.random() < p_sample or vehicle in individuals:
                 
+                offset = self.energy[vehicle][1]
+                kWh = self.energy[vehicle][0]
                 
-                if self.energy[vehicle] == 0.0:
+                if kWh == 0.0:
                     unused += [vehicle]
                     continue
-                if self.energy[vehicle] >= self.car.capacity:
+                if kWh >= self.car.capacity:
                     print(self.energy[vehicle],end='')
                     print(' is higher than battery capacity')
                     if allowOverCap == True:
-                        b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
+                        b.append(baseScale*kWh/self.chargingEfficiency)
                     else:
                         b.append(baseScale*self.car.capacity/self.chargingEfficiency)
                 else:
-                    b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
+                    b.append(baseScale*kWh/self.chargingEfficiency)
 
                 vehicles.append(vehicle)               
 
@@ -1030,8 +1075,11 @@ class EnergyPrediction:
 
         for j in range(0,n):
             arrival = int(float(self.endTimes[vehicles[j]])*pointsPerHour/60)
+            arrival += offset*pointsPerHour
+            if arrival < 0:
+                arrival = 0
             departure = int(float(self.startTimes[vehicles[j]])*pointsPerHour/60)
-            departure += 24*pointsPerHour
+            departure += 24*pointsPerHour+pointsPerHour*offset
 
             if chargeAtWork == True:
                 if vehicles[j] in self.commutes:

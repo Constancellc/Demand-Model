@@ -45,7 +45,7 @@ for month in ['1','4','7','10']:
     plt.xticks(x,x_ticks)
     plt.xlim(7,33)
     plt.ylim(300,900)
-    plt.xlabel('Time')
+    plt.xlabel('Pacific Time')
     plt.ylabel('Power (GW)')
     plt.grid()
     
