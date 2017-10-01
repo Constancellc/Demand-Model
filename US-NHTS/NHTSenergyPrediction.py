@@ -29,11 +29,12 @@ households = '../../Documents/NHTS/constance/households_useful.csv'
 
 class BaseLoad:
 
-    def __init__(self,day,month,nHours,unit='G',pointsPerHour=60):
+    def __init__(self,day,month,nHours,unit='G',pointsPerHour=60,
+                 BAs=None,timeShift=True):
 
         units = {'':1,'k':1000,'M':1000000,'G':1000000000}
 
-        nDays = int(nHours/24)+1
+        nDays = int(nHours/24)+2
 
         # find right date for day of the week
         calender = {'1':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
@@ -54,6 +55,7 @@ class BaseLoad:
                   '7':'2016-07-','8':'2016-08-','9':'2016-09-',
                   '10':'2016-10-','11':'2016-11-','12':'2016-12-'}
 
+        prevDay = {'1':'7','2':'1','3':'2','4':'3','5':'4','6':'5','7':'6'}
         nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
    
         dates = {}
@@ -62,40 +64,81 @@ class BaseLoad:
         profiles = []
         for i in range(0,nDays):
             profiles.append([0]*24)
-
-        while nDays > 0:
-            dates[months[month]+str(calender[month][day])] = n
-            n += 1
-            day = nextDay[day]
-            nDays -= 1
-
+            
         if int(month) <= 6:
             demandFile = '../../Documents/US-Demand/EIA930_BALANCE_2016_Jan_Jun.csv'
         else:
             demandFile ='../../Documents//US-Demand/EIA930_BALANCE_2016_Jul_Dec.csv'
 
 
-        with open(demandFile,'rU') as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader)
-            for row in reader:
-                if row[1][:10] not in dates:
-                    continue
+        if timeShift == False:
+            while nDays > 0:
+                dates[months[month]+str(calender[month][day])] = n
+                n += 1
+                day = nextDay[day]
+                nDays -= 1
+                
+            with open(demandFile,'rU') as csvfile:
+                reader = csv.reader(csvfile)
+                next(reader)
+                for row in reader:
+                    if row[2][:10] not in dates:
+                        continue
 
-                try:
-                    profiles[dates[row[1][:10]]][int(row[4])-1] += int(row[5])
-                except:
-                    continue
-                                                
+                    if BAs is not None:
+                        if row[0] not in BAs:
+                            continue
 
-        profile = []
+                    try:
+                        profiles[dates[row[2][:10]]][int(row[4])-1] += int(row[5])
+                    except:
+                        continue
+                                                    
 
-        for i in range(0,len(profiles)):
-            profile += profiles[i]
+            profile = []
 
-        profile = profile[7:nHours+7] # hourly
+            for i in range(0,len(profiles)):
+                profile += profiles[i]
 
-        #profile = profile[7:]+profile[:7] # UTC -> PDT
+            profile[:nHours]
+
+        else:
+
+
+            day = prevDay[day]
+
+            while nDays > 0:
+                dates[months[month]+str(calender[month][day])] = n
+                n += 1
+                day = nextDay[day]
+                nDays -= 1
+
+
+            with open(demandFile,'rU') as csvfile:
+                reader = csv.reader(csvfile)
+                next(reader)
+                for row in reader:
+                    if row[1][:10] not in dates:
+                        continue
+
+                    if BAs is not None:
+                        if row[0] not in BAs:
+                            continue
+
+                    try:
+                        profiles[dates[row[1][:10]]][int(row[4])-1] += int(row[5])
+                    except:
+                        continue
+                                                    
+
+            profile = []
+
+            for i in range(0,len(profiles)):
+                profile += profiles[i]
+
+            profile = profile[17:nHours+17] # hourly
+
+            #profile = profile[7:]+profile[:7] # UTC -> PDT
 
 
         interpolatedLoad = [0.0]*nHours*pointsPerHour
@@ -121,20 +164,21 @@ class BaseLoad:
 
         self.baseLoad = interpolatedLoad
 
-    def getLoad(self,population='full'):
+    def getLoad(self,populationPerc=1.0):
 
-        if population == 'full':
+        if populationPerc == 1.0:
             return self.baseLoad
 
         else:
-            scale = float(population)/323100000
             base = copy.copy(self.baseLoad)
             for i in range(0,len(base)):
                 # scale then round
-                base[i] = base[i]*scale
+                base[i] = base[i]*populationPerc
                 base[i] = float(int(1000000*base[i]))/1000000
 
             return base
+
+
 
         
 class EnergyPrediction:
@@ -1331,9 +1375,10 @@ class AreaEnergyPrediction:
                                    summed=True):
 
         try:
-            baseLoad = self.baseLoad
+            areaBase = self.areaBase
         except:                
             areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            self.areaBase = areaBase
             #baseLoad = areaBase.getLoad(population=self.totalPopulation)
             #self.baseLoad = baseLoad
 
@@ -1348,9 +1393,9 @@ class AreaEnergyPrediction:
 
             for i in range(0,2):
                 if scale[i] > 0:
-                    baseLoad = areaBase.getLoad(population=per[i]*self.totalPopulation)
+                    baseLoad = areaBase.getLoad(populationPerc=per[i])
                     newProfiles = sim[i].getOptimalChargingProfiles(pMax,baseLoad,
-                                                                    baseScale=scale[i],#*per[i],
+                                                                    baseScale=scale[i],#/per[i],
                                                                     nHours=nHours,
                                                                     pointsPerHour=pointsPerHour,
                                                                     deadline=deadline,
@@ -1411,4 +1456,19 @@ class NationalEnergyPrediction(AreaEnergyPrediction):
                                       month,vehicle=vehicle,
                                       penetration=penetration,
                                       smoothTimes=smoothTimes)
+
+class CaliforniaEnergyPrediction(AreaEnergyPrediction):
+
+    def __init__(self,day,month,vehicle='teslaS60D',penetration=1.0,
+                 smoothTimes=False):
+        AreaEnergyPrediction.__init__(self,None,34147500,5102500,day,month,
+                                      state='CA',smoothTimes=smoothTimes,
+                                      penetration=1.0,vehicle=vehicle)
+
+        # now get baseLoad
+        BL = BaseLoad(day,month,unit='k',nHours=36,BAs=['BANC','CISO','IID',
+                                                        'LADWP','SPP','TID',
+                                                        'WALC'],timeShift=False)
+
+        self.areaBase = BL
         
