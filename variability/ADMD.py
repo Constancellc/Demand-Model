@@ -4,6 +4,12 @@ import random
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+
+sys.path.append('../NTS')
+
+# my code
+from NTSenergyPrediction import EnergyPrediction
 
 profiles = []
 
@@ -18,8 +24,9 @@ with open('../../Documents/household_demand_pool.csv','rU') as csvfile:
             profiles[j][i] = float(row[j])
         i += 1
 
-vehicleProfiles = []
+run = EnergyPrediction('3','7')
 
+vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 
 # assume we have some number of profiles
@@ -30,46 +37,11 @@ penetrationLevel = [0,0.1,0.3,1.0]
 
 timeScale = 10 # mins
 
-ADMD = []
-mean = []
 
-numMC = 1000
+#mean = []
 
-for a in range(0,len(aggregation)):
-    ADMD.append([0]*int(1440/timeScale))
-    mean.append([0]*int(1440/timeScale))
-    n = aggregation[a]
+numMC = 100 # number of nonte carlo samples
 
-    for mc in range(0,numMC):
-        #nVehicles = np.random.poisson(n*penetration)
-
-        summed = [0.0]*1440
-
-        # first pick household profiles
-        chosen = []
-
-        while len(chosen) < n:
-            index = int(1000*random.random())
-            if index not in chosen:
-                chosen.append(index)
-
-        for i in range(0,n):
-            for j in range(0,1440):
-                summed[j] += profiles[chosen[i]][j]/n
-
-        # then pick vehicle profiles
-
-        # then downsample
-
-        ds = [0.0]*int(1440/timeScale)
-
-        for i in range(0,len(summed)):
-            ds[int(i/timeScale)] += summed[i]/timeScale
-
-        for i in range(0,len(ds)):
-            mean[a][i] += ds[i]/numMC
-            if ds[i] >= ADMD[a][i]:
-                ADMD[a][i] = ds[i]
 
 
 y_ticks = []
@@ -83,18 +55,71 @@ for i in range(2,24,2):
 
 plt.figure(1)
 
-plt.subplot(2,1,1)
-#plt.title('0%')
-plt.imshow(ADMD,aspect=5)
-plt.yticks(range(0,len(aggregation)),y_ticks)
-plt.xticks(np.linspace(2*60/timeScale,22*60/timeScale,num=len(x_ticks)),x_ticks)
-plt.colorbar()
+for pl in range(0,len(penetrationLevel)):
+    level = penetrationLevel[pl]
+    ADMD = []
+    
+    for a in range(0,len(aggregation)):
+        ADMD.append([0]*int(1440/timeScale))
+        #mean.append([0]*int(1440/timeScale))
+        n = aggregation[a]
 
+        for mc in range(0,numMC):
+            if level == 0:
+                nVehicles = 0
+            else:
+                nVehicles = np.random.poisson(n*level)
+            summed = [0.0]*1440
+
+            # first pick household profiles
+            chosen = []
+
+            while len(chosen) < n:
+                index = int(1000*random.random())
+                if index not in chosen:
+                    chosen.append(index)
+
+            # then pick vehicle profiles
+            chosenV = []
+
+            while len(chosenV) < nVehicles:
+                index = int(1000*random.random())
+                if index not in chosenV:
+                    chosenV.append(index)
+
+            for i in range(0,n):
+                for j in range(0,1440):
+                    summed[j] += profiles[chosen[i]][j]/n
+            for i in range(0,nVehicles):
+                for j in range(0,1440):
+                    summed[j] += vehicleProfiles[chosenV[i]][j]/n
+
+            # then downsample
+
+            ds = [0.0]*int(1440/timeScale)
+
+            for i in range(0,len(summed)):
+                ds[int(i/timeScale)] += summed[i]/timeScale
+
+            for i in range(0,len(ds)):
+                #mean[a][i] += ds[i]/numMC
+                if ds[i] >= ADMD[a][i]:
+                    ADMD[a][i] = ds[i]
+
+    plt.subplot(len(penetrationLevel),1,pl+1)
+    plt.title(str(int(100*level))+'%')
+    plt.imshow(ADMD,aspect=5,cmap='inferno')#,vmin=0,vmax=8)
+    plt.yticks(range(0,len(aggregation)),y_ticks)
+    plt.xticks(np.linspace(2*60/timeScale,22*60/timeScale,num=len(x_ticks)),x_ticks)
+    plt.colorbar()
+    plt.ylabel('number of houses')
+'''
 plt.subplot(2,1,2)
 
 plt.imshow(mean,aspect=5)
 plt.yticks(range(0,len(aggregation)),y_ticks)
 plt.xticks(np.linspace(2*60/timeScale,22*60/timeScale,num=len(x_ticks)),x_ticks)
 plt.colorbar()
-
+'''
+plt.xlabel('time')
 plt.show()

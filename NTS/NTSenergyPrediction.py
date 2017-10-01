@@ -771,6 +771,34 @@ class EnergyPrediction:
         else:
             return profile
 
+    def returnDumbChargingProfiles(self,nProfiles,power,nHours=24):
+
+        profiles = []
+
+        for vehicle in self.energy:
+
+            if len(profiles) >= nProfiles:
+                continue
+
+            profiles.append([0.0]*60*nHours)
+            
+            kWh = self.energy[vehicle]
+
+            if kWh > self.car.capacity:
+                kWh = self.car.capacity
+
+            chargeStart = self.endTimes[vehicle]
+            chargeTime = int(kWh*60/power)
+
+            for i in range(chargeStart,chargeStart+chargeTime):
+                if i < len(profiles[-1]):
+                    profiles[-1][i] = power
+                else:
+                    profiles[-1][i-nHours*60] = power
+
+        return profiles
+
+
     def getMissingCapacity(self,nHours):
         try:
             log = self.outOfChargeLog
