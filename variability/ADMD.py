@@ -30,19 +30,18 @@ vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 
 # assume we have some number of profiles
-aggregation = [50,20,10,5,2]#,1]
+#aggregation = [16,8,4,2]#,1]
+aggregation = [100,50,25]#,1]
 
 #penetrationLevel = np.arange(0,1.1,0.1)
 penetrationLevel = [0,0.1,0.3,1.0]
 
-timeScale = 10 # mins
+timeScale = 5 # mins
 
 
 #mean = []
 
-numMC = 100 # number of nonte carlo samples
-
-
+numMC = 200 # number of nonte carlo samples
 
 y_ticks = []
 for i in range(0,len(aggregation)):
@@ -53,7 +52,7 @@ for i in range(2,24,2):
     x_ticks.append(str(i)+':00')
         
 
-plt.figure(1)
+fig = plt.figure(1)
 
 for pl in range(0,len(penetrationLevel)):
     level = penetrationLevel[pl]
@@ -106,13 +105,16 @@ for pl in range(0,len(penetrationLevel)):
                 if ds[i] >= ADMD[a][i]:
                     ADMD[a][i] = ds[i]
 
-    plt.subplot(len(penetrationLevel),1,pl+1)
+    ax = fig.add_subplot(len(penetrationLevel),1,pl+1)
     plt.title(str(int(100*level))+'%')
-    plt.imshow(ADMD,aspect=5,cmap='inferno')#,vmin=0,vmax=8)
+    plt.imshow(ADMD,aspect=5*(10/timeScale),cmap='inferno',vmin=0,vmax=3)
     plt.yticks(range(0,len(aggregation)),y_ticks)
-    plt.xticks(np.linspace(2*60/timeScale,22*60/timeScale,num=len(x_ticks)),x_ticks)
-    plt.colorbar()
+    
     plt.ylabel('number of houses')
+    plt.xticks(np.linspace(2*60/timeScale,22*60/timeScale,num=len(x_ticks)),x_ticks)
+    if pl == 0:
+        cbaxes = fig.add_axes([0.92, 0.08, 0.03, 0.8]) 
+        plt.colorbar(ax=ax,cax=cbaxes)
 '''
 plt.subplot(2,1,2)
 
