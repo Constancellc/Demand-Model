@@ -138,6 +138,44 @@ for month in simulationMonth:
         plt.legend(ncol=5,loc=[0.2,1.05])
     plt.grid()
 
+    # The section below generates three plots, for use in presentations
+    '''
+    for fig in [1,2,3]:
+        plt.figure(fig)
+        plt.rcParams["font.family"] = 'serif'
+        plt.subplot(2,2,n)
+        n += 1
+
+        if fig > 1:
+            plt.plot(np.linspace(0,36,num=36*pph),net['m'],color='b',label='With EVs')
+            plt.fill_between(np.linspace(0,36,num=36*pph),net['h'],net['l'],alpha=0.2,
+                             color='b')
+
+        if fig > 2:           
+            plt.plot(np.linspace(0,36,num=36*pph),netWC['m'],color='r',
+                     label='With EVs + Work Charging')
+            plt.fill_between(np.linspace(0,36,num=36*pph),netWC['h'],netWC['l'],alpha=0.2,
+                             color='r')
+        
+        plt.plot(np.linspace(0,36,num=36*pph),oldNet['m'],color='g',
+                 label='Without EVs')
+        plt.fill_between(np.linspace(0,36,num=36*pph),oldNet['h'],oldNet['l'],
+                         alpha=0.2,color='g')
+        plt.plot(np.linspace(0,36,num=60*36),base,c='k',ls=':',alpha=0.8,
+                 label='Base Load')
+        plt.xlim(11,35)
+        plt.xticks(x,x_ticks)
+        plt.ylabel('Power (MW)')
+        plt.ylim(-200,550)
+        plt.title(months[month],y=0.9)
+        if n == 2:
+            plt.legend(ncol=5,loc=[0.2,1.05])
+        plt.grid()
+    
+
+
+    '''
+
 '''
 plt.figure(2)#
 plt.plot(np.linspace(0,36,num=60*36),dumb)

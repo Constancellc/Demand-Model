@@ -8,7 +8,7 @@ import numpy as np
 # my code
 from NHTSenergyPrediction import CaliforniaEnergyPrediction
 
-day = '3'
+day = 'weekday'
 
 t = np.linspace(0,36,num=36*60)
 x = np.linspace(8,32,num=5)

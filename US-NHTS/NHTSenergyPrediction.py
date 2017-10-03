@@ -32,6 +32,9 @@ class BaseLoad:
     def __init__(self,day,month,nHours,unit='G',pointsPerHour=60,
                  BAs=None,timeShift=True):
 
+        if day == 'weekday':
+            day = '3'
+
         units = {'':1,'k':1000,'M':1000000,'G':1000000000}
 
         nDays = int(nHours/24)+2
@@ -242,7 +245,10 @@ class EnergyPrediction:
                         continue
 
                 if day is not None: # and the wrong day
-                    if int(row[5]) != int(day):
+                    if self.day == 'weekday':
+                        if int(row[5]) > 4 or int(row[5]) < 2:
+                            continue
+                    elif int(row[5]) != int(day):
                         continue
 
                 #if state is not None:
@@ -278,8 +284,11 @@ class EnergyPrediction:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                
-                if int(row[7]) != int(self.day):
+
+                if self.day == 'weekday':
+                    if int(row[7]) > 4 or int(row[7]) < 2:
+                        continue
+                elif int(row[7]) != int(self.day):
                     continue
                 
                 if month is not None:
@@ -291,8 +300,11 @@ class EnergyPrediction:
                         continue
 
                 if self.state is not None:
-                    if self.regS[row[1]] != self.state:
-                        continue
+                    try:
+                        if self.regS[row[1]] != self.state:
+                            continue
+                    except:
+                        print(row[1])
 
                 if self.regionR is not None:
                     if self.regR[row[1]] != self.regionR:
@@ -385,7 +397,10 @@ class EnergyPrediction:
             next(reader)
             for row in reader:
                 
-                if int(row[7]) != int(self.day):
+                if self.day == 'weekday':
+                    if int(row[7]) > 4 or int(row[7]) < 2:
+                        continue
+                elif int(row[7]) != int(self.day):
                     continue
                 
                 if self.month is not None:
@@ -570,7 +585,10 @@ class EnergyPrediction:
             reader = csv.reader(csvfile)
             for row in reader:
                 
-                if row[7] != self.day:
+                if self.day == 'weekday':
+                    if int(row[7]) > 4 or int(row[7]) < 2:
+                        continue
+                elif row[7] != self.day:
                     continue
                 
                 if month is not None:

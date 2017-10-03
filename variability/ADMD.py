@@ -31,12 +31,12 @@ vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 # assume we have some number of profiles
 #aggregation = [16,8,4,2]#,1]
-aggregation = [100,50,25]#,1]
+aggregation = [300,100,30]#,1]
 
 #penetrationLevel = np.arange(0,1.1,0.1)
 penetrationLevel = [0,0.1,0.3,1.0]
 
-timeScale = 5 # mins
+timeScale = 30 # mins
 
 
 #mean = []
@@ -107,7 +107,7 @@ for pl in range(0,len(penetrationLevel)):
 
     ax = fig.add_subplot(len(penetrationLevel),1,pl+1)
     plt.title(str(int(100*level))+'%')
-    plt.imshow(ADMD,aspect=5*(10/timeScale),cmap='inferno',vmin=0,vmax=3)
+    plt.imshow(ADMD,aspect=5*(10/timeScale),cmap='inferno',vmin=0,vmax=2.5)
     plt.yticks(range(0,len(aggregation)),y_ticks)
     
     plt.ylabel('number of houses')
