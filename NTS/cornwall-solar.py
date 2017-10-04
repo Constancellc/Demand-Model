@@ -110,6 +110,8 @@ for month in simulationMonth:
     EVlbls = {'h':'EV Demand (H)','m':'EV Demand (M)',
               'l':'EV Demand (L)'}
     netlbls = {'h':'Net Demand (H)','m':'Net Demand (M)','l':'Net Demand (L)'}
+
+    '''
     plt.figure(1)
     plt.rcParams["font.family"] = 'serif'
     plt.subplot(2,2,n)
@@ -144,7 +146,6 @@ for month in simulationMonth:
         plt.figure(fig)
         plt.rcParams["font.family"] = 'serif'
         plt.subplot(2,2,n)
-        n += 1
 
         if fig > 1:
             plt.plot(np.linspace(0,36,num=36*pph),net['m'],color='b',label='With EVs')
@@ -172,9 +173,13 @@ for month in simulationMonth:
             plt.legend(ncol=5,loc=[0.2,1.05])
         plt.grid()
     
+    n += 1
+
+        #'''
+    
 
 
-    '''
+   
 
 '''
 plt.figure(2)#
