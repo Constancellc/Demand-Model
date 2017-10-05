@@ -56,6 +56,21 @@ class Cluster:
     def remove_all(self):
         self.points = {}
 
+    def get_centroid_median(self):
+        # find the point nearest to the centroid
+
+        nearest = 10000000
+        median = None
+        
+        for i in self.points:
+            dist = np.linalg.norm(np.array(self.points[i])-\
+                                     np.array(self.mean))
+            if dist < nearest:
+                median = self.points[i]
+
+        return median
+            
+
     def update_centroid(self,centroid=None):
         
         if centroid != None:
@@ -95,7 +110,35 @@ class Cluster:
                         best_y = y2
 
                 for j in range(0,self.nFeatures):
-                    mean[j] += best_y[j]/self.nPoints           
+                    mean[j] += best_y[j]/self.nPoints
+                    
+    def get_cluster_bounds(self,conf=0.95):
+
+        per = (1.0-conf)/2
+        upper = []
+        lower = []
+
+        N = len(self.points)
+        u_lim = int(N*(1.0-per))
+        l_lim = int(N*per)
+
+        for j in range(0,48):
+            p = []
+            
+            for i in self.points:
+                p.append(self.points[i][j])
+
+            p = sorted(p)
+
+            upper.append(p[u_lim])
+            lower.append(p[l_lim])
+
+        return upper, lower
+
+            
+                
+                
+            
             
 class ClusteringExercise:
 
@@ -146,4 +189,11 @@ class ClusteringExercise:
         for i in range(0,len(label)):
             self.clusters[str(label[i])].add_point(self.data[i],str(i))
             self.labels[i] = str(label[i])
+
+    def get_cluster_median(self):
+        medians = {}
+        for cluster in self.clusters:
+            medians[cluster] = self.clusters[cluster].get_centroid_median()
+
+        return medians
 

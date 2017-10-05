@@ -4,6 +4,7 @@ import random
 import numpy as np
 from clustering import Cluster, ClusteringExercise
 
+
 data = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 wProfiles = {}
@@ -103,34 +104,57 @@ for vehicle in weProfiles:
 
     
 data = []
-for vehicle in weProfiles:
-    data.append(weProfiles[vehicle])
+for vehicle in wProfiles:
+    data.append(wProfiles[vehicle])
 
-'''
-x = np.arange(8,48,8)
-x_ticks = range(4,24,4)
-for i in range(0,len(x_ticks)):
-    if x_ticks[i] < 10:
-        x_ticks[i] = '0'+str(x_ticks[i])+':00'
-    else:
-        x_ticks[i] = str(x_ticks[i])+':00'
-'''
+random.shuffle(data)
 
+sampleN = 30000
+CE = ClusteringExercise(data[:sampleN])
 
-
-CE = ClusteringExercise(data[:10000])
-
+x = range(4,52,8)
+x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
 plt.figure(1)
 for k in range(2,8):
     plt.subplot(3,2,k-1)
 
     CE.k_means(k)
+    #'''
     for label in CE.clusters:
         plt.plot(CE.clusters[label].mean,label=str(CE.clusters[label].nPoints))
+    '''
+    medians = CE.get_cluster_median()
+    for label in medians:
+        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
+
+    '''
     plt.legend()
 
     CE.reset_clusters()
     plt.title('k='+str(k),y=0.8)
+
+plt.figure(2)
+CE.k_means(4)
+n = 1
+
+clrs = {'2':'g','3':'y','1':'b','0':'r'}
+
+for label in CE.clusters:
+    plt.subplot(2,2,n)
+    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label])
+
+    upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
+    plt.fill_between(np.arange(0.5,48.5),lower,upper,alpha=0.2,color=clrs[label])
+
+    plt.ylim(0,0.6)
+
+    plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'% points',
+              y = 0.85)
+
+    plt.xlim(0,48)
+    plt.xticks(x,x_ticks)
+
+    n += 1
 
 plt.show()
