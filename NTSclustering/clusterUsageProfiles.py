@@ -135,25 +135,28 @@ for k in range(2,8):
     plt.title('k='+str(k),y=0.8)
 
 plt.figure(2)
-CE.k_means(4)
+CE.k_means(5)
 n = 1
 
-clrs = {'2':'g','3':'y','1':'b','0':'r'}
+clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
 for label in CE.clusters:
-    plt.subplot(2,2,n)
-    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label])
+    plt.subplot(3,2,n)
+    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label],
+             label=str(CE.clusters[label].get_av_distance(maxWDist,7))+' miles')
 
     upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
     plt.fill_between(np.arange(0.5,48.5),lower,upper,alpha=0.2,color=clrs[label])
 
     plt.ylim(0,0.6)
 
-    plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'% points',
+    plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'%',
               y = 0.85)
 
     plt.xlim(0,48)
     plt.xticks(x,x_ticks)
+
+    plt.legend()
 
     n += 1
 

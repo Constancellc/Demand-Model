@@ -135,6 +135,16 @@ class Cluster:
 
         return upper, lower
 
+    def get_av_distance(self,maxScale,nDays):
+
+        totalDist = 0.0
+        nVehicles = len(self.points)
+
+        for i in self.points:
+            totalDist += sum(np.array(self.points[i]))/nDays
+
+        return int(totalDist*maxScale/nVehicles)
+
             
                 
                 

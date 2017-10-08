@@ -26,7 +26,7 @@ for mo in range(0,4):
     cali = CaliforniaEnergyPrediction(day,month,smoothTimes=True)
     dumb = cali.getDumbChargingProfile(3.5,36,extraCharge=False)
     base = cali.areaBase.getLoad()
-    opt = cali.getOptimalChargingProfiles(7)
+    opt = cali.getOptimalChargingProfiles(7,deadline=9)
 
     '''
     current problems: really not sure i've got the base load time difference right
