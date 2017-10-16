@@ -30,8 +30,8 @@ vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 
 # assume we have some number of profiles
-aggregation = [16,8,4,2]#,1]
-#aggregation = [300,100,30]#,1]
+#aggregation = [16,8,4,2]#,1]
+aggregation = [300,100,30]#,1]
 
 #penetrationLevel = np.arange(0,1.1,0.1)
 penetrationLevel = [0,0.1,0.3,1.0]
@@ -50,7 +50,7 @@ for i in range(2,24,2):
         
 
 fig = plt.figure(1)
-fig2 = plt.figure(2)
+#fig2 = plt.figure(2)
 
 
 for pl in range(0,len(penetrationLevel)):
@@ -116,17 +116,17 @@ for pl in range(0,len(penetrationLevel)):
             for j in range(0,len(avProfiles[0])):
                 if avProfiles[i][j] > ADMD[-1][j]:
                     ADMD[-1][j] = avProfiles[i][j]
-
+    '''
         # find variance
         var.append([0]*int(1440/timeScale))
         for i in range(0,len(avProfiles)):
             for j in range(0,len(avProfiles[0])):
                 var[-1][j] += np.power(avProfiles[i][j]-mean[j],2)/numMC
-        
+    '''        
     plt.figure(1)
     ax = fig.add_subplot(len(penetrationLevel),1,pl+1)
     plt.title(str(int(100*level))+'%')
-    plt.imshow(ADMD,aspect=5*(10/timeScale),cmap='inferno',vmin=0,vmax=2.5)
+    plt.imshow(ADMD,aspect=7*(10/timeScale),cmap='inferno',vmin=0,vmax=2.2)
     plt.yticks(range(0,len(aggregation)),y_ticks)
     
     plt.ylabel('number of houses')
@@ -137,7 +137,7 @@ for pl in range(0,len(penetrationLevel)):
 
 
     #plt.xlabel('time')
-
+'''
     plt.figure(2)
     ax = fig2.add_subplot(len(penetrationLevel),1,pl+1)
     plt.title(str(int(100*level))+'%')
@@ -149,7 +149,7 @@ for pl in range(0,len(penetrationLevel)):
     if pl == 0:
         cbaxes = fig2.add_axes([0.92, 0.08, 0.03, 0.8]) 
         plt.colorbar(ax=ax,cax=cbaxes)
-
+'''
 
 
 plt.show()

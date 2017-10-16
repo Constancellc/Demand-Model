@@ -6,24 +6,26 @@ from clustering import Cluster, ClusteringExercise
 
 
 data = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
-households = '../../Documents/UKDA-5340-tab/csv/householdsWithCars.csv'
+households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 
 rTypes = {}
 
 with open(households,'rU') as csvfile:
-    reader = csv.reader(csvfile)
+    reader = csv.reader(csvfile,delimiter='\t')
     for row in reader:
-        print(row)
-        
+        rTypes[row[0]] = row[149]
+
 wProfiles = {}
 weProfiles = {}
 
 nDays = {}
 
+rt = {}
 with open(data,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
+        rt[row[2]] = rTypes[row[1]]
         vehicle = row[2]
         
         if vehicle == '':
@@ -45,7 +47,7 @@ with open(data,'rU') as csvfile:
             continue
 
         distance = float(row[10])
-        
+            
         if vehicle not in profiles:
             profiles[vehicle] = [0]*48
        
@@ -92,12 +94,12 @@ for vehicle in wProfiles:
     for i in range(0,48):
         if wProfiles[vehicle][i] > maxWDist:
             maxWDist = wProfiles[vehicle][i]
-            
+                
 for vehicle in weProfiles:
     for i in range(0,48):
         if weProfiles[vehicle][i] > maxWeDist:
             maxWeDist = weProfiles[vehicle][i]
-            
+                
         
 # max Distance isn't what i actuall want to use, come back here!
 for vehicle in wProfiles:
@@ -110,68 +112,75 @@ for vehicle in weProfiles:
         weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/maxWeDist
         weTotal[i] += weProfiles[vehicle][i]
 
-    
-data = []
-for vehicle in wProfiles:
-    data.append(wProfiles[vehicle])
-
-random.shuffle(data)
-
-sampleN = 20000
-CE = ClusteringExercise(data[:sampleN])
-
-plt.figure(1)
-CE.k_means(4)
-n = 1
-
 x = range(4,52,8)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
-biggest = [0,'']
+data = []
 
-for label in CE.clusters:
-    plt.subplot(2,2,n)
-    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label],
-             label=str(CE.clusters[label].get_av_distance(maxWDist,7))+' miles')
+for vehicle in wProfiles:
+    data.append(wProfiles[vehicle]+[rt[vehicle]])
 
-    upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
-    plt.fill_between(np.arange(0.5,48.5),lower,upper,alpha=0.2,color=clrs[label])
+random.shuffle(data)
 
-    plt.ylim(0,0.6)
+plainData = []
+rts = []
 
-    if CE.clusters[label].nPoints > biggest[0]:
-        biggest[0] = CE.clusters[label].nPoints
-        biggest[1] = label
+for i in range(0,len(data)):
+    plainData.append(data[i][:len(data[i])-1])
+    rts.append(data[i][-1])
 
-    plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'%',
-              y = 0.85)
+sampleN = 20000
 
-    plt.xlim(0,48)
-    plt.xticks(x,x_ticks)
+CE = ClusteringExercise(plainData[:sampleN])
+CE.k_means(4)
 
-    plt.legend()
+nPerClst = {}
 
-    n += 1
+for clst in CE.clusters:
 
-newData = []
+    for pointName in CE.clusters[clst].points:
+        rtype = rts[int(pointName)]
 
-for point in CE.clusters[biggest[1]].points:
-    newData.append(CE.clusters[biggest[1]].points[point])
+        if rtype not in nPerClst:
+            nPerClst[rtype] = {}
 
-CE2 = ClusteringExercise(newData)
+        if clst not in nPerClst[rtype]:
+            nPerClst[rtype][clst] = 0
+
+        nPerClst[rtype][clst] += 1
+
+print(nPerClst)
+
+labels = {'1':'Urban Conurbation','2':'Urban Town','3':'Rural Town','4':'Rural Village'}
+x_ticks = ['1','2','3','4']
+plt.figure(1)
+for rt in nPerClst:
+    if rt == '5':
+        continue
+    per = [0]*4
+    for clst in nPerClst[rt]:
+        per[int(clst)] += nPerClst[rt][clst]
+
+    tot = sum(per)
+    for i in range(0,4):
+        per[i] = per[i]*100/tot
+    plt.bar(np.arange(0,4)+0.2*int(rt),per,width=0.2,label=labels[rt])
+    #plt.title(titles[rt])
+    plt.ylim(0,100)
+    
+    plt.xlim(0,4)
+    plt.xticks(np.arange(0.5,4.5),x_ticks)
+    plt.ylabel('% points')
+plt.legend()
 
 plt.figure(2)
-for i in range(2,6):
-    plt.subplot(2,2,i-1)
-    CE2.k_means(i)
-
-    for label in CE2.clusters:
-        plt.plot(CE2.clusters[label].mean)
+for clst in CE.clusters:
+    plt.subplot(2,2,int(clst)+1)
+    plt.title(str(int(clst)+1),y=0.8)
     plt.xlim(0,48)
-    plt.ylim(0,0.1)
-
-    CE2.reset_clusters()
-
+    plt.ylim(0,0.4)
+    plt.plot(CE.clusters[clst].mean)
+    
 plt.show()

@@ -6,15 +6,7 @@ from clustering import Cluster, ClusteringExercise
 
 
 data = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
-households = '../../Documents/UKDA-5340-tab/csv/householdsWithCars.csv'
 
-rTypes = {}
-
-with open(households,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        print(row)
-        
 wProfiles = {}
 weProfiles = {}
 

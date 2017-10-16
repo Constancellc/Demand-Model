@@ -31,7 +31,7 @@ vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 # assume we have some number of profiles
 #aggregation = [16,8,4,2]#,1]
-aggregation = [300,100,30]#,1]
+aggregation = [100,80,60,40]#,1]
 
 #penetrationLevel = np.arange(0,1.1,0.1)
 penetrationLevel = [0,0.1,0.3,1.0]
@@ -44,7 +44,7 @@ sumH = 0
 totalVehicle = [0.0]*1440
 sumV = 0
 
-numMC = 100 # number of nonte carlo samples
+numMC = 10 # number of nonte carlo samples
 
 y_ticks = []
 for i in range(0,len(aggregation)):
