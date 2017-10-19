@@ -76,6 +76,7 @@ for profile in vehicleProfiles:
 plt.figure(3)
 for i in range(0,3):
     plt.plot(vehicleProfiles[i])
+    plt.plot(POvehicleProfiles[i])
 
 aggregation = [300,100,30]
 

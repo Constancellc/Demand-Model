@@ -3,9 +3,11 @@ import csv
 import random
 import copy
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import sys
 import win32com.client
+#import win32com.client
 from cvxopt import matrix, spdiag, solvers, sparse
 
 highOut = 'highest_with_evs_opt.csv'
@@ -30,18 +32,26 @@ i = 0
 with open('vehicle_demand_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        if row == []:
+            continue
         for j in range(0,1440):
-            vehicle_profiles[i][j] = float(row[i])
+            vehicle_profiles[i][j] = float(row[j])
         i += 1
+
+t_int = 10 # mins
 
 vehicle_req = []
 for profile in vehicle_profiles:
     start = 0
-    energy = sum(profile) #kW-min
+    energy = sum(profile)/t_int #kW-min
 
     if energy == 0:
         vehicle_req.append([0,0.0])
         continue
+    
+    if profile[start] != 0:
+        while profile[start] != 0:
+            start += 1
 
     while profile[start] == 0:
         start += 1
@@ -74,20 +84,23 @@ for mc in range(0,100):
 
     # here the optimisation happens
 
+    t = int(1920/t_int) # 32 hrs to wrap around
+    
     # first calculate base load
-    baseLoad = [0.0]*1440
+    baseLoad = [0.0]*int(1440/t_int)
 
-    for i in range(0,1440):
+    for i in range(0,len(baseLoad)):
         for j in range(0,len(chosen)):
-            baseLoad[i] += household_profiles[chosen[j]][i]
+            for k in range(0,t_int):
+                baseLoad[i] += household_profiles[chosen[j]][i*t_int+k]/t_int
 
+    baseLoad += baseLoad[:int(8*(60/t_int))]
+    print(baseLoad)
     # then collect energy and timing requirements
     b = []
     t_av = []
 
     unused = []
-
-    t = 1440 # may want to change this...
 
     for i in range(0,len(chosenV)):
 
@@ -95,71 +108,101 @@ for mc in range(0,100):
             unused.append(i)
             continue
         b.append(vehicle_req[chosenV[i]][1])
-        t_av.append(vehicle_req[chosenV[i]][0])
-
-    A1 = matrix(0.0,(len(b),t*len(b))) # ensures right amount of energy provided
-    A2 = matrix(0.0,(len(b),t*len(b))) # ensures vehicle only charges when avaliable
+        t_av.append(int(vehicle_req[chosenV[i]][0]/t_int))
 
     n = len(chosenV)-len(unused)
-    
-    b += [0.0]*len(b)
-    b = matrix(b)
+    if n == 0:
+        print 'no charging'
 
-    skp = 0
-    for j in range(0,len(chosenV)):
-        if j in unused:
-            skp += 1
-            continue
+    else:
+            
+        A1 = matrix(0.0,(n,t*n)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(n,t*n)) # ensures vehicle only charges when avaliable
 
-        arrival = t_av[j-skp]
+        b += [0.0]*n
+        b = matrix(b)
 
-        for i in range(0,t):
-            A1[n*(t*j+i)+j] = 1.0
+        skp = 0
+        for j in range(0,len(chosenV)):
+            if j in unused:
+                skp += 1
+                continue
 
-            if i < arrival:
-                A2[n*(t*j+i)+j] = 1.0
+            v = j-skp
+            
+            arrival = t_av[v]
 
-    A = sparse([A1,A2])
+            for i in range(0,t):
+                A1[n*(t*v+i)+v] = 1.0
 
-    A3 = spdiag([-1]*(t*n)) # ensures non-negative charging power
-    A4 = spdiag([1]*(t*n)) # ensures charging powers less than pMax
-    G = sparse([A3,A4])
+                if i < arrival:
+                    A2[n*(t*v+i)+v] = 1.0
 
-    h = []
-    for i in range(0,t*n):
-        h.append(0.0)
-    for i in range(0,t*n):
-        h.append(3.5)
+        A = sparse([A1,A2])
 
-    h = matrix(h)
+        A3 = spdiag([-1]*(t*n)) # ensures non-negative charging power
+        A4 = spdiag([1]*(t*n)) # ensures charging powers less than pMax
+        G = sparse([A3,A4])
 
-    q = [] # incorporates base load into the objective function
-    for i in range(0,n):
-        for j in range(0,len(baseLoad)):
-            q.append(baseLoad[j])
+        h = []
+        for i in range(0,t*n):
+            h.append(0.0)
+        for i in range(0,t*n):
+            h.append(7)
 
-    q = matrix(q)
+        h = matrix(h)
 
-    I = spdiag([1]*t)
-    P = sparse([[I]*n]*n)
+        q = [] # incorporates base load into the objective function
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
 
-    sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
-    X = sol['x']
+        q = matrix(q)
+        
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+
+        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
+        X = sol['x']
 
     optimal_profiles = []
 
     v = 0
     for i in range(0,len(chosenV)):
         if i in unused:
-            optimal_profiles.append([0.0]*t)
+            optimal_profiles.append([0.0]*1440)
             continue
         
         load = []
         for j in range(0,t):
             load.append(X[v*t+j]) # extract each vehicles load
-        optimal_profiles.append(load)
+
+        new = [0.0]*1440
+
+        for j in range(0,t):
+            for k in range(0,t_int):
+                ti = j*t_int+k
+                if ti < 1440:
+                    new[ti] = load[j]
+                else:
+                    new[ti-1440] = load[j]
+        optimal_profiles.append(new)
         v += 1
 
+    # peace of mind check
+    '''
+    total = [0.0]*1440
+    for i in range(0,1440):
+        total[i] += baseLoad[int(i/t_int)]
+        for j in range(0,55):
+            total[i] += optimal_profiles[j][i]
+            
+    plt.figure(1)
+    for i in range(0,6):
+        plt.plot(np.linspace(0,24,num=1440),total)
+        plt.plot(np.linspace(0,24,num=int(1440/t_int)),baseLoad[:int(24*60/t_int)])
+    plt.show()
+    '''
     for i in range(1,56):
         with open('household-profiles/'+str(i)+'.csv','w') as csvfile:
             writer = csv.writer(csvfile)
@@ -193,7 +236,7 @@ for mc in range(0,100):
                 for v in [v1,v2,v3]:
                     if v <= lowest[t]:
                         lowest[t] = v
-                    if v >= highest[t]:
+                    elif v >= highest[t]:
                         highest[t] = v
 
                 t += 1
