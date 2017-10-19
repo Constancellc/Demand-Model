@@ -19,7 +19,7 @@ for i in range(0,1000):
 i = 0
 
 run = EnergyPrediction('3','7')
-
+'''
 vehicleProfiles = run.returnDumbChargingProfiles(1000,3.5)
 
 print(len(vehicleProfiles[0]))
@@ -28,3 +28,10 @@ with open('../../Documents/vehicle_demand_pool.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for profile in vehicleProfiles:
         writer.writerow(profile)
+'''
+times = run.returnNextDayStartTimes(1000)
+
+with open('../../Documents/start_time_pool.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    for time in times:
+        writer.writerow([time])

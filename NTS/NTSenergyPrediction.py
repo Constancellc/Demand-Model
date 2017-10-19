@@ -777,6 +777,9 @@ class EnergyPrediction:
 
         for vehicle in self.energy:
 
+            if random.random() >= 10*nProfiles/len(self.energy):
+                continue
+
             if len(profiles) >= nProfiles:
                 continue
 
@@ -797,6 +800,23 @@ class EnergyPrediction:
                     profiles[-1][i-nHours*60] = power
 
         return profiles
+
+    def returnNextDayStartTimes(self,nTimes):
+
+        times = []
+
+        self.getNextDayStartTimes()
+        for vehicle in self.startTimes:
+
+            if random.random() >= 10*nTimes/len(self.energy):
+                continue
+
+            if len(times) >= nTimes:
+                continue
+
+            times.append(self.startTimes[vehicle])
+
+        return times
 
 
     def getMissingCapacity(self,nHours):

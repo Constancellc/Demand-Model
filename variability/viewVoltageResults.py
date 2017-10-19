@@ -10,11 +10,11 @@ t_ = range(0,1440)
 x_ = np.linspace(2*60,22*60,num=6)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
-high = ['highest_no_ev.csv','highest_with_evs.csv']
-low = ['lowest_no_ev.csv','lowest_with_evs.csv']
+high = ['highest_no_ev.csv','highest_with_evs.csv','highest_with_evs_opt.csv']
+low = ['lowest_no_ev.csv','lowest_with_evs.csv','lowest_with_evs_opt.csv']
 
-titles = ['No EVs','1 EV per Household']
-for sim in range(0,2):
+titles = ['No EVs','Dumb Charging','Smart Charging']
+for sim in range(0,3):
     uH = [0]*1440
     uM = [0]*1440
     uL = [1000]*1440
@@ -30,7 +30,7 @@ for sim in range(0,2):
             if row == []:
                 continue
             x = []
-            for i in range(0,100):
+            for i in range(0,len(row)):
                 x.append(float(row[i]))
 
             uH[t] = max(x)
@@ -46,7 +46,7 @@ for sim in range(0,2):
             if row == []:
                 continue
             x = []
-            for i in range(0,100):
+            for i in range(0,len(row)):
                 x.append(float(row[i]))
 
             lH[t] = max(x)
@@ -54,7 +54,7 @@ for sim in range(0,2):
             lM[t] = sorted(x)[49]
             t += 1
 
-    plt.subplot(1,2,sim+1)
+    plt.subplot(1,3,sim+1)
     plt.plot(t_,uM,'r',label='Highest in Network')
     plt.fill_between(t_,uH,uL,color='r',alpha=0.2)
     plt.plot(t_,lM,'b',label='Lowest in Network')

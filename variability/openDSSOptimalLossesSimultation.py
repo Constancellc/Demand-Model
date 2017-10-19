@@ -3,15 +3,11 @@ import csv
 import random
 import copy
 import matplotlib.pyplot as plt
-import numpy
 import numpy as np
 import sys
 import win32com.client
-#import win32com.client
-from cvxopt import matrix, spdiag, solvers, sparse
 
-highOut = 'highest_with_evs_opt.csv'
-lowOut = 'lowest_with_evs_opt.csv'
+outStem = '100%ev_opt_losses.csv'
 
 household_profiles = []
 vehicle_profiles = []
@@ -33,10 +29,8 @@ i = 0
 with open('vehicle_demand_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        if row == []:
-            continue
         for j in range(0,1440):
-            vehicle_profiles[i][j] = float(row[j])
+            vehicle_profiles[i][j] = float(row[i])
         i += 1
 
 with open('start_time_pool.csv','rU') as csvfile:
@@ -46,37 +40,15 @@ with open('start_time_pool.csv','rU') as csvfile:
             continue
         start_times.append(int(row[0]))
         
-t_int = 10 # mins
-
-vehicle_req = []
-for profile in vehicle_profiles:
-    start = 0
-    energy = sum(profile)/t_int #kW-min
-
-    if energy == 0:
-        vehicle_req.append([0,0.0])
-        continue
-    
-    if profile[start] != 0:
-        while profile[start] != 0:
-            start += 1
-
-    while profile[start] == 0:
-        start += 1
-
-    vehicle_req.append([start,energy])
-
-del(vehicle_profiles)
-
 engine = win32com.client.Dispatch("OpenDSSEngine.DSS")
 engine.Start("0")
 
+
 L = []
-H = []
 
 # I want to do this first without EVs, then with
-for mc in range(0,200):
-
+for mc in range(0,100):
+    powerOut = [0.0]*1440
     # pick the household demand profiles
     chosen = []
     while len(chosen) < 55:
@@ -226,60 +198,42 @@ for mc in range(0,200):
                 writer.writerow([household_profiles[chosen[i-1]][j]+
                                  optimal_profiles[i-1][j]])                                     
 
-    lowest = [1000.0]*1440
-    highest = [0.0]*1440
-
     engine.text.Command='clear'
     circuit = engine.ActiveCircuit
 
-    #engine.Text.Command='Redirect LoadShapes' + shape + '.txt'
-
     engine.text.Command='compile master.dss'
 
-    for line in range(1,906):
-        engine.Text.Command='Export mon LINE'+str(line)+'_VI_vs_Time'
+    engine.Text.Command='Export mon LINE1_PQ_vs_Time'
 
-        t = 0
+    powerIn = [0.0]*1440
 
-        with open('LVTest_Mon_line'+str(line)+'_vi_vs_time.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader)
-            for row in reader:
-                v1 = float(row[2])
-                v2 = float(row[4])
-                v3 = float(row[6])
+    with open('LVTest_Mon_line1_pq_vs_time.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        i = 0
+        for row in reader:
+            powerIn[i] -= float(row[2])
+            powerIn[i] -= float(row[4])
+            powerIn[i] -= float(row[6])
+            i += 1
+    net = []
+    for i in range(0,1440):
+        net.append(powerIn[i]-powerOut[i])
 
-                for v in [v1,v2,v3]:
-                    if v <= lowest[t]:
-                        lowest[t] = v
-                    elif v >= highest[t]:
-                        highest[t] = v
+    L.append(net)
 
-                t += 1
+    newL = []
+    for i in range(0,1440):
+        newL.append([0.0]*len(L))
 
-    L.append(lowest)
-    H.append(highest)
+    for i in range(0,len(L)):
+        for j in range(0,1440):
+            newL[j][i] = L[i][j]
+            
+    with open(outfile,'w') as csvfile:
+        writer = csv.writer(csvfile)
+        for row in newL:
+            writer.writerow(row)
 
-# transpose for conveniencce
-newL = []
-newH = []
-
-for i in range(0,1440):
-    newL.append([0]*len(L))
-    newH.append([0]*len(L))
-
-for i in range(0,1440):
-    for j in range(0,len(L)):
-        newL[i][j] = L[j][i]
-        newH[i][j] = H[j][i]
-    
-with open(lowOut,'w') as csvfile:
-    writer = csv.writer(csvfile)
-    for row in newL:
-        writer.writerow(row)
-with open(highOut,'w') as csvfile:
-    writer = csv.writer(csvfile)
-    for row in newH:
-        writer.writerow(row)
-
+            
 
