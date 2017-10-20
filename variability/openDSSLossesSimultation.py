@@ -8,6 +8,7 @@ import sys
 import win32com.client
 
 outStem = '%ev_losses.csv'
+totalStem = '%ev_total_load.csv'
 
 household_profiles = []
 vehicle_profiles = []
@@ -20,6 +21,8 @@ i = 0
 with open('household_demand_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        if row == []:
+            continue
         for j in range(0,1000):
             household_profiles[j][i] = float(row[j])
         i += 1
@@ -28,6 +31,8 @@ i = 0
 with open('vehicle_demand_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        if row == []:
+            continue
         for j in range(0,1440):
             vehicle_profiles[i][j] = float(row[i])
         i += 1
@@ -35,7 +40,7 @@ with open('vehicle_demand_pool.csv','rU') as csvfile:
 engine = win32com.client.Dispatch("OpenDSSEngine.DSS")
 engine.Start("0")
 
-
+totalLoad = []
 for pen in [0.0,1.0]:
     L = []
     
@@ -75,8 +80,6 @@ for pen in [0.0,1.0]:
         engine.text.Command='clear'
         circuit = engine.ActiveCircuit
 
-        #engine.Text.Command='Redirect LoadShapes' + shape + '.txt'
-
         engine.text.Command='compile master.dss'
 
         engine.Text.Command='Export mon LINE1_PQ_vs_Time'
@@ -94,7 +97,9 @@ for pen in [0.0,1.0]:
                 i += 1
         net = []
         for i in range(0,1440):
-            net.append(powerIn[i]-powerOut[i])
+            net.append((powerIn[i]-powerOut[i])/powerIn[i])
+
+        totalLoad.append(powerOut)
 
         L.append(net)
 
@@ -109,6 +114,11 @@ for pen in [0.0,1.0]:
     with open(str(int(100*pen))+outStem,'w') as csvfile:
         writer = csv.writer(csvfile)
         for row in newL:
+            writer.writerow(row)
+
+    with open(str(int(100*pen))+totalStem,'w') as csvfile:
+        writer = csv.writer(csvfile)
+        for row in totalLoad:
             writer.writerow(row)
 
             

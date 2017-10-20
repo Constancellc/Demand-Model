@@ -15,7 +15,9 @@ lowOut = 'lowest_with_evs_opt.csv'
 
 household_profiles = []
 vehicle_profiles = []
-start_times = []
+#start_times = []
+
+pMax = 3.5
 
 for i in range(0,1000):
     household_profiles.append([0.0]*1440)
@@ -38,14 +40,14 @@ with open('vehicle_demand_pool.csv','rU') as csvfile:
         for j in range(0,1440):
             vehicle_profiles[i][j] = float(row[j])
         i += 1
-
+'''
 with open('start_time_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         if row == []:
             continue
         start_times.append(int(row[0]))
-        
+'''        
 t_int = 10 # mins
 
 vehicle_req = []
@@ -91,6 +93,7 @@ for mc in range(0,200):
             chosenV.append(ran)
 
     # here the optimisation happens
+
     t = int(2160/t_int) # 32 hrs to wrap around
     
     # first calculate base load
@@ -138,7 +141,7 @@ for mc in range(0,200):
             v = j-skp
             
             arrival = t_av[v]
-            departure = int((start_times[chosenV[j]]+1440)/t_int)
+            departure = int((np.random.normal(8,2)*60+1440)/t_int)
 
             for i in range(0,t):
                 A1[n*(t*v+i)+v] = 1.0
@@ -159,7 +162,7 @@ for mc in range(0,200):
         for i in range(0,t*n):
             h.append(0.0)
         for i in range(0,t*n):
-            h.append(4)
+            h.append(pMax)
 
         h = matrix(h)
 
@@ -175,6 +178,9 @@ for mc in range(0,200):
 
         try:
             sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
+            if sol['status'] != 'optimal':
+                print 'gotcha'
+                continue
             X = sol['x']
 
         except:

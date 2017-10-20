@@ -11,7 +11,7 @@ x_ = np.linspace(2*60,22*60,num=6)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
 losses = ['0%ev_losses.csv','100%ev_losses.csv','100%ev_opt_losses.csv']
-clrs = ['b','r']
+clrs = ['b','r','g']
 
 lbl = ['without evs','smart','dumb']
 
@@ -32,8 +32,8 @@ for sim in range(0,3):
             if row == []:
                 continue
             x = []
-            for i in range(0,100):
-                total[i] += float(row[i])/60
+            for i in range(0,len(row)):
+                total[i] += float(row[i])/14.4
                 x.append(float(row[i]))
 
             h[t] = max(x)
@@ -60,6 +60,6 @@ plt.figure(2)
 plt.boxplot([totals[0],totals[1],totals[2]],0,'')
 plt.xticks([1,2,3],x2_ticks)
 plt.grid()
-plt.ylabel('Daily Losses (kWh)')
+plt.ylabel('Percetage of Power Losses')
 plt.show()
             
