@@ -1,3 +1,6 @@
+##import sys
+##sys.path.append('C:\Users\Constance\Anaconda2\Lib\site-packages')
+
 # packages
 import csv
 import random
@@ -27,6 +30,8 @@ i = 0
 with open('household_demand_pool.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        if row == []:
+            continue
         for j in range(0,1000):
             household_profiles[j][i] = float(row[j])
         i += 1
@@ -36,8 +41,10 @@ if withEVs == True:
     with open('vehicle_demand_pool.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
+            if row == []:
+                continue
             for j in range(0,1440):
-                vehicle_profiles[i][j] = float(row[i])
+                vehicle_profiles[i][j] = float(row[j])
             i += 1
 
 engine = win32com.client.Dispatch("OpenDSSEngine.DSS")
@@ -49,7 +56,6 @@ H = []
 
 # I want to do this first without EVs, then with
 for mc in range(0,100):
-
     # pick the household demand profiles
     chosen = []
     while len(chosen) < 55:
@@ -71,7 +77,7 @@ for mc in range(0,100):
                 if withEVs == False:
                     writer.writerow([household_profiles[chosen[i-1]][j]])
                 else:
-                    writer.writerow([household_profiles[chosen[i-1]][j]+
+                    writer.writerow([household_profiles[chosen[i-1]][j]+\
                                      vehicle_profiles[chosenV[i-1]][j]])
                                      
 

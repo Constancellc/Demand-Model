@@ -63,7 +63,7 @@ for sim in range(0,3):
     plt.xticks(x_,x_ticks)
     plt.title(titles[sim])
     plt.grid()
-    plt.ylim(236,256)
+    plt.ylim(231,257)
     plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Voltage (V)')

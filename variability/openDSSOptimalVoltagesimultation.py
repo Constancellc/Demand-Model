@@ -53,7 +53,7 @@ t_int = 10 # mins
 vehicle_req = []
 for profile in vehicle_profiles:
     start = 0
-    energy = sum(profile)/t_int #kW-min
+    energy = sum(profile)/t_int # required sum of charging powers
 
     if energy == 0:
         vehicle_req.append([0,0.0])

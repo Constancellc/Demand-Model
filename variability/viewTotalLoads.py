@@ -48,9 +48,10 @@ for sim in range(0,3):
     plt.subplot(1,3,sim+1)
 
     plt.plot(t_,m2,'b')
+    print(sum(m2))
     plt.fill_between(t_,h,l,color='b',alpha=0.2)
     plt.xlim(0,1440)
-    plt.ylim(0,60)
+    plt.ylim(0,110)
     plt.xticks(x_,x_ticks)
     plt.title(titles[sim])
     plt.grid()

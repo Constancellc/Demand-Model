@@ -34,14 +34,14 @@ with open('vehicle_demand_pool.csv','rU') as csvfile:
         if row == []:
             continue
         for j in range(0,1440):
-            vehicle_profiles[i][j] = float(row[i])
+            vehicle_profiles[i][j] = float(row[j])
         i += 1
 
 engine = win32com.client.Dispatch("OpenDSSEngine.DSS")
 engine.Start("0")
 
-totalLoad = []
 for pen in [0.0,1.0]:
+    totalLoad = []
     L = []
     
     # I want to do this first without EVs, then with
@@ -63,19 +63,23 @@ for pen in [0.0,1.0]:
         for i in range(1,56):
             with open('household-profiles/'+str(i)+'.csv','w') as csvfile:
                 writer = csv.writer(csvfile)
-                for j in range(0,1440):
-                    if random.random() >= pen:
+                #if random.random() >= pen:
+                if pen == 0.0:
+                    for j in range(0,1440):
                         powerOut[j] += household_profiles[chosen[i-1]][j]
                         writer.writerow([household_profiles[chosen[i-1]][j]])
-                    else:
+                else:
+                    for j in range(0,1440):
                         powerOut[j] += household_profiles[chosen[i-1]][j]+\
                                        vehicle_profiles[chosenV[i-1]][j]
-                        writer.writerow([household_profiles[chosen[i-1]][j]+
+                        writer.writerow([household_profiles[chosen[i-1]][j]+\
                                          vehicle_profiles[chosenV[i-1]][j]])
                                          
 
         lowest = [1000.0]*1440
         highest = [0.0]*1440
+
+        totalLoad.append(powerOut)
 
         engine.text.Command='clear'
         circuit = engine.ActiveCircuit
@@ -98,8 +102,6 @@ for pen in [0.0,1.0]:
         net = []
         for i in range(0,1440):
             net.append((powerIn[i]-powerOut[i])/powerIn[i])
-
-        totalLoad.append(powerOut)
 
         L.append(net)
 
