@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 8
 t_ = range(0,1440)
-x_ = np.linspace(2*60,22*60,num=6)
-x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
+x_ = np.linspace(6*60,18*60,num=3)
+x_ticks = ['06:00','12:00','18:00']
 
 high = ['highest_no_ev.csv','highest_with_evs.csv','highest_with_evs_opt.csv']
 low = ['lowest_no_ev.csv','lowest_with_evs.csv','lowest_with_evs_opt.csv']
 
-titles = ['No EVs','Dumb Charging','Smart Charging']
+titles = ['No EVs','Uncontrolled Charging','Load Flattening Charging']
 for sim in range(0,3):
     uH = [0]*1440
     uM = [0]*1440
@@ -67,7 +69,7 @@ for sim in range(0,3):
     plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Voltage (V)')
-        plt.legend(loc=[0.5,1.1],ncol=2)
+        plt.legend(loc=[0.8,1.11],ncol=2)
     
 
 plt.show()
