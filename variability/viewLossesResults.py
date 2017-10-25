@@ -13,6 +13,8 @@ x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 losses = ['0%ev_losses.csv','100%ev_losses.csv','100%ev_opt_losses.csv']
 loads = ['0%ev_total_load.csv','100%ev_total_load.csv',
          '100%ev_opt_total_loads.csv']
+
+pfs = ['0%ev_pf.csv','100%ev_pf.csv','%ev_pf.csv']
 clrs = ['b','r','g']
 
 lbl = ['without evs','dumb','smart']
@@ -37,27 +39,29 @@ for sim in range(0,3):
     m = [0]*1440
     l = [1000]*1440
 
-    total = [0.0]*len(lds)
-
     t = 0
     with open(losses[sim],'rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if row == []:
                 continue
+            if t == 0:
+                total = [0.0]*len(row)
+                print(len(total))
             x = []
             for i in range(0,len(row)):
                 total[i] += float(row[i])
-                x.append(float(row[i])*100/lds[i][t])
+                x.append(float(row[i]))
 
             h[t] = max(x)
             l[t] = min(x)
             m[t] = sorted(x)[49]
             t += 1
-
+            
+    '''
     for i in range(0,len(total)):
         total[i] = total[i]*100/sum(lds[i])
-
+    '''
     totals[sim].append(total)
 
     #plt.subplot(2,1,sim+1)
@@ -70,7 +74,7 @@ for sim in range(0,3):
         plt.grid()
     plt.xlabel('Time')
     plt.legend(ncol=3,loc=[0.1,1.05])
-    plt.ylabel('Power Lost (%)')
+    plt.ylabel('Power Lost (kW)')
 
 x2_ticks = ['no\nevs','dumb\ncharging','smart\ncharging']
 plt.figure(2)
@@ -78,5 +82,17 @@ plt.boxplot([totals[0],totals[1],totals[2]],0,'')
 plt.xticks([1,2,3],x2_ticks)
 plt.grid()
 plt.ylabel('% Power Losses')
+
+pf = [[],[]]
+for i in range(0,2):
+    with open(pfs[i],'rU') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row == []:
+                continue
+            pf[i].append(float(row[0]))
+plt.figure(3)
+plt.boxplot(pf,0,'')
+plt.grid()
 plt.show()
             
