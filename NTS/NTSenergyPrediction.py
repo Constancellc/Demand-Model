@@ -5,6 +5,7 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from cvxopt import matrix, spdiag, solvers, sparse
+import sklearn.cluster as clst
 # my code
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSvehicleLocation import LocationPrediction
@@ -1097,6 +1098,192 @@ class EnergyPrediction:
             profiles[unused[i]] = [0.0]*t
 
         return profiles
+
+    def getClusteredOptimalChargingProfile(self,pMax,baseLoad,baseScale=1,
+                                           nHours=36,pointsPerHour=1,
+                                           individuals=[],sampleScale=True,
+                                           allowOverCap=True,deadline=None,
+                                           perturbDeadline=False):
+        profiles = {}
+        vehicles = []
+        unused = []
+        data = []
+        
+        self.getNextDayStartTimes()
+        
+        # Getting requirements
+        for vehicle in self.energy:
+            if self.energy[vehicle] == 0.0:
+                unused += [vehicle]
+                continue
+
+            if allowOverCap == False and self.energy[vehicle] >=self.car.capacity:
+                energyDemand = self.car.capacity
+            else:
+                energyDemand = self.energy[vehicle]
+
+            arrival = int(float(self.endTimes[vehicle])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicle])*pointsPerHour/60)
+    
+            data.append([energyDemand,arrival,departure,vehicle])
+
+        # shuffle the data
+        np.random.shuffle(data)
+
+        maxEn = 0
+        maxAr = 0
+        maxDe = 0
+
+        for i in range(0,len(data)):
+            vehicles.append(data[i][3])
+            del(data[i][3])
+
+            if data[i][0] > maxEn:
+                maxEn = data[i][0]
+            if data[i][1] > maxAr:
+                maxAr = data[i][1]
+            if data[i][2] > maxDe:
+                maxDe = data[i][2]
+
+
+        # scale the data
+        for i in range(0,len(data)):
+            data[i][0] = data[i][0]/maxEn
+            data[i][1] = data[i][1]/maxAr
+            data[i][2] = data[i][2]/maxDe
+
+        # cluster the data into 10 clusters
+        k = 10
+
+        centroid, label, inertia = clst.k_means(data,k)
+
+        b = []
+        
+        clusterSizes = {}
+        clusterEnergy = {}
+        for i in range(0,k):
+            clusterSizes[i] = 0
+            clusterEnergy[i] = 0
+            
+        for i in range(0,len(label)):
+            clusterSizes[label[i]] += 1
+            clusterEnergy[label[i]] += self.energy[vehicles[i]]
+
+        #n = len(vehicles)
+        n = k
+        t = pointsPerHour*nHours
+
+        if len(baseLoad) > t:
+            f = len(baseLoad)/t
+            newBaseLoad = []
+            
+            for i in range(0,t):
+                newBaseLoad.append(baseLoad[int(i*f)])
+            baseLoad = newBaseLoad
+
+        A1 = matrix(0.0,(n,t*n)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(n,t*n)) # ensures vehicle only charges when avaliable
+
+        b = []
+
+        for j in range(0,n):
+            arrival = centroid[j][1]*maxAr
+            departure = centroid[j][2]*maxDe
+            
+            b.append(clusterEnergy[j]*baseScale/self.chargingEfficiency)
+            
+            for i in range(0,t):
+                A1[n*(t*j+i)+j] = 1.0/float(pointsPerHour) # kWh -> kW
+                if i < arrival or i > departure:
+                    A2[n*(t*j+i)+j] = 1.0
+                    
+        b += [0.0]*n
+        b = matrix(b)
+        
+        A = sparse([A1,A2])
+
+        A3 = spdiag([-1]*(t*n)) # ensures non-negative charging powers
+        A4 = spdiag([1]*(t*n)) # ensures charging powers less than pMax
+        G = sparse([A3,A4])
+        
+        h = []
+        for i in range(0,t*n):
+            h.append(0.0)
+        for i in range(0,t*n):
+            cn = int(i/t)
+            h.append(pMax*clusterSizes[cn]*baseScale)
+
+        h = matrix(h)
+
+        q = [] # incorporates base load into the objective function
+        for i in range(0,n):
+            for j in range(0,len(baseLoad)):
+                q.append(baseLoad[j])
+
+        q = matrix(q)
+
+        I = spdiag([1]*t)
+        P = sparse([[I]*n]*n)
+ 
+        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
+        X = sol['x']
+
+        masterLoads = []
+
+        for i in range(0,n):
+            
+            load = []
+            for j in range(0,t):
+                load.append(X[i*t+j]) # extract each vehicles load
+
+            masterLoads.append(load)
+
+        for i in range(0,len(vehicles)):
+            vehicle = vehicles[i]
+            cluster = label[i]
+            
+            # find correct master load
+            load = copy.copy(masterLoads[cluster])
+            
+            # scale it to the individual vehicle requirements
+            
+            # first ensure that the limit to the vehicle own avaliability
+            arrival = int(float(self.endTimes[vehicle])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicle])*pointsPerHour/60)
+
+            for i in range(0,arrival):
+                load[i] = 0.0
+            for i in range(departure,len(load)):
+                load[i] = 0.0
+
+            # next scale to the right energy, ensuring that no individual power
+            #    exceeds the max charging power
+
+            reqEn = self.energy[vehicle]*baseScale/self.chargingEfficiency # kWh
+
+            sf = sum(load)/(pointsPerHour*reqEn)
+            for i in range(0,len(load)):
+                load[i] = load[i]*sf
+                if load[i] > pMax*baseScale:
+                    load[i] = pMax*baseScale
+
+            while sum(load)/pointsPerHour < 0.999*reqEn:
+                load[i] = load[i]*sf
+                if load[i] > pMax*baseScale:
+                    load[i] = pMax*baseScale
+
+                if sum(load) == len(load)*pMax*baseScale:
+                    print('I have failed')
+                    break
+
+            # add vehicle to profiles
+            profiles[vehicle] = load
+
+        for i in range(0,len(unused)):
+            profiles[unused[i]] = [0.0]*t
+
+        return profiles
+
         
 class AreaEnergyPrediction:
 

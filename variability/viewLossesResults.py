@@ -50,7 +50,7 @@ for sim in range(0,3):
                 print(len(total))
             x = []
             for i in range(0,len(row)):
-                total[i] += float(row[i])
+                total[i] += float(row[i])/60
                 x.append(float(row[i]))
 
             h[t] = max(x)
@@ -76,13 +76,15 @@ for sim in range(0,3):
     plt.legend(ncol=3,loc=[0.1,1.05])
     plt.ylabel('Power Lost (kW)')
 
-x2_ticks = ['no\nevs','dumb\ncharging','smart\ncharging']
+x2_ticks = ['Without\nEVs','Uncontrolled\nCharging','Load Flattening\nCharging']
 plt.figure(2)
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 8
 plt.boxplot([totals[0],totals[1],totals[2]],0,'')
 plt.xticks([1,2,3],x2_ticks)
 plt.grid()
-plt.ylabel('% Power Losses')
-
+plt.ylabel('Energy Lost (kWh)')
+'''
 pf = [[],[]]
 for i in range(0,2):
     with open(pfs[i],'rU') as csvfile:
@@ -94,5 +96,6 @@ for i in range(0,2):
 plt.figure(3)
 plt.boxplot(pf,0,'')
 plt.grid()
+'''
 plt.show()
             

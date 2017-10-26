@@ -1,13 +1,9 @@
-import matplotlib.pyplot as plt
-import numpy as np
-
-from NTSenergyPrediction import NationalEnergyPrediction, NationalEnergyPrediction2
+from NTSenergyPrediction import BaseLoad, EnergyPrediction
 
 
-new = NationalEnergyPrediction2('3','1')
-new.getDumbChargingProfile(3.5,36)
-mc = new.getMissingCapacity()
+run = EnergyPrediction('3','3',regionType='4')
 
-plt.figure(1)
-plt.plot(mc)
-plt.show()
+b = BaseLoad('3','3',36)
+bl = b.getLoad(population=run.nPeople)
+
+run.getClusteredOptimalChargingProfile(3,bl)

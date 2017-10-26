@@ -45,8 +45,7 @@ for pen in [0.0,1.0]:
     L = []
     
     # I want to do this first without EVs, then with
-    for mc in range(0,100):
-        powerOut = [0.0]*1440
+    for mc in range(0,200):
         # pick the household demand profiles
         chosen = []
         while len(chosen) < 55:
@@ -66,20 +65,15 @@ for pen in [0.0,1.0]:
                 #if random.random() >= pen:
                 if pen == 0.0:
                     for j in range(0,1440):
-                        powerOut[j] += household_profiles[chosen[i-1]][j]
                         writer.writerow([household_profiles[chosen[i-1]][j]])
                 else:
                     for j in range(0,1440):
-                        powerOut[j] += household_profiles[chosen[i-1]][j]+\
-                                       vehicle_profiles[chosenV[i-1]][j]
                         writer.writerow([household_profiles[chosen[i-1]][j]+\
                                          vehicle_profiles[chosenV[i-1]][j]])
                                          
 
         lowest = [1000.0]*1440
         highest = [0.0]*1440
-
-        totalLoad.append(powerOut)
 
         engine.text.Command='clear'
         circuit = engine.ActiveCircuit
@@ -89,6 +83,7 @@ for pen in [0.0,1.0]:
         engine.Text.Command='Export mon LINE1_PQ_vs_Time'
 
         powerIn = [0.0]*1440
+        powerOut = [0.0]*1440
 
         with open('LVTest_Mon_line1_pq_vs_time.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
@@ -98,13 +93,27 @@ for pen in [0.0,1.0]:
                 powerIn[i] -= float(row[2])
                 powerIn[i] -= float(row[4])
                 powerIn[i] -= float(row[6])
+                
                 i += 1
+
+        for hh in range(1,56):
+            engine.Text.Command='Export mon hh'+str(hh)+'_pQ_vs_time'
+
+            i = 0
+            with open('LVTest_Mon_hh'+str(hh)+'_pq_vs_time.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                next(reader)
+                for row in reader:
+                    powerOut[i] += float(row[2])
+                    i += 1
+
+        totalLoad.append(powerOut)
+        
         net = []
         for i in range(0,1440):
-            net.append((powerIn[i]-powerOut[i])/powerIn[i])
+            net.append(powerIn[i]-powerOut[i])
 
         L.append(net)
-
     newL = []
     for i in range(0,1440):
         newL.append([0.0]*len(L))
@@ -123,5 +132,11 @@ for pen in [0.0,1.0]:
         for row in totalLoad:
             writer.writerow(row)
 
+    '''
+    with open(str(int(100*pen))+pfStem,'w') as csvfile:
+        writer = csv.writer(csvfile)
+        for row in powerFactor:
+            writer.writerow(row)
+    '''
             
 
