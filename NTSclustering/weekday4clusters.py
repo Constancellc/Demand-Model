@@ -138,6 +138,8 @@ plt.figure(2)
 CE.k_means(4)
 n = 1
 
+plt.rcParams["font.family"] = 'serif'
+
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
 for label in CE.clusters:
@@ -157,6 +159,8 @@ for label in CE.clusters:
     plt.xticks(x,x_ticks)
 
     plt.legend()
+    plt.grid()
+    plt.xlabel('Time')
 
     n += 1
 

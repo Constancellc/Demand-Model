@@ -6,15 +6,7 @@ from clustering import Cluster, ClusteringExercise
 
 
 data = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
-households = '../../Documents/UKDA-5340-tab/csv/householdsWithCars.csv'
 
-rTypes = {}
-'''
-with open(households,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        print(row)
-'''       
 wProfiles = {}
 weProfiles = {}
 
@@ -117,20 +109,41 @@ for vehicle in wProfiles:
 
 random.shuffle(data)
 
-sampleN = 20000
+sampleN = 30000
 CE = ClusteringExercise(data[:sampleN])
-
-plt.figure(1)
-plt.rcParams["font.family"] = 'serif'
-CE.k_means(4)
-n = 1
 
 x = range(4,52,8)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
+plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
+for k in range(2,8):
+    plt.subplot(3,2,k-1)
 
-biggest = [0,'']
+    CE.k_means(k)
+    #'''
+    for label in CE.clusters:
+        plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
+    '''
+    medians = CE.get_cluster_median()
+    for label in medians:
+        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
+
+    '''
+    plt.legend()
+
+    CE.reset_clusters()
+    plt.title('k='+str(k),y=0.8)
+    plt.xlim(0,48)
+    plt.xticks(x,x_ticks)
+    plt.ylim(0,0.35)
+    plt.grid()
+
+plt.figure(2)
+CE.k_means(4)
+n = 1
+
+clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
 for label in CE.clusters:
     plt.subplot(2,2,n)
@@ -142,10 +155,6 @@ for label in CE.clusters:
 
     plt.ylim(0,0.6)
 
-    if CE.clusters[label].nPoints > biggest[0]:
-        biggest[0] = CE.clusters[label].nPoints
-        biggest[1] = label
-
     plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'%',
               y = 0.85)
 
@@ -156,26 +165,4 @@ for label in CE.clusters:
 
     n += 1
 
-# zooming into the largest cluster
-'''
-newData = []
-
-for point in CE.clusters[biggest[1]].points:
-    newData.append(CE.clusters[biggest[1]].points[point])
-
-CE2 = ClusteringExercise(newData)
-
-plt.figure(2)
-plt.rcParams["font.family"] = 'serif'
-for i in range(2,6):
-    plt.subplot(2,2,i-1)
-    CE2.k_means(i)
-
-    for label in CE2.clusters:
-        plt.plot(CE2.clusters[label].mean)
-    plt.xlim(0,48)
-    plt.ylim(0,0.1)
-
-    CE2.reset_clusters()
-'''
 plt.show()

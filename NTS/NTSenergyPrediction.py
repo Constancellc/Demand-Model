@@ -970,8 +970,8 @@ class EnergyPrediction:
                     unused += [vehicle]
                     continue
                 if self.energy[vehicle] >= self.car.capacity:
-                    print(self.energy[vehicle],end='')
-                    print(' is higher than battery capacity')
+                    #print(self.energy[vehicle],end='')
+                    #print(' is higher than battery capacity')
                     if allowOverCap == True:
                         b.append(baseScale*self.energy[vehicle]/self.chargingEfficiency)
                     else:
@@ -1099,7 +1099,7 @@ class EnergyPrediction:
 
         return profiles
 
-    def getClusteredOptimalChargingProfile(self,pMax,baseLoad,baseScale=1,
+    def getClusteredOptimalChargingProfile(self,pMax,nClusters,baseLoad,baseScale=1,
                                            nHours=36,pointsPerHour=1,
                                            individuals=[],sampleScale=True,
                                            allowOverCap=True,deadline=None,
@@ -1110,6 +1110,9 @@ class EnergyPrediction:
         data = []
         
         self.getNextDayStartTimes()
+
+        if deadline != None:
+            deadline = (deadline*60+1440)*pointsPerHour/60
         
         # Getting requirements
         for vehicle in self.energy:
@@ -1123,7 +1126,7 @@ class EnergyPrediction:
                 energyDemand = self.energy[vehicle]
 
             arrival = int(float(self.endTimes[vehicle])*pointsPerHour/60)
-            departure = int(float(self.startTimes[vehicle])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicle]+1440)*pointsPerHour/60)
     
             data.append([energyDemand,arrival,departure,vehicle])
 
@@ -1153,8 +1156,7 @@ class EnergyPrediction:
             data[i][2] = data[i][2]/maxDe
 
         # cluster the data into 10 clusters
-        k = 10
-
+        k = nClusters
         centroid, label, inertia = clst.k_means(data,k)
 
         b = []
@@ -1189,6 +1191,10 @@ class EnergyPrediction:
         for j in range(0,n):
             arrival = centroid[j][1]*maxAr
             departure = centroid[j][2]*maxDe
+            
+            if deadline != None:
+                if departure > deadline:
+                    departure = deadline
             
             b.append(clusterEnergy[j]*baseScale/self.chargingEfficiency)
             
@@ -1238,6 +1244,8 @@ class EnergyPrediction:
 
             masterLoads.append(load)
 
+        totalLoad = [0.0]*nHours*pointsPerHour
+
         for i in range(0,len(vehicles)):
             vehicle = vehicles[i]
             cluster = label[i]
@@ -1249,7 +1257,10 @@ class EnergyPrediction:
             
             # first ensure that the limit to the vehicle own avaliability
             arrival = int(float(self.endTimes[vehicle])*pointsPerHour/60)
-            departure = int(float(self.startTimes[vehicle])*pointsPerHour/60)
+            departure = int(float(self.startTimes[vehicle]+1440)*pointsPerHour/60)
+
+            if arrival == departure: # hack for vehicles arriving at midnight
+                departure = int(8*60+1440*pointsPerHour/60)
 
             for i in range(0,arrival):
                 load[i] = 0.0
@@ -1261,12 +1272,17 @@ class EnergyPrediction:
 
             reqEn = self.energy[vehicle]*baseScale/self.chargingEfficiency # kWh
 
-            sf = sum(load)/(pointsPerHour*reqEn)
+            if sum(load) == 0:
+                print('WHHHYYY???')
+                continue
+            sf = (pointsPerHour*reqEn)/sum(load)
             for i in range(0,len(load)):
                 load[i] = load[i]*sf
                 if load[i] > pMax*baseScale:
                     load[i] = pMax*baseScale
 
+                #totalLoad[i] += load[i]
+            '''
             while sum(load)/pointsPerHour < 0.999*reqEn:
                 load[i] = load[i]*sf
                 if load[i] > pMax*baseScale:
@@ -1275,12 +1291,17 @@ class EnergyPrediction:
                 if sum(load) == len(load)*pMax*baseScale:
                     print('I have failed')
                     break
+            '''
 
             # add vehicle to profiles
             profiles[vehicle] = load
-
+                
+        '''
         for i in range(0,len(unused)):
             profiles[unused[i]] = [0.0]*t
+
+        return profiles
+        '''
 
         return profiles
 
@@ -1515,7 +1536,8 @@ class AreaEnergyPrediction:
     def getOptimalChargingProfiles(self,pMax,nHours=36,pointsPerHour=1,
                                    allowOverCap=True,deadline=None,
                                    perturbDeadline=False,
-                                   solar=None,chargeAtWork=False):
+                                   solar=None,chargeAtWork=False,
+                                   returnTotal=False):
 
         try:
             baseLoad = self.baseLoad
@@ -1523,6 +1545,9 @@ class AreaEnergyPrediction:
             areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
             baseLoad = areaBase.getLoad(population=self.totalPopulation)
             self.baseLoad = baseLoad
+
+        if returnTotal == True:
+            totalLoad = [0.0]*nHours*pointsPerHour
 
         # solar is a csvfile contain several ordered pv profiles
         if solar != None:
@@ -1607,9 +1632,58 @@ class AreaEnergyPrediction:
                         load = newProfiles[vehicle]
                         for j in range(0,len(load)):
                             load[j] = load[j]*per[i]
+
+                            if returnTotal == True:
+                                totalLoad[j] += load[j]
                         profiles[key][vehicle] = load
 
-        return profiles
+                        
+        if returnTotal == True:
+            return totalLoad
+        else:
+            return profiles
+
+    def getClusteredOptimalProfiles(self,pMax,k,nHours=36,pointsPerHour=1,
+                                    allowOverCap=True,deadline=None,
+                                    perturbDeadline=False):
+
+        try:
+            baseLoad = self.baseLoad
+        except:                
+            areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
+            baseLoad = areaBase.getLoad(population=self.totalPopulation)
+            self.baseLoad = baseLoad
+
+        totalLoad = [0.0]*nHours*pointsPerHour
+
+        profiles = {'':{}}
+
+        for key in profiles:
+            newBase = copy.copy(baseLoad)
+                    
+            scale = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
+            per = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
+            sim = [self.uc,self.ut,self.rt,self.rv]
+
+            for i in range(0,4):
+                if scale[i] > 0:
+                    newProfiles = sim[i].getClusteredOptimalChargingProfile(pMax,k,
+                                                                            newBase,
+                                                                            baseScale=scale[i],
+                                                                            nHours=nHours,
+                                                                            pointsPerHour=pointsPerHour,
+                                                                            deadline=deadline,
+                                                                            perturbDeadline=perturbDeadline,
+                                                                            allowOverCap=allowOverCap)
+
+                    for vehicle in newProfiles:
+                        load = newProfiles[vehicle]
+                        for j in range(0,len(load)):
+                            load[j] = load[j]*per[i]
+                            totalLoad[j] += load[j]
+                        profiles[key][vehicle] = load
+
+        return totalLoad
     
     def getMissingCapacity(self):
 

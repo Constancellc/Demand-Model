@@ -24,6 +24,9 @@ for i in range(0,len(total1)):
     total1[i] += bl[int(i*60)]
     total1[i] = total1[i]/1000000
 
+for i in range(0,len(bl)):
+    bl[i] = bl[i]/1000000
+
 plt.plot(np.linspace(0,36,num=len(total)),total,label='Clustered k=4')
 plt.plot(np.linspace(0,36,num=len(total1)),total1,label='Optimal')
 plt.plot(np.linspace(0,36,num=len(bl)),bl)

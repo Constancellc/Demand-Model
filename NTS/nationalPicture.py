@@ -11,6 +11,7 @@ pointsPerHour = 1
 nHours = 36
 
 plotPsuedo = False
+plotClustered = True
 
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
@@ -33,7 +34,11 @@ for month in ['1','4','7','10']:
     print(totalEn,end=' ')
     print('kWh')
     smart = run.getOptimalChargingProfiles(7,deadline=10)#,allowOverCap=False)
-    #psuedo = run.getPsuedoOptimalProfile(7.0,deadline=10)
+
+    if plotPsuedo == True:
+        psuedo = run.getPsuedoOptimalProfile(7.0,deadline=10)
+    elif plotClustered == True:
+        clustered = run.getClusteredOptimalProfiles(7.0,10,pointsPerHour=15)
 
     smartProfile = [0.0]*nHours*pointsPerHour
     for vehicle in smart['']:
@@ -49,6 +54,11 @@ for month in ['1','4','7','10']:
             psuedo[i] += base[i]
             psuedo[i] = psuedo[i]/1000000
 
+        if plotClustered == True:
+            if i%4 == 0:
+                clustered[int(i/4)] += base[i]
+                clustered[int(i/4)] = clustered[int(i/4)]/1000000
+
         if i%(60/pointsPerHour) == 0:
             smartProfile[int(i*pointsPerHour/60)] += base[i]
             smartProfile[int(i*pointsPerHour/60)] = smartProfile[int(i*pointsPerHour/60)]\
@@ -61,11 +71,14 @@ for month in ['1','4','7','10']:
     if plotPsuedo == True:
         plt.plot(t,psuedo,c='b',ls='-.',label='Approximation')       
         plt.plot(t_smart,smartProfile,label='Optimal')
+    elif plotClustered == True:
+        plt.plot(np.linspace(0,36,num=len(clustered)),clustered,c='b',ls='-.',label='Clustered')       
+        plt.plot(t_smart,smartProfile,label='Optimal')
     else:
         plt.plot(t_smart,smartProfile,ls='--',label='Controlled Charging')
     
     if month == '1':
-        if plotPsuedo == True:
+        if plotPsuedo == True or plotClustered == True:
             plt.legend(loc=[0.1,1.1],ncol=2)
         else:
             plt.legend(loc=[-0.2,1.1],ncol=3)
