@@ -9,13 +9,13 @@ plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 8
 t_ = range(0,1440)
-x_ = np.linspace(4*60,20*60,num=4)
-x_ticks = ['04:00','08:00','16:00','20:00']
+x_ = np.linspace(4*60,20*60,num=3)
+x_ticks = ['04:00','12:00','20:00']
 
-ld = ['0%ev_total_load.csv','100%ev_total_load.csv','100%ev_opt_total_loads.csv']
-titles = ['No EVs','Uncontrolled Charging','Load Flattening Charging']
+ld = ['0%ev_total_load.csv','100%ev_total_load.csv','100%TOUev_total_load.csv','100%ev_opt_total_loads.csv']
+titles = ['No EVs','Uncontrolled\nCharging','TOU Charging','Load Flattening\nCharging']
 
-for sim in range(0,3):
+for sim in range(0,4):
     l = [0.0]*1440
     h = [0.0]*1440
     m = [0.0]*1440
@@ -42,18 +42,19 @@ for sim in range(0,3):
         x = sorted(allP[i])
         l[i] = x[0]
         h[i] = x[-1]
-        m[i] = x[int(len(x)/2)]
+        m[i] = sum(x)/len(x)#x[int(len(x)/2)]
 
     allE = sorted(allE)
     m2 = allE[int(len(allE)/2)][1:]
 
-    plt.subplot(2,3,sim+1)
+    plt.subplot(2,4,sim+1)
 
-    plt.plot(t_,m2,'g',label='Total Feeder Load')
+    plt.plot(t_,m,'g',label='Total Feeder Load')
+    #plt.plot(t_,m2,'g',label='Total Feeder Load')
     print(sum(m2))
     plt.fill_between(t_,h,l,color='g',alpha=0.2)
     plt.xlim(0,1440)
-    plt.ylim(0,110)
+    plt.ylim(0,180)
     plt.xticks(x_,x_ticks)
     plt.title(titles[sim])
     plt.grid()
@@ -61,12 +62,16 @@ for sim in range(0,3):
     #plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Total Load (kW)')
-        plt.legend(loc=[1.2,1.2])
+        plt.legend(loc=[1.4,1.2])
+    else:
+        plt.yticks(np.arange(25,200,25),['']*7)
 
-high = ['highest_no_ev.csv','highest_with_evs.csv','highest_with_evs_opt.csv']
-low = ['lowest_no_ev.csv','lowest_with_evs.csv','lowest_with_evs_opt.csv']
+high = ['highest_no_ev.csv','highest_with_evs.csv','TOUhighest_with_evs.csv',
+        'highest_with_evs_opt.csv']
+low = ['lowest_no_ev.csv','lowest_with_evs.csv','TOUlowest_with_evs.csv',
+       'lowest_with_evs_opt.csv']
 
-for sim in range(0,3):
+for sim in range(0,4):
     uH = [0]*1440
     uM = [0]*1440
     uL = [1000]*1440
@@ -106,7 +111,7 @@ for sim in range(0,3):
             lM[t] = sorted(x)[49]
             t += 1
 
-    plt.subplot(2,3,sim+4)
+    plt.subplot(2,4,sim+5)
     plt.plot(t_,uM,'r',label='Highest Voltage in Network')
     plt.fill_between(t_,uH,uL,color='r',alpha=0.2)
     plt.plot(t_,lM,'b',label='Lowest Voltage in Network')
@@ -120,6 +125,8 @@ for sim in range(0,3):
     if sim == 0:
         plt.ylabel('Voltage (p.u.)')
         plt.legend(loc=[0.7,1.11],ncol=2)
+    else:
+        plt.yticks([1],[''])
     
 
 plt.show()

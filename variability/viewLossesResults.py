@@ -10,18 +10,19 @@ t_ = range(0,1440)
 x_ = np.linspace(2*60,22*60,num=6)
 x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
-losses = ['0%ev_losses.csv','100%ev_losses.csv','100%ev_opt_losses.csv']
+losses = ['0%ev_losses.csv','100%ev_losses.csv',
+          '100%TOUev_losses.csv','100%ev_opt_losses.csv']
 loads = ['0%ev_total_load.csv','100%ev_total_load.csv',
-         '100%ev_opt_total_loads.csv']
+         '100%TOUev_total_load.csv','100%ev_opt_total_loads.csv']
 
 pfs = ['0%ev_pf.csv','100%ev_pf.csv','%ev_pf.csv']
-clrs = ['b','r','g']
+clrs = ['b','r','g','k']
 
-lbl = ['without evs','dumb','smart']
+lbl = ['without evs','dumb','tou','smart']
 
 totals = {}
 
-for sim in range(0,3):
+for sim in range(0,4):
     lds = []
 
     with open(loads[sim],'rU') as csvfile:
@@ -50,7 +51,8 @@ for sim in range(0,3):
                 print(len(total))
             x = []
             for i in range(0,len(row)):
-                total[i] += float(row[i])/60
+                total[i] += float(row[i])*100/(sum(lds[i]))
+                #total[i] += float(row[i])/60 # this is for raw energy losses
                 x.append(float(row[i]))
 
             h[t] = max(x)
@@ -76,14 +78,16 @@ for sim in range(0,3):
     plt.legend(ncol=3,loc=[0.1,1.05])
     plt.ylabel('Power Lost (kW)')
 
-x2_ticks = ['Without\nEVs','Uncontrolled\nCharging','Load Flattening\nCharging']
+x2_ticks = ['Without\nEVs','Uncontrolled\nCharging','TOU\nCharging',
+            'Load Flattening\nCharging']
 plt.figure(2)
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 8
-plt.boxplot([totals[0],totals[1],totals[2]],0,'')
-plt.xticks([1,2,3],x2_ticks)
+plt.boxplot([totals[0],totals[1],totals[2],totals[3]],0,'',whis=[0.05, 99.5])
+plt.xticks([1,2,3,4],x2_ticks)
+#plt.ylim(0,20)
 plt.grid()
-plt.ylabel('Energy Lost (kWh)')
+plt.ylabel('Energy Lost (%)')
 '''
 pf = [[],[]]
 for i in range(0,2):

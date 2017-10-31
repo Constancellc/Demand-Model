@@ -112,8 +112,6 @@ for vehicle in weProfiles:
         weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/maxWeDist
         weTotal[i] += weProfiles[vehicle][i]
 
-x = range(4,52,8)
-x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
@@ -156,6 +154,7 @@ print(nPerClst)
 labels = {'1':'Urban Conurbation','2':'Urban Town','3':'Rural Town','4':'Rural Village'}
 x_ticks = ['1','2','3','4']
 plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
 for rt in nPerClst:
     if rt == '5':
         continue
@@ -166,21 +165,27 @@ for rt in nPerClst:
     tot = sum(per)
     for i in range(0,4):
         per[i] = per[i]*100/tot
-    plt.bar(np.arange(0,4)+0.2*int(rt),per,width=0.2,label=labels[rt])
+    plt.bar(np.arange(0,4)+0.2*int(rt),per,width=0.2,label=labels[rt],alpha=0.5)
     #plt.title(titles[rt])
     plt.ylim(0,100)
     
     plt.xlim(0,4)
     plt.xticks(np.arange(0.5,4.5),x_ticks)
     plt.ylabel('% points')
+    plt.grid()
 plt.legend()
 
+x = [12,24,36]
+x_ticks = ['06:00','12:00','18:00']
 plt.figure(2)
+plt.rcParams["font.family"] = 'serif'
 for clst in CE.clusters:
     plt.subplot(2,2,int(clst)+1)
     plt.title(str(int(clst)+1),y=0.8)
     plt.xlim(0,48)
     plt.ylim(0,0.4)
     plt.plot(CE.clusters[clst].mean)
+    plt.xticks(x,x_ticks)
+    plt.grid()
     
 plt.show()
