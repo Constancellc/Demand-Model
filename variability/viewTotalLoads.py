@@ -62,9 +62,9 @@ for sim in range(0,4):
     #plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Total Load (kW)')
-        plt.legend(loc=[1.4,1.2])
+        plt.legend(loc=[1.65,1.3])
     else:
-        plt.yticks(np.arange(25,200,25),['']*7)
+        plt.yticks(np.arange(50,200,50),['']*3)
 
 high = ['highest_no_ev.csv','highest_with_evs.csv','TOUhighest_with_evs.csv',
         'highest_with_evs_opt.csv']
@@ -120,13 +120,13 @@ for sim in range(0,4):
     plt.xticks(x_,x_ticks)
     #plt.title(titles[sim])
     plt.grid()
-    plt.ylim(0.96,1.08)
+    plt.ylim(0.93,1.08)
     plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Voltage (p.u.)')
         plt.legend(loc=[0.7,1.11],ncol=2)
     else:
-        plt.yticks([1],[''])
+        plt.yticks([0.95,1,1.05],['']*3)
     
 
 plt.show()

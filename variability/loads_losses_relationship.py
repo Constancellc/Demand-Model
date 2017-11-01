@@ -16,6 +16,8 @@ loads_csv = ['0%ev_total_load.csv','100%ev_total_load.csv',
 lbls=['no evs','uncontrolled','optimal']
 
 plt.figure(1)
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 8
 for i in [1,2,0]:    
     x = []
     y = []
@@ -28,18 +30,22 @@ for i in [1,2,0]:
             if row == []:
                 continue
             if t == 0:
-                for j in range(0,len(row)):
+                for j in range(1,2):#len(row)):
                     losses.append([0.0]*1440)
 
-            for j in range(0,len(row)):
-                losses[j][t] += float(row[j])
+            for j in range(1,2):#len(row)):
+                losses[j-1][t] += float(row[j])
             t += 1
 
     loads = []
+    n = 0
     with open(loads_csv[i],'rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if row == []:
+                continue
+            n += 1
+            if n != 2:
                 continue
             p = []
             for j in range(0,len(row)):
@@ -51,10 +57,10 @@ for i in [1,2,0]:
             x.append(loads[s][t])
             y.append(losses[s][t])
         
-    plt.scatter(x,y,s=5,label=lbls[i])
+    plt.scatter(x,y,marker='+',s=5,color='b',label=lbls[i])
     
 plt.grid()
-plt.legend()
+#plt.legend()
 plt.xlabel('Load (kW)')
 plt.ylabel('Losses (kW)')
 plt.show()
