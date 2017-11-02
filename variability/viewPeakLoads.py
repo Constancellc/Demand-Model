@@ -40,6 +40,7 @@ for r in range(0,2):
     else:
         plt.xticks(range(1,len(ld)+1),['']*len(ld))
     plt.grid()
+    plt.ylim(0.5,3.0)
     plt.ylabel('Peak Demand\nPer Household (kW)')
     plt.title(str(res[r])+'min resolution')
     #plt.ylim(0.5,2.2)
