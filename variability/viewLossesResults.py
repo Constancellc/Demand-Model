@@ -88,6 +88,7 @@ plt.xticks([1,2,3,4],x2_ticks)
 #plt.ylim(0,20)
 plt.grid()
 plt.ylabel('Energy Lost (%)')
+plt.savefig('../../papers/PES-GM/losses',format='eps')
 '''
 pf = [[],[]]
 for i in range(0,2):

@@ -128,6 +128,6 @@ for sim in range(0,4):
     else:
         plt.yticks([0.95,1,1.05],['']*3)
     
-
+plt.savefig('../../papers/PES-GM/voltage-time',format='eps')
 plt.show()
             

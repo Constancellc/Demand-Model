@@ -44,5 +44,7 @@ for r in range(0,2):
     plt.ylabel('Peak Demand\nPer Household (kW)')
     plt.title(str(res[r])+'min resolution')
     #plt.ylim(0.5,2.2)
+
+plt.savefig('../../papers/PES-GM/peak_load',format='eps')
 plt.show()
             
