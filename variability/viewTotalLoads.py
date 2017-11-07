@@ -124,10 +124,11 @@ for sim in range(0,4):
     plt.xlabel('Time')
     if sim == 0:
         plt.ylabel('Voltage (p.u.)')
+        #plt.legend(loc=[0.7,1.11],ncol=2)
         plt.legend(loc=[0.7,1.11],ncol=2)
     else:
         plt.yticks([0.95,1,1.05],['']*3)
-    
-plt.savefig('../../papers/PES-GM/voltage-time',format='eps')
+plt.tight_layout()    
+plt.savefig('../../papers/PES-GM/voltage-time',format='pdf')
 plt.show()
             
