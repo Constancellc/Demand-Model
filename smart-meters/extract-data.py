@@ -39,7 +39,7 @@ with open('../../Documents/sharonb/7591/csv/edrp_elec.csv','rU') as csvfile:
             maxDay[hh_id] = day
             '''
         if day not in day_profiles[hh_id]:
-            day_profiles[hh_id][day] = [0.0]*48
+            day_profiles[hh_id][day] = [0.0]*48+[date.isoweekday()]
 
         time = int(row[2])
 
@@ -54,7 +54,7 @@ for i in range(0,48):
         
 with open(outfile,'w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['ID','day']+times)
+    writer.writerow(['ID','day']+times+['w/day'])
     for hh in day_profiles:
         for day in day_profiles[hh]:
             writer.writerow([hh]+[day-minDay[hh]]+day_profiles[hh][day])

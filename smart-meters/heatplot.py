@@ -7,7 +7,7 @@ import copy
 data = '../../Documents/sharonb/7591/csv/profiles.csv'
 dates = '../../Documents/sharonb/7591/csv/dates.csv'
 
-hh = '9504'
+hh = '11617'
 heatmap = []
 
 
@@ -17,7 +17,7 @@ with open(data,'rU') as csvfile:
         if row[0] != hh:
             continue
 
-        profile = row[2:]
+        profile = row[2:50]
         for num in profile:
             num = float(num)
         
@@ -66,7 +66,7 @@ for i in range(0,len(heatmap[0])):
         A[i,j] = heatmap[j][i]
 
 y_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
-y = range(2,50,8)
+y = range(4,52,8)
 
 plt.figure(1)
 plt.imshow(A,aspect=8)
