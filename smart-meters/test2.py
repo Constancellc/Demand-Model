@@ -5,7 +5,7 @@ test = HouseholdElectricityDemand(region='7')
 
 plt.figure(1)
 for month in [1,4,7,10]:
-    profiles = test.getProfile(3,12,nProfiles=100)
+    profiles = test.getProfile(3,12,nProfiles=1000)
 
     m = [0.0]*48
     #h = [0.0]*48
@@ -20,7 +20,6 @@ for month in [1,4,7,10]:
             if profiles[i][j] < l[j]:
                 l[j] = profiles[i][j]
             '''
-
     plt.plot(m,label=str(m))
-
+plt.legend()
 plt.show()

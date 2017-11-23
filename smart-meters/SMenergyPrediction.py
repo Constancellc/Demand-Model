@@ -94,12 +94,18 @@ class HouseholdElectricityDemand:
                 day += datetime.timedelta(1)
 
             #possDays[h] = possDays[h][1:len(possDays[h])-2]
+        
+        for h in chosen:
+            if len(possDays[h]) == 0:
+                chosen.remove(h)
 
         # randomly pick one of them
         chosenDay = {}
         for h in chosen:
             ran = int(random.random()*len(possDays[h]))
             chosenDay[h] = possDays[h][ran]
+
+                
 
             
         # return that profile
