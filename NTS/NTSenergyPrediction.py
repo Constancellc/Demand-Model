@@ -933,7 +933,53 @@ class EnergyPrediction:
         else:
             return profile
 
-        
+    def returnPsuedoOptimalChargingProfiles(self,nProfiles,pMax,deadline=9,
+                                            baseLoad=None,nHours=24):
+
+        profiles = []
+
+        self.getNextDayStartTimes()
+
+        if baseLoad == None:
+            base = BaseLoad(self.day,self.month,nHours=24+deadline)
+            baseLoad = base.baseLoad
+
+        for vehicle in self.energy:
+
+            if random.random() >= 10*nProfiles/len(self.energy):
+                continue
+
+            if len(profiles) >= nProfiles:
+                continue
+
+            profiles.append([0.0]*60*nHours)
+            
+            kWh = self.energy[vehicle]
+
+            if kWh > self.car.capacity:
+                kWh = self.car.capacity
+
+            chargeStart = int(self.endTimes[vehicle])
+            chargeEnd = int(self.startTimes[vehicle]+24*60)
+
+            if chargeEnd > len(baseLoad):
+                chargeEnd = len(baseLoad)-1
+
+            cp = copy.copy(baseLoad)[chargeStart:chargeEnd]
+
+            sf = 60*kWh/sum(cp)
+
+            for i in range(0,len(cp)):
+                cp[i] = cp[i]*sf
+                if cp[i] > pMax:
+                    cp[i] = pMax
+                if i < 24*60:
+                    profiles[-1][i] += cp[i]
+                else:
+                    profiles[-1][i-24*60] += cp[i]
+
+        return profiles
+    
     def getOptimalChargingProfiles(self,pMax,baseLoad,baseScale=1,nHours=36,
                                    pointsPerHour=1,individuals=[],
                                    sampleScale=True,allowOverCap=True,

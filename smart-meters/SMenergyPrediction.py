@@ -23,7 +23,7 @@ class HouseholdElectricityDemand:
         
         NUTS = {'1':'UKC','2':'UKD','3':'UKE','4':'UKF','5':'UKG','6':'UKH',
                 '7':'UKI','8':'UKJ','9':'UKK','10':'UKL','11':'UKM'}
-        Types = {'R':[1,5,10,21,22,23,41]}
+        Types = {'R':['1.0','5.0','10.0','21.0','22.0','23.0','41.0']}
                  #'U':[2,7,8,9,11,14,15,16,17,20,24,25,26,27,28,29,34,35,36,37,38]}
         self.hh = []
 
@@ -42,6 +42,9 @@ class HouseholdElectricityDemand:
                     # 1:uc, 2:ut, 3:rt, 4:rv, 5:scotland
                     if regionType in ['1','2']:
                         if row[3] in Types['R']:
+                            continue
+                    else:
+                        if row[3] not in Types['R']:
                             continue
 
                 if self.ACORNCategory != None:
@@ -104,10 +107,7 @@ class HouseholdElectricityDemand:
         for h in chosen:
             ran = int(random.random()*len(possDays[h]))
             chosenDay[h] = possDays[h][ran]
-
-                
-
-            
+           
         # return that profile
         with open(data,'rU') as csvfile:
             reader = csv.reader(csvfile)
