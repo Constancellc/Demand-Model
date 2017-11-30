@@ -122,7 +122,8 @@ class BaseLoad:
 class EnergyPrediction:
 
     def __init__(self, day, month=None, car=None, regionType=None, region=None,
-                 model='full',penetration=1.0,smoothTimes=False):
+                 model='full',penetration=1.0,smoothTimes=False,
+                 recordUsage=False):
         # day: string of integer 1-7 symbolising day of week
         # month: string of integer 1-12 symbolising month
         # car: vehicle object
@@ -145,7 +146,9 @@ class EnergyPrediction:
         self.chargingEfficiency = 0.95
         self.penetration = penetration
         self.smoothTimes = smoothTimes
-        
+
+        if recordUsage == True:
+            self.rtDemand = [0.0]*1440
 
         # first getting the region types
         
@@ -248,12 +251,15 @@ class EnergyPrediction:
 
                 try:
                     tripEnd = int(row[9])
+                    tripStart = int(row[8])
                     tripDistance = float(row[10])*1609.34 # miles -> m
                 except:
                     continue # skip trips without a time or length
 
                 if smoothTimes == True:
-                    tripEnd = int(30*int(tripEnd/30)+30*random.random())
+                    shift = 30*random.random()
+                    tripEnd = int(30*int(tripEnd/30)+shift)
+                    tripStart = int(30*int(tripStart/30)+shift)
                 
                 self.distance[vehicle] += int(tripDistance) # m
 
@@ -279,14 +285,31 @@ class EnergyPrediction:
                                      '11':0.7,'12':1.3}
 
                     car.load = passengers*75 # add appropriate load to vehicle
-                    self.energy[vehicle] += car.getEnergyExpenditure(cycle,
-                                                                     accessoryLoad[row[6]])
+                    energyConsumption = car.getEnergyExpenditure(cycle,
+                                                                 accessoryLoad[row[6]])
+
                     car.load = 0
                     
                 elif model == 'linear':
-                    self.energy[vehicle] += tripDistance*0.23/1609.34
-                
+                    energyConsumption += tripDistance*0.23/1609.34
 
+                self.energy[vehicle] += energyConsumption
+
+                if recordUsage == True:
+
+                    if tripEnd < tripStart:
+                        tripEnd += 1440
+
+                    try:
+                        energyPerMin = energyConsumption/(tripEnd-tripStart)
+                    except:
+                        continue
+                    
+                    for i in range(tripStart,tripEnd):
+                        if i < 1440:
+                            self.rtDemand[i] += energyPerMin*60 # -> kW
+                        else:
+                            self.rtDemand[i-1440] += energyPerMin*60 # -> kW
 
     def getNextDayStartTimes(self):
         # Finds the number of minutes past 00:00 the next day when each
@@ -1356,7 +1379,7 @@ class AreaEnergyPrediction:
 
     def __init__(self,region,ucPopulation,utPopulation,rtPopulation,
                  rvPopulation,day,month,vehicle=None,penetration=1.0,
-                 smoothTimes=False):
+                 smoothTimes=False,recordUsage=False):
 
         # region:
 
@@ -1398,7 +1421,8 @@ class AreaEnergyPrediction:
         if ucPopulation > 0:
             self.uc = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='1',penetration=penetration,
-                                       smoothTimes=smoothTimes)
+                                       smoothTimes=smoothTimes,
+                                       recordUsage=recordUsage)
             #self.ucScale = float(ucPopulation)/self.uc.nPeople
             self.ucScale = float(self.totalPopulation)/self.uc.nPeople
         else:
@@ -1409,7 +1433,8 @@ class AreaEnergyPrediction:
         if utPopulation > 0:
             self.ut = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='2',penetration=penetration,
-                                       smoothTimes=smoothTimes)
+                                       smoothTimes=smoothTimes,
+                                       recordUsage=recordUsage)
             #self.utScale = float(utPopulation)/self.ut.nPeople
             self.utScale = float(self.totalPopulation)/self.ut.nPeople
         else:
@@ -1420,7 +1445,8 @@ class AreaEnergyPrediction:
         if rtPopulation > 0:
             self.rt = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='3',penetration=penetration,
-                                       smoothTimes=smoothTimes)
+                                       smoothTimes=smoothTimes,
+                                       recordUsage=recordUsage)
             #self.rtScale = float(rtPopulation)/self.rt.nPeople
             self.rtScale = float(self.totalPopulation)/self.rt.nPeople
         else:
@@ -1431,12 +1457,26 @@ class AreaEnergyPrediction:
         if rvPopulation > 0:
             self.rv = EnergyPrediction(day,month,vehicle,region=region,
                                        regionType='4',penetration=penetration,
-                                       smoothTimes=smoothTimes)
+                                       smoothTimes=smoothTimes,
+                                       recordUsage=recordUsage)
             #self.rvScale = float(rvPopulation)/self.rv.nPeople
             self.rvScale = float(self.totalPopulation)/self.rv.nPeople
         else:
             self.rvScale = 0.0
             self.rv = None
+
+        if recordUsage == True:
+            profile = [0.0]*1440
+            
+            objs = [self.uc,self.ut,self.rt,self.rv]
+            scales = [self.ucScale,self.utScale,self.rvScale,self.rvScale]
+            pers = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
+
+            for i in range(0,1440):
+                for j in range(0,4):
+                    profile[i] += objs[j].rtDemand[i]*scales[j]*pers[j]
+
+            self.rtDemand = profile
 
     def getNumberOfVehicles(self):
 
@@ -1759,9 +1799,11 @@ class AreaEnergyPrediction:
                 
 class NationalEnergyPrediction(AreaEnergyPrediction):
 
-    def __init__(self,day,month,vehicle=None,penetration=1.0,smoothTimes=False):
+    def __init__(self,day,month,vehicle=None,penetration=1.0,smoothTimes=False,
+                 recordUsage=False):
         AreaEnergyPrediction.__init__(self,None,24037000,29052000,5993000,
                                       6058000,day,month,vehicle=vehicle,
                                       penetration=penetration,
-                                      smoothTimes=smoothTimes)
+                                      smoothTimes=smoothTimes,
+                                      recordUsage=recordUsage)
         
