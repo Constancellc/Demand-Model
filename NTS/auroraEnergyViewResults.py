@@ -8,13 +8,16 @@ from NTSenergyPrediction import NationalEnergyPrediction
 
 heatplot = np.zeros((1440,12*4*7))
 
-fileStem = '../../Documents/NationalProfiles/'
+#fileStem = '../../Documents/NationalProfiles/'
+
+fileStem = '../../Documents/NationalProfilesRT/'
 
 ms = {'1':'Jan','2':'Feb','3':'Mar','4':'Apr','5':'May','6':'Jun',
       '7':'Jul','8':'Aug','9':'Sep','10':'Oct','11':'Nov','12':'Dec'}
 for m in range(1,13):
     month = str(m)
-    with open(fileStem+ms[month]+'.csv','rU') as csvfile:
+    #with open(fileStem+ms[month]+'.csv','rU') as csvfile:
+    with open(fileStem+ms[month]+'RT.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         t = 0
