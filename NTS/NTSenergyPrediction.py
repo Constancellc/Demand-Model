@@ -303,7 +303,8 @@ class EnergyPrediction:
                     try:
                         energyPerMin = energyConsumption/(tripEnd-tripStart)
                     except:
-                        continue
+                        tripEnd += 30
+                        energyPerMin = energyConsumption/(tripEnd-tripStart)
                     
                     for i in range(tripStart,tripEnd):
                         if i < 1440:
@@ -794,6 +795,46 @@ class EnergyPrediction:
             return profile, individualProfiles
         else:
             return profile
+
+    def getDumbChargingProfileBASIC(self,power,tmax,scaleFactor=1,logOutofCharge=False,
+                               highUseHomeCharging=True,highUseWorkCharging=True,
+                               highUseShopCharging=True, scalePerHousehold=False,
+                               scalePerVehicle=False,scalePerPerson=False,
+                               superCharge=False,individuals=[]):
+        # power: the charging power in kW
+        
+        # tmax: the no. minutes past 00:00 the simulation is run for
+
+        uncharged = 0
+        self.nOutOfCharge = 0
+        self.dumbScaleFactor = scaleFactor
+
+        individualProfiles = {}
+
+
+        if tmax < 24*60:
+            print('please choose a simulation length greater than a day')
+            tmax = 24*60
+
+        profile = [0.0]*tmax
+
+        for vehicle in self.energy:
+
+            kWh = self.energy[vehicle]/self.chargingEfficiency
+            '''
+            if kWh > self.car.capacity:
+                self.nOutOfCharge += 1
+                kWh = self.car.capacity
+            '''
+            chargeStart = self.endTimes[vehicle]
+            chargeTime = int(kWh*60/power)
+
+            for i in range(chargeStart,chargeStart+chargeTime):
+                if i >= tmax:
+                    continue
+                profile[i] += power*scaleFactor
+
+        return profile
 
     def returnDumbChargingProfiles(self,nProfiles,power,nHours=24):
 
@@ -1469,7 +1510,7 @@ class AreaEnergyPrediction:
             profile = [0.0]*1440
             
             objs = [self.uc,self.ut,self.rt,self.rv]
-            scales = [self.ucScale,self.utScale,self.rvScale,self.rvScale]
+            scales = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
             pers = [self.ucPer,self.utPer,self.rtPer,self.rvPer]
 
             for i in range(0,1440):
@@ -1570,7 +1611,7 @@ class AreaEnergyPrediction:
         pops = [self.ucPopulation,self.utPopulation,self.rtPopulation,
                 self.rvPopulation,]
         objs = [self.uc,self.ut,self.rt,self.rv]
-        scales = [self.ucScale,self.utScale,self.rvScale,self.rvScale]
+        scales = [self.ucScale,self.utScale,self.rtScale,self.rvScale]
 
         profiles = []
 
