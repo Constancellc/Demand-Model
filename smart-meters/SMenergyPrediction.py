@@ -27,6 +27,12 @@ class HouseholdElectricityDemand:
                  #'U':[2,7,8,9,11,14,15,16,17,20,24,25,26,27,28,29,34,35,36,37,38]}
         self.hh = []
 
+        self.valid = []
+        with open('../../Documents/sharonb/7591/csv/dates.csv') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                self.valid.append(row[0]) 
+
         with open('../../Documents/sharonb/7591/csv/demographics.csv') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)
@@ -59,20 +65,32 @@ class HouseholdElectricityDemand:
                     if row[3] != ACORNType:
                         continue
 
+                if str(int(float(row[0]))) not in self.valid:
+                    continue
+
                 self.hh.append(str(int(float(row[0]))))
                     
     def getProfile(self,startDay,startMonth,nProfiles=1,nDays=1):
 
         # startDay - int
 
+        # NOTE: doesn't actually work for number of days != 1 yet
+
         # first randomly choose households
         chosen = []
         profiles = []
 
-        while len(chosen) < nProfiles:
-            i = int(len(self.hh)*random.random())
-            if self.hh[i] not in chosen:
-                chosen.append(self.hh[i])
+        if nProfiles > len(self.hh):
+            chosen = self.hh
+            print('changing number of profiles from '+str(nProfiles)+' to '+
+                  str(len(self.hh)))
+            nProfiles = len(self.hh)
+
+        else:
+            while len(chosen) < nProfiles:
+                i = int(len(self.hh)*random.random())
+                if self.hh[i] not in chosen:
+                    chosen.append(self.hh[i])
 
         # then identify its possible dates
         starts = {}
@@ -97,16 +115,24 @@ class HouseholdElectricityDemand:
                 day += datetime.timedelta(1)
 
             #possDays[h] = possDays[h][1:len(possDays[h])-2]
+        invalid = []
         
         for h in chosen:
             if len(possDays[h]) == 0:
-                chosen.remove(h)
+                invalid.append(h)
 
         # randomly pick one of them
         chosenDay = {}
         for h in chosen:
+            if h in invalid:
+                continue
             ran = int(random.random()*len(possDays[h]))
-            chosenDay[h] = possDays[h][ran]
+            try:
+                chosenDay[h] = possDays[h][ran]
+            except:
+                print(h)
+                print(ran)
+                print(len(possDays[h]))
            
         # return that profile
         with open(data,'rU') as csvfile:
@@ -114,6 +140,9 @@ class HouseholdElectricityDemand:
             for row in reader:
                 if row[0] not in chosen: # correct household?
                     continue
+                if row[0] in invalid:
+                    continue
+                
                 if int(row[1]) != chosenDay[row[0]]: # correct day?
                     continue
 
@@ -121,7 +150,9 @@ class HouseholdElectricityDemand:
                 for i in range(0,len(p)):
                     p[i] = float(p[i])
 
-                profiles.append(p)
+                if sum(p) != 0:
+                    profiles.append(p)
                 
         return profiles
+
 
