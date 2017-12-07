@@ -40,10 +40,11 @@ with open('household_demand_pool_HH.csv','rU') as csvfile:
             hh.append(float(cell))
         hh.append(hh[0])
         for j in range(0,1440):
-            p1 = int(i/30)
+            p1 = int(j/30)
             p2 = p1 + 1
-            f = (i%30)/30
+            f = float(j%30)/30
             household_profiles[i][j] = (1-f)*hh[p1] + f*hh[p2]
+        i += 1
 
 i = 0
 with open('vehicle_demand_pool.csv','rU') as csvfile:

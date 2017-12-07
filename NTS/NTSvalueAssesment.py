@@ -4,8 +4,9 @@ import random
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
-from cvxopt import matrix, spdiag, solvers, sparse
-import sklearn.cluster as clst
+#from cvxopt import matrix, spdiag, solvers, sparse
+#import sklearn.cluster as clst
+
 # my code
 from vehicleModelCopy import Drivecycle, Vehicle
 from NTSvehicleLocation import LocationPrediction
@@ -17,8 +18,8 @@ trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
 
 class ValueAssesment:
 
-    def __init__(self, month, fleetSize, vehicle=None, region=None,
-                 regionType=None):
+    def __init__(self, month, fleetSize, car=None, region=None,
+                 regionType=None, smoothTimes=False,model='full'):
         # month: string of integer 1-12 symbolising month
         # vehicle: vehicle object
         # regionType (opt): string filtering for a specific region type
@@ -34,7 +35,7 @@ class ValueAssesment:
 
         self.month = month
         self.fleetSize = fleetSize
-        self.vehicle = vehicle
+        self.car = car
         self.region = region
         self.regionType = regionType
 
@@ -53,7 +54,7 @@ class ValueAssesment:
         # setting up counters which will be used to scale predictions
         self.nVehicles = 0 
         self.nHouseholds = 0
-        self.nPeople = 0
+        self.profiles = {}
 
         with open(households,'rU') as csvfile:
             reader = csv.reader(csvfile,delimiter='\t')
@@ -73,53 +74,8 @@ class ValueAssesment:
 
                     if region is not None:
                         self.reg3[row[0]] = row[28]
+
         
-        
-
-class EnergyPrediction:
-
-    def __init__(self, day, month=None, car=None, regionType=None, region=None,
-                 model='full',penetration=1.0,smoothTimes=False,
-                 recordUsage=False):
-        # day: string of integer 1-7 symbolising day of week
-        # month: string of integer 1-12 symbolising month
-        # car: vehicle object
-        # regionType (opt): string filtering for a specific region type
-        # region (opt): string filtering for a specific region
-
-        if car == None:
-            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
-            car = nissanLeaf
-        elif car == 'tesla':
-            car = Vehicle(2273.0,37.37,0.1842,0.01508,0.94957,60.0)
-        elif car == 'bmw':
-            car = Vehicle(1420.0,22.9,0.346,0.01626,0.87785,22.0)
-            
-        self.day = day
-        self.month = month
-        self.car = car
-        self.regionType = regionType
-        self.region = region
-        self.chargingEfficiency = 0.95
-        self.penetration = penetration
-        self.smoothTimes = smoothTimes
-
-        if recordUsage == True:
-            self.rtDemand = [0.0]*1440
-
-        # first getting the region types
-        self.reg1 = {} # 1:urban, 2:rural, 3:scotland
-
-        if regionType is not None:
-            self.reg2 = {} # 1:uc, 2:ut, 3:rt, 4:rv, 5:scotland
-
-        if region is not None:
-            self.reg3 = {} # 1:NE, 2:NW, 3:Y+H, 4:EM, 5:WM, 6:E, 7:L, 8:SE, 9:SW,
-                      # 10: Wales, 11: Scotland
-
-        self.profiles = {} # miles
-        self.nVehicles = 0 
-
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)
@@ -142,10 +98,10 @@ class EnergyPrediction:
                     continue
 
                 if vehicle not in self.profiles:
-                    self.profiles[vehicle] = [self.vehicle.cap]*(48*7)
+                    self.profiles[vehicle] = [0.0]*(1440*7)
                     self.nVehicles += 1
 
-                day = int(row[5])
+                day = int(row[5])-1
                 
                 try:
                     passengers = int(row[13]) # find the # people in the car
@@ -163,11 +119,6 @@ class EnergyPrediction:
                     shift = 30*random.random()
                     tripEnd = int(30*int(tripEnd/30)+shift)
                     tripStart = int(30*int(tripStart/30)+shift)
-                
-                self.distance[vehicle] += int(tripDistance) # m
-
-                if tripEnd > self.endTimes[vehicle]:
-                    self.endTimes[vehicle] = tripEnd
 
                 if model == 'full':
                     # if the trip is really long, run the motorway artemis
@@ -194,4 +145,53 @@ class EnergyPrediction:
                     car.load = 0
                     
                 elif model == 'linear':
-                    energyConsumption += tripDistance*0.23/1609.34 
+                    energyConsumption += tripDistance*0.23/1609.34
+
+                if tripStart == tripEnd:
+                    tripEnd += 30
+
+                if tripStart > tripEnd:
+                    tripEnd += 1440
+
+                tripLen = tripEnd-tripStart
+                
+                enPerMin = energyConsumption/tripLen
+
+                for i in range(tripStart,tripEnd):
+                    if day*1440+i < 1440*7:
+                        self.profiles[vehicle][day*1440+i] += enPerMin
+                    else:
+                        self.profiles[vehicle][(day-7)*1440+i] += enPerMin
+
+
+        # now scale for fleetsize
+        self.sf = fleetSize/self.nVehicles
+
+        for vehicle in self.profiles:
+            for i in range(len(self.profiles[vehicle])):
+                self.profiles[vehicle][i] = self.profiles[vehicle][i]/self.sf
+
+
+    def getTotalCapacity(self):
+
+        total = [self.car.capacity*self.fleetSize]*1440*7
+        
+        for vehicle in self.profiles:
+            summed = [self.profiles[vehicle][0]]
+            for i in range(1,1440*7):
+                summed.append(summed[i-1]+self.profiles[vehicle][i])
+                
+            for i in range(1440*7):
+                total[i] -= summed[i]
+
+        return total
+                
+    def plotTotalCapacity(self):
+
+        total = [0.0]*1440*7
+
+        for vehicle in self.profiles:
+            for i in range(1440*7):
+                total[i] += self.profiles[vehicle][i]
+
+        return total
