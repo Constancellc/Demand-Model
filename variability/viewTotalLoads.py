@@ -25,7 +25,7 @@ for sim in range(0,4):
     for i in range(0,1440):
         allP[i] = []
         
-    with open(ld[sim],'rU') as csvfile:
+    with open('results/'+ld[sim],'rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if row == []:
@@ -81,7 +81,7 @@ for sim in range(0,4):
     lL = [1000]*1440
 
     t = 0
-    with open(high[sim],'rU') as csvfile:
+    with open('results/'+high[sim],'rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if row == []:
@@ -97,7 +97,7 @@ for sim in range(0,4):
 
 
     t = 0               
-    with open(low[sim],'rU') as csvfile:
+    with open('results/'+low[sim],'rU') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if row == []:
