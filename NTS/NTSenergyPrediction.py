@@ -1599,14 +1599,15 @@ class AreaEnergyPrediction:
 
         return dumbProfile
 
-    def getPsuedoOptimalProfile(self,pMax,nHours=36,deadline=9,weighted=False):
-
-        try:
-            baseLoad = self.baseLoad
-        except:                
-            areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
-            baseLoad = areaBase.getLoad(population=self.totalPopulation)
-            self.baseLoad = baseLoad
+    def getPsuedoOptimalProfile(self,pMax,nHours=36,deadline=9,weighted=False,
+                                baseLoad=None):
+        if baseLoad == None:
+            try:
+                baseLoad = self.baseLoad
+            except:                
+                areaBase = BaseLoad(self.day,self.month,nHours,unit='k')
+                baseLoad = areaBase.getLoad(population=self.totalPopulation)
+                self.baseLoad = baseLoad
 
         pops = [self.ucPopulation,self.utPopulation,self.rtPopulation,
                 self.rvPopulation,]
