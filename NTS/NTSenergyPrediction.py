@@ -855,6 +855,8 @@ class EnergyPrediction:
             if kWh > self.car.capacity:
                 kWh = self.car.capacity
 
+            kWh = kWh/self.chargingEfficiency
+
             chargeStart = self.endTimes[vehicle]
             chargeTime = int(kWh*60/power)
 
@@ -1022,6 +1024,8 @@ class EnergyPrediction:
 
             if kWh > self.car.capacity:
                 kWh = self.car.capacity
+
+            kWh = kWh/self.chargingEfficiency
 
             chargeStart = int(self.endTimes[vehicle])
             chargeEnd = int(self.startTimes[vehicle]+24*60)
