@@ -38,7 +38,6 @@ class ValueAssesment:
         self.car = car
         self.region = region
         self.regionType = regionType
-        self.chargingEfficiency = 0.9
 
         self.nVehicles = 0
 
@@ -58,7 +57,7 @@ class ValueAssesment:
         # setting up counters which will be used to scale predictions
         self.nVehicles = 0 
         self.nHouseholds = 0
-        self.journeyLogs = {}
+        self.profiles = {}
         self.demand = [0.0]*1440*7
 
         with open(households,'rU') as csvfile:
@@ -102,15 +101,16 @@ class ValueAssesment:
                 if vehicle == ' ': # skip trips where the vehicle is missing
                     continue
 
-                if vehicle not in self.journeyLogs:
-                    self.journeyLogs[vehicle] = []
+                if vehicle not in self.profiles:
+                    self.profiles[vehicle] = [0.0]*(1440*7)
                     self.nVehicles += 1
+                    self.journeyLogs[vehicle] = []
 
                     if average == False:
                         vehicleList.append(vehicle)
 
                 day = int(row[5])-1
-
+                
                 try:
                     passengers = int(row[13]) # find the # people in the car
                 except:
@@ -120,7 +120,6 @@ class ValueAssesment:
                     tripEnd = int(row[9])
                     tripStart = int(row[8])
                     tripDistance = float(row[10])*1609.34 # miles -> m
-                    purposeTo = int(row[12])
                 except:
                     continue # skip trips without a time or length
 
@@ -162,20 +161,24 @@ class ValueAssesment:
                 if tripStart > tripEnd:
                     tripEnd += 1440
 
-                tripStart += day*1440
-                tripEnd += day*1440
+                tripLen = tripEnd-tripStart
+                
+                enPerMin = energyConsumption/tripLen
 
-                self.journeyLogs[vehicle].append([tripStart,tripEnd,
-                                                  energyConsumption,purposeTo])
+                for i in range(tripStart,tripEnd):
+                    if day*1440+i < 1440*7:
+                        self.profiles[vehicle][day*1440+i] += enPerMin
+                    else:
+                        self.profiles[vehicle][(day-7)*1440+i] += enPerMin
 
 
         # now scale for fleetsize
         if average == True or fleetSize > self.nVehicles:
             self.sf = fleetSize/self.nVehicles
 
-            for vehicle in self.journeyLogs:
-                for journey in self.journeyLogs[vehicle]:
-                    journey[2] = journey[2]*self.sf
+            for vehicle in self.profiles:
+                for i in range(len(self.profiles[vehicle])):
+                    self.profiles[vehicle][i] = self.profiles[vehicle][i]*self.sf
                     
         else:
             if fleetSize < self.nVehicles:
@@ -187,110 +190,49 @@ class ValueAssesment:
                     if vehicleList[ran] not in chosenVehicles:
                         chosenVehicles.append(vehicleList[ran])
 
-                newLogs = {}
+                newProfiles = {}
 
                 for vehicle in chosenVehicles:
-                    newLogs[vehicle] = self.journeyLogs[vehicle]
+                    newProfiles[vehicle] = self.profiles[vehicle]
 
-                self.journeyLogs = newLogs
-
-        for vehicle in self.journeyLogs:
-            self.journeyLogs[vehicle] = sorted(self.journeyLogs[vehicle])
+                self.profiles = newProfiles
                 
-    
-    def chargeOpportunistically(self,power,time_threshold,chargeLocations=[23]):
+
+    def getTotalCapacity(self):
+
+        total = [self.car.capacity*self.fleetSize]*1440*7
+        
+        for vehicle in self.profiles:
+            summed = [self.profiles[vehicle][0]]
+            for i in range(1,1440*7):
+                summed.append(summed[i-1]+self.profiles[vehicle][i])
+                
+            for i in range(1440*7):
+                total[i] -= summed[i]
+
+        return total
+                
+    def chargeOpportunistically(self,power,time_threshold):
 
         # time_threshold = min parked time to start charging
         # power = power in kW which vehicles charge at
 
-        nOutOfCharge = 0
+        #self.demand = [0.0]*1440*7
+        for vehicle in self.profiles:
+            spent = 0
+            i = 0
 
-        self.total = [0]*1440*7
-        self.max = [0]*1440*7
-        self.min = [100]*1440*7
-        
-        for vehicle in self.journeyLogs:
-            log = self.journeyLogs[vehicle]
-            battery = copy.copy(self.car.capacity*self.sf)
-            outOfCharge = False
-            t_i = 0
+            while self.profiles[vehicle][i] == 0:
+                i += 1
 
-            N = len(log)
+            start = i
+            while self.profiles[vehicle][i] != 0:
+                spent += self.profiles[vehicle][i] 
+                i += 1
+            end = i
 
-            for i in range(N-1):
-                parkStart = log[i][1]
-                parkEnd = log[i+1][0]
-                kWh = log[i][2]
-                location = log[i][3]
-
-                while t_i < parkStart:
-                    self.total[t_i] += battery
-
-                    if battery < self.min[t_i]:
-                        self.min[t_i] = battery
-                    if battery > self.max[t_i]:
-                        self.max[t_i] = battery
-                        
-                    t_i += 1
-
-                battery -= kWh
-                if battery <= 0:
-                    outOfCharge == True
-
-                if parkEnd-parkStart < time_threshold:
-                    continue
-
-                if location not in chargeLocations:
-                    continue
-
-                for t in range(parkStart,parkEnd):
-                    
-                    if battery < self.car.capacity*self.sf:
-                        self.demand[t] += power*self.sf
-                        battery += power*self.sf*self.chargingEfficiency/60
-                        
-                    if battery > self.car.capacity*self.sf:
-                        self.demand[t] -= (battery-self.car.capacity*self.sf)*60
-                        battery = copy.copy(self.car.capacity*self.sf)
-                        
-                    self.total[t] += battery
-
-                    if battery < self.min[t]:
-                        self.min[t] = battery
-                    if battery > self.max[t]:
-                        self.max[t] = battery
-
-                t_i = parkEnd
-                    
-            # plug in if necessary
-            while t_i < 1440*7:
-                if battery < self.car.capacity*self.sf:
-                    self.demand[t_i] += power*self.sf
-                    battery += power*self.sf*self.chargingEfficiency/60
+            if end-start > time_threshold:
                 
-                if battery > self.car.capacity*self.sf:
-                    self.demand[t_i] -= (battery-self.car.capacity*self.sf)*60
-                    battery = copy.copy(self.car.capacity*self.sf)
-
-                self.total[t_i] += battery
-
-                if battery < self.min[t_i]:
-                    self.min[t_i] = battery
-                if battery > self.max[t_i]:
-                    self.max[t_i] = battery
-                t_i += 1
-                
-            
-            if outOfCharge == True:
-                nOutOfCharge += 1
-
-        for i in range(1440*7):
-            self.max[i] = self.max[i]/self.sf
-            self.min[i] = self.min[i]/self.sf
-
-        print(str(int(100*nOutOfCharge/self.nVehicles))+'% vehicles out of charge')
-                        
-
 
             
                 
