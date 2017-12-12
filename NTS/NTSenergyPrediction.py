@@ -134,7 +134,7 @@ class EnergyPrediction:
         if car == None or car == 'nissanLeafS':
             car = Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0)
         elif car == 'nissanLeafSL':
-            car = Vehicle(1647.7.0,29.61,0.0738,0.02195,0.86,30.0)
+            car = Vehicle(1647.7,0,29.61,0.0738,0.02195,0.86,30.0)
         elif car == 'nissanLeafSV':
             car = Vehicle(1704.5,29.92,0.076,0.02195,0.847,30.0)
         elif car == 'bmwI3':

@@ -5,9 +5,10 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 from NTSvalueAssesment import ValueAssesment
 
-test = ValueAssesment('3',1,car=None,regionType='3',smoothTimes=True)
+test = ValueAssesment('3',1,car=None,regionType='1',smoothTimes=True)
 test.chargeOpportunistically(3.5,30)
 #p = test.getTotalCapacity()
 p = test.total
