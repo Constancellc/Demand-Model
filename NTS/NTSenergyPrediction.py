@@ -7,7 +7,12 @@ import numpy as np
 from cvxopt import matrix, spdiag, solvers, sparse
 import sklearn.cluster as clst
 # my code
-from vehicleModelCopy import Drivecycle, Vehicle
+#from vehicleModelCopy import Drivecycle, Vehicle
+import sys
+
+sys.path.append('../')
+
+from vehicleModel import Drivecycle, Vehicle
 from NTSvehicleLocation import LocationPrediction
 
 
@@ -61,7 +66,6 @@ class BaseLoad:
             day = nextDay[day]
             nDays -= 1
 
-
         with open('../../Documents/DemandData_2011-2016.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
@@ -70,15 +74,12 @@ class BaseLoad:
 
                 profiles[dates[row[0]]].append(float(row[4]))
 
-                                                
-
         profile = []
 
         for i in range(0,len(profiles)):
             profile += profiles[i]
 
         profile = profile[:nHours*2] # half-hourly
-
 
         interpolatedLoad = [0.0]*nHours*pointsPerHour
 
@@ -130,13 +131,68 @@ class EnergyPrediction:
         # regionType (opt): string filtering for a specific region type
         # region (opt): string filtering for a specific region
 
-        if car == None:
-            nissanLeaf = Vehicle(1521.0,29.92,0.076,0.02195,0.86035,24.0)
-            car = nissanLeaf
-        elif car == 'tesla':
-            car = Vehicle(2273.0,37.37,0.1842,0.01508,0.94957,60.0)
-        elif car == 'bmw':
-            car = Vehicle(1420.0,22.9,0.346,0.01626,0.87785,22.0)
+        if car == None or car == 'nissanLeafS':
+            car = Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0)
+        elif car == 'nissanLeafSL':
+            car = Vehicle(1647.7.0,29.61,0.0738,0.02195,0.86,30.0)
+        elif car == 'nissanLeafSV':
+            car = Vehicle(1704.5,29.92,0.076,0.02195,0.847,30.0)
+        elif car == 'bmwI3':
+            car = Vehicle(1420.4,22.9,0.346,0.01626,0.849,18.8)
+        elif car == 'teslaS60D':
+            car = Vehicle(2272.7,37.37,0.1842,0.01508,0.969,60.0)
+        elif car == 'teslaS60R':
+            car = Vehicle(2272.7,40.35,0.1324,0.01557,0.884,60.0)
+        elif car == 'teslaS70D':
+            car = Vehicle(2272.7,36.23,0.1906,0.01746,0.865,70.0)
+        elif car == 'teslaS75D':
+            car = Vehicle(2272.7,37.37,0.1842,0.01508,0.964,75.0)
+        elif car == 'teslaS75R':
+            car = Vehicle(2272.7,40.35,0.1324,0.01557,0.943,75.0)
+        elif car == 'teslaS85D':
+            car = Vehicle(2272.7,36.23,0.1906,0.01746,0.86,85.0)
+        elif car == 'teslaS90D':
+            car = Vehicle(2272.7,39.24,0.1493,0.01514,0.952,90.0)
+        elif car == 'teslaSP100D':
+            car = Vehicle(2386.4,41.35,0.267,0.0137,0.956,100.0)
+        elif car == 'teslaP85D':
+            car = Vehicle(2386.4,41.91,0.1389,0.0185,0.812,85.0)
+        elif car == 'teslaSP90D':
+            car = Vehicle(2386.4,41.51,0.2226,0.01403,0.939,90.0)
+        elif car == 'teslaX60D':
+            car = Vehicle(2500.0,37.68,0.0486,0.0214,0.953,60.0)
+        elif car == 'teslaX75D':
+            car = Vehicle(2500.0,37.68,0.0486,0.0214,0.957,75.0)
+        elif car == 'teslaX90D':
+            car = Vehicle(2500.0,37.68,0.0486,0.0214,0.931,90.0)
+        elif car == 'teslaXP10D':
+            car = Vehicle(2727.3,45.71,-0.0555,0.0216,0.928,100.0)
+        elif car == 'BYDe6':
+            car = Vehicle(2500,69.473,0.0697,0.02814,0.911,61.0)
+        elif car == 'chevroletSpark':
+            car = Vehicle(1420.45,21.96,0.1688,0.01806,0.78,19.0)
+        elif car == 'fiat500e':
+            car = Vehicle(1477.3,24.91,0.2365,0.01816,0.79,22.0)
+        elif car == 'toyotaScionIQ':
+            car = Vehicle(1250,15.993,0.56499,0.013095,0.844,12.0)
+        elif car == 'toyotaRAV4':
+            car = Vehicle(1931.8,32.246,0.27335,0.022058,0.721,41.8)
+        elif car == 'VWeGolf':
+            car = Vehicle(1647.7,39.36,0.5083,0.0125,0.942,24.2)
+        elif car == 'kiaSoul':
+            car = Vehicle(1647.7,22.058,0.25763,0.022168,0.881,27.0)
+        elif car == 'coda':
+            car = Vehicle(1818.2,39.18,0.2549,0.0199,0.635,31.0)
+        elif car == 'mercedesBclass':
+            car = Vehicle(1931.8,31.7,0.177,0.019,0.681,36.0)
+        elif car == 'mercedesSmart':
+            car = Vehicle(1079.5,32.869,-0.1639,0.028583,0.786,17.6)
+        elif car == 'hondaFit':
+            car = Vehicle(1647.7,19.06,0.407,0.01499,0.813,20.0)
+        elif car == 'mitsubishiMiEV':
+            car = Vehicle(1306.8,19.484,0.43515,0.016133,0.752,16.0)
+        else:
+            raise Exception('i do not recongnise that vehicle')
             
         self.day = day
         self.month = month
