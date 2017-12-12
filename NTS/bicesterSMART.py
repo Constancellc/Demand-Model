@@ -8,7 +8,7 @@ from vehicleModelCopy import Drivecycle, Vehicle
 from NTSenergyPrediction import AreaEnergyPrediction
 
 elecData = '../../Documents/Elec_demand_oneyear.csv'
-outfileStem = '../../Documents/bicesterSMART'
+outfileStem = '../../Documents/bicesterSmart'
 
 
 data = []
@@ -34,11 +34,7 @@ for i in range(12):
         except:
             newp[j] = p[int(j/60)-24]
     stdProfiles.append(newp)
-    
-plt.figure(1)
-for i in range(12):
-    plt.plot(range(36*60),stdProfiles[i])
-plt.show()
+
 
 pen = 0.3
 
@@ -47,13 +43,13 @@ mo = {'1':'Jan','2':'Feb','3':'Mar','4':'Apr','5':'May','6':'Jun','7':'Jul',
 da = {'1':'Mon','2':'Tue','3':'Wed','4':'Thu','5':'Fri','6':'Sat','7':'Sun'}
 
 for nph in [3]:
-    for mi in range(1,2):#13):
+    for mi in range(1,13):
         m = str(mi)
         for di in range(1,8):
             d = str(di)
             run = AreaEnergyPrediction('8',0,int(pen*nph*1700),0,0,d,m,
                                        vehicle='teslaS60D')
-            dumb = run.getPsuedoOptimalProfile(3.5,stdProfiles[mi-1])
+            dumb = run.getPsuedoOptimalProfile(3.5,baseLoad=stdProfiles[mi-1])
 
             newDumb = [0.0]*24*2
 
@@ -70,4 +66,3 @@ for nph in [3]:
                 for i in range(0,len(newDumb)):
                     writer.writerow([str(int((i+0.5)*30)),newDumb[i]])
         
-'''

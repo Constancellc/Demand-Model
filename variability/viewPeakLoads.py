@@ -22,7 +22,7 @@ for r in range(0,2):
     for sim in range(0,4):
         peaks.append([])
         
-        with open(ld[sim],'rU') as csvfile:
+        with open('results/'+ld[sim],'rU') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
                 if row == []:
@@ -45,6 +45,6 @@ for r in range(0,2):
     plt.title(str(res[r])+'min resolution')
     #plt.ylim(0.5,2.2)
 
-plt.savefig('../../papers/PES-GM/peak_load',format='eps')
+#plt.savefig('../../papers/PES-GM/peak_load',format='eps')
 plt.show()
             
