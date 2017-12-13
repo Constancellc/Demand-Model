@@ -253,7 +253,8 @@ class ValueAssesment:
             self.journeyLogs[vehicle] = sorted(self.journeyLogs[vehicle])
                 
     
-    def chargeOpportunistically(self,power,time_threshold,chargeLocations=[23]):
+    def chargeOpportunistically(self,power,time_threshold,chargeLocations=[23],
+                                td_int=1):
 
         # time_threshold = min parked time to start charging
         # power = power in kW which vehicles charge at
@@ -262,12 +263,13 @@ class ValueAssesment:
         nOutOfCharge = 0
 
         self.total = [0]*1440*7
-        self.max = [0]*1440*7
-        self.min = [100]*1440*7
+        self.turnDown = [0]*int(1440*7/td_int)
+        self.chargeLogs = {}
         
         for vehicle in self.journeyLogs:
+            self.chargeLogs[vehicle] = []
             log = self.journeyLogs[vehicle]
-            battery = copy.copy(self.car.capacity*self.sf)
+            battery = self.car.capacity*self.sf
             t_i = 0
 
             N = len(log)
@@ -280,11 +282,6 @@ class ValueAssesment:
 
                 while t_i < parkStart:
                     self.total[t_i] += battery
-
-                    if battery < self.min[t_i]:
-                        self.min[t_i] = battery
-                    if battery > self.max[t_i]:
-                        self.max[t_i] = battery
                         
                     t_i += 1
 
@@ -295,60 +292,70 @@ class ValueAssesment:
 
                 if parkEnd-parkStart < time_threshold:
                     continue
-
-                if location not in chargeLocations:
-                    continue
+                
+                if chargeLocations != []:
+                    if location not in chargeLocations:
+                        continue
 
                 for t in range(parkStart,parkEnd):
                     
                     if battery < self.car.capacity*self.sf:
                         self.demand[t] += power*self.sf
                         battery += power*self.sf*self.chargingEfficiency/60
+                        chargeEnd = copy.copy(t)
                         
                     if battery > self.car.capacity*self.sf:
                         self.demand[t] -= (battery-self.car.capacity*self.sf)*60
-                        battery = copy.copy(self.car.capacity*self.sf)
+                        battery = self.car.capacity*self.sf
                         
                     self.total[t] += battery
 
-                    if battery < self.min[t]:
-                        self.min[t] = battery
-                    if battery > self.max[t]:
-                        self.max[t] = battery
-
                 t_i = parkEnd
-                    
+
+                tdStart = int(parkStart/td_int)+1
+                tdEnd = int(chargeEnd/td_int)
+
+                floatTime = parkEnd-chargeEnd
+                if floatTime > td_int:
+                    # then we can shift by atleast one time interval
+                    for i in range(tdStart,tdEnd):
+                        self.turnDown[i] += power*self.sf
+            try:
+                parkStart = log[-1][1]
+                chargeEnd = log[-1][1]
+            except:
+                continue # some logs are empty - WHY???
+            
             # plug in if necessary
             while t_i < 1440*7:
                 if battery < self.car.capacity*self.sf:
                     self.demand[t_i] += power*self.sf
                     battery += power*self.sf*self.chargingEfficiency/60
+                    chargeEnd = copy.copy(t_i)
                 
                 if battery > self.car.capacity*self.sf:
                     self.demand[t_i] -= (battery-self.car.capacity*self.sf)*60
-                    battery = copy.copy(self.car.capacity*self.sf)
+                    battery = self.car.capacity*self.sf
 
                 self.total[t_i] += battery
 
-                if battery < self.min[t_i]:
-                    self.min[t_i] = battery
-                    '''
-                    if battery < 0:
-                        print(battery)
-                    '''
-                if battery > self.max[t_i]:
-                    self.max[t_i] = battery
                 t_i += 1
 
-        for i in range(1440*7):
-            self.max[i] = self.max[i]/self.sf
-            self.min[i] = self.min[i]/self.sf
+            tdStart = int(parkStart/td_int)+1
+            tdEnd = int(chargeEnd/td_int)
+
+            floatTime = parkEnd-chargeEnd
+            if floatTime > td_int:
+                # then we can shift by atleast one time interval
+                for i in range(tdStart,tdEnd):
+                    self.turnDown[i] += power*self.sf
 
         print(nOutOfCharge)
 
         print(str(round(100*float(len(outOfCharge))/self.nVehicles,2))+'% vehicles out of charge')
                         
-
+                
+        
 
             
                 
