@@ -81,5 +81,27 @@ for typ in ['lf','lm','uc']:
         av[t] = sum(loads[typ][t])/len(loads[typ])
     
     plt.plot(av,clrs[typ])
+
+plt.figure(3)
+hh = [0,54]
+for i in range(2):
+    plt.subplot(2,1,i+1)
+    lm = []
+    lf = []
+    bl = []
+    with open('results/lf_lm_inidividuals'+str(hh[i])+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            if row == []:
+                continue
+            lf.append(float(row[1]))
+            lm.append(float(row[2]))
+            bl.append(float(row[3]))
+        plt.plot(lf)
+        plt.plot(lm)
+        plt.plot(bl)
+
+plt.show()
 plt.show()
             
