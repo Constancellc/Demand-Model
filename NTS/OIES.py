@@ -11,12 +11,12 @@ month = '1'
 runBase = BaseLoad(day,month,24,unit='k')
 base = runBase.getLoad()
 
-for cp in [3.5,7,21,50,200]:
+for cp in [3.5,7,21,50,145]:
     print(cp,end='')
     print('kW')
     n = []
     for i in range(len(base)):
-        n.append(int((60000000-base[i])/cp))
+        n.append(round((78000000-base[i])/(cp*320000),2))
     print(min(n))
     print(max(n))
 
