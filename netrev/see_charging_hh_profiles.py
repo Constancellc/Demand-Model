@@ -48,5 +48,29 @@ plt.title('Sample individual\nprofiles',y=0.7)
 plt.plot(hh[ran][2:])
 plt.plot(ev[ran][2:])
 
+# work out average correlation between same vehicle and household
+same = [0]*100
+rnd = [0]*100
+for i in range(len(hh)):
+    h1 = np.array(hh[i][2:])
+    v1 = np.array(ev[i][2:])
+    v2 = np.array(ev[int(random.random()*len(hh))][2:])
 
+    h1 = h1/sum(h1)
+    v1 = v1/sum(v1)
+    v2 = v2/sum(v2)
+
+    try:
+        same[int(100*np.dot(h1,v1)/144)] += 1
+        rnd[int(100*np.dot(h1,v2)/144)] += 1
+    except:
+        print('')
+        print(np.dot(h1,v1))
+        print(np.dot(h1,v2))
+        continue
+
+
+plt.figure(2)
+plt.bar(range(len(same)),same)
+plt.bar(range(len(rnd)),rnd)
 plt.show()
