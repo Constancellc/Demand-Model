@@ -50,7 +50,7 @@ hh_demand = []
 for loc in hh:
 
     for day in profiles[loc]:
-        if sum(profiles[loc][day]['Charge point']) == 0:
+        if max(profiles[loc][day]['Charge point']) <= 0.1:
             continue
 
         ev_charging.append([loc,day]+profiles[loc][day]['Charge point'])
