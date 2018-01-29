@@ -15,7 +15,6 @@ sys.path.append('../')
 from vehicleModel import Drivecycle, Vehicle
 from NTSvehicleLocation import LocationPrediction
 
-
 # CONTENTS:
 # classes: BaseLoad, EnergyPrediction, NationalEnergyPrediction,
 #          AreaEnergyPrediction
@@ -191,7 +190,7 @@ class EnergyPrediction:
             car = Vehicle(1647.7,19.06,0.407,0.01499,0.813,20.0)
         elif car == 'mitsubishiMiEV':
             car = Vehicle(1306.8,19.484,0.43515,0.016133,0.752,16.0)
-        else:
+        elif type(car) == str:
             raise Exception('i do not recongnise that vehicle')
             
         self.day = day

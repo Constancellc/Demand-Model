@@ -28,8 +28,6 @@ with open('../../Documents/netrev/constance/charging_hh_profiles/ev.csv','rU') a
 hh_av = [0.0]*144
 ev_av = [0.0]*144
 
-print(len(hh))
-
 for i in range(len(hh)):
     for t in range(144):
         hh_av[t] += float(hh[i][t+2])/len(hh)
@@ -48,6 +46,7 @@ plt.title('Sample individual\nprofiles',y=0.7)
 plt.plot(hh[ran][2:])
 plt.plot(ev[ran][2:])
 
+diff = [0]*100
 # work out average correlation between same vehicle and household
 same = [0]*100
 rnd = [0]*100
@@ -61,16 +60,31 @@ for i in range(len(hh)):
     v2 = v2/sum(v2)
 
     try:
-        same[int(100*np.dot(h1,v1)/144)] += 1
-        rnd[int(100*np.dot(h1,v2)/144)] += 1
+        same[int(1000*np.dot(h1,v1))] += 1
+        rnd[int(1000*np.dot(h1,v2))] += 1
+        d = 1000*(np.dot(h1,v1)-np.dot(h1,v2))+50
+        diff[int(d)] += 1
     except:
+        '''
         print('')
         print(np.dot(h1,v1))
         print(np.dot(h1,v2))
+        '''
         continue
 
 
 plt.figure(2)
-plt.bar(range(len(same)),same)
-plt.bar(range(len(rnd)),rnd)
+plt.subplot(2,1,1)
+plt.title('EV and HH Profile Correlation')
+plt.bar(range(len(same)),same,label='same',alpha=0.5)
+plt.bar(range(len(rnd)),rnd,label='random',alpha=0.5)
+plt.legend()
+plt.xlim(0,50)
+plt.grid()
+
+plt.subplot(2,1,2)
+plt.title('Individual differences')
+plt.bar(np.arange(0,50),diff[50:])
+plt.bar(np.arange(-50,0),diff[:50],color='r')
+plt.grid()
 plt.show()

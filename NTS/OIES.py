@@ -16,7 +16,7 @@ for cp in [3.5,7,21,50,145]:
     print('kW')
     n = []
     for i in range(len(base)):
-        n.append(round((78000000-base[i])/(cp*320000),2))
+        n.append(round((70000000-base[i])/(cp*320000),2))
     print(min(n))
     print(max(n))
 
