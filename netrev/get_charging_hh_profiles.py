@@ -71,16 +71,16 @@ for loc in hh:
         # a lag in the readings - with charge point ahead of house hold
 
         # plan B below:
-        '''
-        carry = [0.0]*144
         for t in range(144):
-            if without_ev[t] < 0:
+            if without_ev[t+2] < 0:
                 try:
-                    without_ev[t+1] -= (without_ev[t]-0.1)
+                    without_ev[t+3] -= (without_ev[t+2]-0.1)
                 except:
-                    without_ev[0] -= (without_ev[t]-0.1)
-                without_ev[t] = 0.1
-        '''           
+                    without_ev[t+2] = 0.1
+                    continue
+                    #without_ev[0] -= (without_ev[t]-0.1)
+                    
+                without_ev[t+2] = 0.1
 
         hh_demand.append(without_ev)
 
