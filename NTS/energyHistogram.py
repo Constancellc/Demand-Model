@@ -5,9 +5,10 @@ from NTSenergyPrediction import EnergyPrediction, NationalEnergyPrediction
 run = EnergyPrediction('3','5')
 energy = run.plotEnergyConsumption(returnResults=True, wait=True)
 plt.xlim(0,60)
+'''
 run2 = EnergyPrediction('3','5',car='tesla')
 energy2 = run2.plotEnergyConsumption(returnResults=True, wait=True)
-
+'''
 plt.figure(2)
 plt.subplot(2,1,1)
 plt.bar(range(0,24),energy[:24],color='b')
@@ -15,14 +16,14 @@ plt.bar(range(24,len(energy)),energy[24:],color='r')
 plt.xlim(-0.5,80)
 plt.text(60,500,str(float(int(float(sum(energy[24:])*10000)/sum(energy)))/100)+'%',fontsize=15)
 plt.title('Nissan Leaf')
-
+'''
 plt.subplot(2,1,2)
 plt.bar(range(0,60),energy2[:60],color='b')
 plt.bar(range(60,len(energy2)),energy[60:],color='r')
 plt.xlim(-0.5,80)
 plt.text(60,500,str(float(int(float(sum(energy2[60:])*10000)/sum(energy2)))/100)+'%',fontsize=15)
 plt.title('Tesla 60S')
-
+'''
 plt.show()
 '''
 s = float(sum(energy))/100

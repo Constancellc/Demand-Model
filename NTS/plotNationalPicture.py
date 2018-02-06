@@ -5,7 +5,7 @@ import csv
 
 resultsStem = '../../Documents/simulation_results/NTS/national/'
 
-plotPsuedo = False
+plotPsuedo = True
 plotClustered = False
 
 plt.figure(1)
@@ -21,13 +21,22 @@ for month in ['1','4','7','10']:
     smart = []
     dumb = []
     base = []
+    psuedo = []
     with open(resultsStem+month+'.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
-            base.append(row[1])
-            dumb.append(row[2])
-            smart.append(row[3])
+            base.append(float(row[1]))
+            dumb.append(float(row[2]))
+            smart.append(float(row[3]))
+            if plotPsuedo == True:
+                psuedo.append(float(row[4]))
+
+    for i in range(1440,2160):
+        dumb[i-1440] += dumb[i]-base[i]
+        smart[i-1440] += smart[i]-base[i]
+        if plotPsuedo == True:
+            psuedo[i-1440] += psuedo[i]-base[i]
         
     plt.subplot(2,2,plotMonths[month])
     plt.plot(t,base,ls=':',c='g',label='Base Load')
@@ -35,7 +44,7 @@ for month in ['1','4','7','10']:
     
     if plotPsuedo == True:
         plt.plot(t,psuedo,c='b',ls='-.',label='Approximation')       
-        plt.plot(t_smart,smartProfile,label='Optimal')
+        plt.plot(t,smart,label='Optimal')
     elif plotClustered == True:
         plt.plot(np.linspace(0,36,num=len(clustered)),clustered,c='b',ls='-.',label='Clustered')       
         plt.plot(t_smart,smartProfile,label='Optimal')
