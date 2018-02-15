@@ -7,7 +7,7 @@ import numpy as np
 
 plt.figure(1)
 
-totals = {0:[],1:[],2:[]}
+totals = {0:[],1:[],2:[],3:[]}
 diffs = [[],[]]
 
 with open('results/lf_lm_losses.csv','rU') as csvfile:
@@ -16,25 +16,26 @@ with open('results/lf_lm_losses.csv','rU') as csvfile:
     for row in reader:
         if row == []:
             continue
-        for i in range(3):
-            totals[i].append(100*float(row[i])/float(row[3]))
-        diffs[0].append(100*float(row[4])/float(row[3]))
-        diffs[1].append(100*float(row[5])/float(row[3]))
+        for i in range(4):
+            totals[i].append(100*float(row[i])/float(row[4]))
+        #diffs[0].append(100*float(row[4])/float(row[4]))
+        #diffs[1].append(100*float(row[5])/float(row[4]))
 
 av = []
 for key in range(3):
     data = totals[key]
     data = sorted(data)
-    av.append(data[int(len(data)/2)])
+    av.append(data[int(len(data)/2)-1])
     
-x2_ticks = ['Load\nFlattening','Loss\nMinimizing','Uncontrolled']
+x2_ticks = ['Load\nFlattening','Loss\nMinimizing','Psuedo\nOptimal',
+            'Uncontrolled']
 plt.figure(1)
 #plt.subplot(2,1,1)
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 10
-plt.boxplot([totals[0],totals[1],totals[2]],0,'',whis=[0.05, 99.5])
-plt.xticks([1,2,3],x2_ticks)
-plt.plot([0.5,3.5],[av[1],av[1]],'k',ls=':',alpha=0.5)
+plt.boxplot([totals[0],totals[1],totals[2],totals[3]],0,'',whis=[0.05, 99.5])
+plt.xticks([1,2,3,4],x2_ticks)
+plt.plot([0.5,4.5],[av[1],av[1]],'k',ls=':',alpha=0.5)
 plt.grid()
 plt.ylabel('Losses (%)')
 
