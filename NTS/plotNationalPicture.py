@@ -10,6 +10,7 @@ plotClustered = False
 
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = 8
 plotMonths = {'1':1,'4':2,'7':3,'10':4}
 titles = {'1':'January','4':'April','7':'July','10':'October'}
 
