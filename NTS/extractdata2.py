@@ -4,8 +4,13 @@ import csv
 
 households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 infile = '../../Documents/UKDA-5340-tab/csv/tripsWithVehicleNosAndMonths.csv'
-outfile = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
+outfile = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
+with open(outfile,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        print(row)
+'''
 #dates = {}
 days = {}
 with open(households,'rU') as csvfile:
@@ -55,5 +60,5 @@ with open(outfile,'w') as csvfile:
                         
         writer.writerow(row)
 
-        
+'''       
     

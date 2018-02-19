@@ -52,10 +52,10 @@ class CovMatrix:
                     self.K1[i,j] = se(self.x1[0,i],self.x2[0,j],self.h1,self.l1)
                     self.K2[i,j] = p(self.x1[0,i],self.x2[0,j],self.h2,self.l2)
                     self.K3[i,j] = p(self.x1[0,i],self.x2[0,j],self.h3,self.l3)
-                    
-                    self.K1[i,j] = self.K1[j,i]
-                    self.K2[i,j] = self.K2[j,i]
-                    self.K3[i,j] = self.K3[j,i]
+
+                    self.K1[j,i] = self.K1[i,j]
+                    self.K2[j,i] = self.K2[i,j]
+                    self.K3[j,i] = self.K3[i,j]
         else:
             for i in range(self.n):
                 for j in range(self.m):
@@ -63,12 +63,14 @@ class CovMatrix:
                     self.K2[i,j] = p(self.x1[0,i],self.x2[0,j],self.h2,self.l2)
                     self.K3[i,j] = p(self.x1[0,i],self.x2[0,j],self.h3,self.l3)
 
+        
         self.K = self.K1+self.K2+self.K3
 
         self.foundInv = False
         self.foundChol = False
 
     def update_hyperparameters(self,theta1):
+
         self.h1 = theta1[0]
         self.l1 = theta1[1]
         self.h2 = theta1[2]
@@ -76,15 +78,20 @@ class CovMatrix:
 
         self.calc_matrix()       
 
-    def inv(self,b=[]):
+    def inv(self,b=[],sigma=0):
         # check square
         if self.square == False:
             raise Exception()
+
+        if sigma > 0:
+            self.K += sigma*np.eye(self.n)
         
         if len(b) == 0:
             if self.foundInv == False:
                 self.iK = np.linalg.inv(self.K)
                 self.foundInv = True
+            if sigma > 0:
+                self.K -= sigma*np.eye(self.n)
             return self.iK
             
         else:
@@ -100,6 +107,8 @@ class CovMatrix:
                 self.iL = np.linalg.inv(self.L)
                 self.iU = np.linalg.inv(self.L.H)
                 self.foundChol = True
+            if sigma > 0:
+                self.K -= sigma*np.eye(self.n)
             return self.iU*self.iL*b
 
     def det(self):
@@ -117,7 +126,7 @@ class CovMatrix:
 
         f = np.log(self.det()) + d.T*self.inv(d)
 
-        print(f)
+        #print(f)
         return f
 
     def g(self,theta):
@@ -150,30 +159,66 @@ class CovMatrix:
         g[3] = (np.trace(self.inv(dKdh2))-d.T*self.inv(dKdh2)*self.inv(d))[0,0]
         g[4] = (np.trace(self.inv(dKdh3))-d.T*self.inv(dKdh3)*self.inv(d))[0,0]
 
-        print(g)                       
+        #print(g)                       
         return g
+
+    def check_derivatives(self,theta):
+        f0 = self.f(theta)
+        g0 = self.g(theta)
+        for i in range(len(theta)):
+            theta[i] += 0.001
+            f = self.f(theta)
+            theta[i] -= 0.001
+            print('Checking gradient '+str(i+1))
+            print(g0[i])
+            print((f-f0)/0.001)
+            
                 
 class GaussianProcess:
     def __init__(self):
         self.theta = None
+        self.x = None
+        self.y = None
 
-    def learn_hyperparameters(self,x,y,theta0=[0,2,0.1,3,4]):
+    def learn_hyperparameters(self,x,y,theta0=['',2,0.1,3,4]):
+        # check length of x and y the same
+
+        self.x = x
+        self.y = y.T
+
+        # set inital mean estimate to the average
+        if theta0[0] == '':
+            n = x.size
+            theta0[0] = 0
+            for i in range(n):
+                theta0[0] += y[0,i]/n
         self.cov = CovMatrix(x,x,theta0)
         self.cov.set_training_pts(y)
 
         # manually adding noise
-        self.cov.K = self.cov.K + 1e-3*np.eye(self.cov.n)
+        #self.cov.K = self.cov.K + 1e-3*np.eye(self.cov.n)
+        #self.cov.check_derivatives(theta0)
         self.theta = opt.fmin_tnc(self.cov.f,theta0,fprime=self.cov.g,
-                                  bounds=[[0.01,5]]*5)
+                                  bounds=[[0.01,5]]*5)[0]
         print(self.theta)
         self.cov.update_hyperparameters(self.theta[1:])
 
     def train(x,y,theta0=[1.0]*5):
+        self.x = x
+        self.y = y
+
+        if self.theta is None:
+            print('need to learn hyperparameters first')
         # set up covariance matrix of right size
-        self.cov = CovarianceMatrix(x,x,theta0[1:])
-        self.set_training_pts(y)
+        self.cov = CovMatrix(x,x,self.theta)
 
-        
+    def predict(self,x_):
+        m = np.matrix([self.theta[0]]*x_.size).T
+        d = self.y-np.matrix([self.theta[0]]*self.y.size).T
+        K2 = CovMatrix(x_,self.x,self.theta)
+        m += K2.K*self.cov.inv(d,sigma=1e-3)
 
-    def predict(x):
+        cov = CovMatrix(x_,x_,self.theta).K-K2.K*self.cov.inv(K2.K.T,sigma=1e-3)
+        var = np.diag(cov)
+        m = np.squeeze(np.asarray(m))
         return [m,var]

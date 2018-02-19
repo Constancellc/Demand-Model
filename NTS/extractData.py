@@ -4,47 +4,81 @@ import csv
 # This section extracts the trip data
 #'''
 
-rawData = '../../Documents/UKDA-5340-tab/tab/tripeul2015.tab'
-outfile = '../../Documents/UKDA-5340-tab/csv/carDriverTrips.csv'
+trips = '../../Documents/UKDA-5340-tab/tab/tripeul2016.tab'
+stages = '../../Documents/UKDA-5340-tab/tab/stageeul2016r.tab'
+households = '../../Documents/UKDA-5340-tab/tab/householdeul2016.tab'
+outfile = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
-data = []
-with open(rawData,'rU') as csvfile:
+
+months = {} 
+rType = {}
+startDay = {}
+region = {}
+with open(households, 'rU') as csvfile:
     reader = csv.reader(csvfile,delimiter='\t')
-    i = 0
+    next(reader)
     for row in reader:
-        if i < 1:
-            data.append(row)
-        else:
-            if row[16] != '5': # if trip by car
-                continue
-            data.append(row)
-        i += 1
+        months[row[1]] = row[10]
+        rType[row[1]] = row[161]
+        region[row[1]] = row[29]
+        startDay[row[1]] = int(row[14])
+        
+        
+vehicleIDs = {}
+numPeople =  {}
+with open(stages,'rU') as csvfile:
+    reader = csv.reader(csvfile,delimiter='\t')
+    next(reader)
+    for row in reader:
+        tripID = row[2]
+        vehicleID = row[7]
+
+        try:
+            people = int(row[24])
+        except:
+            people = 1
+
+        if tripID not in vehicleIDs:
+            vehicleIDs[tripID] = vehicleID
+            
+        if tripID not in numPeople:
+            numPeople[tripID] = people
+            
+data = []
+with open(trips,'rU') as csvfile:
+    reader = csv.reader(csvfile,delimiter='\t')
+    for row in reader:
+        if row[20] != '5': # if trip by car
+            continue
+        data.append(row)
+        
 
 with open(outfile,'w') as csvfile:
     writer = csv.writer(csvfile)
-    i = 0
+    writer.writerow(['TripID','HouseholdID','VehicleID','PersNo','RegionType',
+                     'Region','Weekday','Month','Year','TripStart','TripEnd',
+                     'TripDistance','PurpFrom','PurpTo','NumParty'])
     for line in data:
         row = []
         row += [line[0]] # trip id
-        row += [line[1]] # survey year
-        row += [line[2]] # day id
-        if i == 0:
-            row += ['ConstanceDayID']
-        else:
-            row += [str(10*int(line[4])+int(line[7]))]
-        row += [line[3]] # individual id
         row += [line[4]] # household id
-        row += [line[6]] # person number in household
-        row += [line[7]] # travel day
-        row += [line[8]] # journey number of the day
-        row += [line[19]] # trip purpose from
-        row += [line[20]] # trip purpose to
-        row += [line[24]] # trip start - minutes past midnight
-        row += [line[29]] # trip end - minutes past midnight
-        row += [line[32]] # trip time - minutes
-        row += [line[38]] # trip distance - miles
+        row += [vehicleIDs[line[0]]] # vehicle ID 
+        row += [line[12]] # person number in household
+        row += [rType[line[4]]] # region type
+        row += [region[line[4]]] # region
+        dayNo = int(line[7]) + startDay[line[4]]
+        if dayNo > 7:
+            dayNo -= 7
+        row += [str(dayNo)] # week day
+        row += [months[line[4]]] # month
+        row += [line[1]] # survey year
+        row += [line[34]] # trip start - minutes past midnight
+        row += [line[39]] # trip end - minutes past midnight
+        row += [line[26]] # trip distance - miles
+        row += [line[30]] # trip purpose from
+        row += [line[31]] # trip purpose to
+        row += [numPeople[line[0]]]
 
-        i += 1
         writer.writerow(row)
 #'''
 '''
