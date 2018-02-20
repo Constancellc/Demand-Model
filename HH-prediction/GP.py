@@ -109,7 +109,10 @@ class CovMatrix:
                 self.foundChol = True
             if sigma > 0:
                 self.K -= sigma*np.eye(self.n)
-            return self.iU*self.iL*b
+            if len(b) == 1:
+                return self.iU*self.iL*b.T
+            else:
+                return self.iU*self.iL*b
 
     def det(self):
         return np.linalg.det(self.K)
@@ -119,7 +122,7 @@ class CovMatrix:
 
     def f(self,theta):
         mean = theta[0]
-        d = self.y-np.matrix([mean]*len(self.y))
+        d = self.y-np.matrix([mean]*self.y.size)
         d = d.T
 
         self.update_hyperparameters(theta[1:])
@@ -131,7 +134,7 @@ class CovMatrix:
 
     def g(self,theta):
         mean = theta[0]
-        d = self.y-np.matrix([mean]*len(self.y))
+        d = self.y-np.matrix([mean]*self.y.size)
         d = d.T
         
         self.update_hyperparameters(theta[1:])
@@ -166,12 +169,12 @@ class CovMatrix:
         f0 = self.f(theta)
         g0 = self.g(theta)
         for i in range(len(theta)):
-            theta[i] += 0.001
+            theta[i] += 0.000001
             f = self.f(theta)
-            theta[i] -= 0.001
+            theta[i] -= 0.000001
             print('Checking gradient '+str(i+1))
             print(g0[i])
-            print((f-f0)/0.001)
+            print((f-f0)/0.000001)
             
                 
 class GaussianProcess:
@@ -180,11 +183,11 @@ class GaussianProcess:
         self.x = None
         self.y = None
 
-    def learn_hyperparameters(self,x,y,theta0=['',2,0.1,3,4]):
+    def learn_hyperparameters(self,x,y,theta0=['',1,2,1,1]):
         # check length of x and y the same
 
         self.x = x
-        self.y = y.T
+        self.y = y
 
         # set inital mean estimate to the average
         if theta0[0] == '':
@@ -194,18 +197,21 @@ class GaussianProcess:
                 theta0[0] += y[0,i]/n
         self.cov = CovMatrix(x,x,theta0)
         self.cov.set_training_pts(y)
-
         # manually adding noise
         #self.cov.K = self.cov.K + 1e-3*np.eye(self.cov.n)
-        #self.cov.check_derivatives(theta0)
+        self.cov.check_derivatives(theta0)
         self.theta = opt.fmin_tnc(self.cov.f,theta0,fprime=self.cov.g,
-                                  bounds=[[0.01,5]]*5)[0]
+                                  bounds=[[0.01,10]]*5)[0]
+        #self.theta = opt.fmin_tnc(self.cov.f,theta0,
+        #                          bounds=[[0.01,5]]*5)[0]
         print(self.theta)
         self.cov.update_hyperparameters(self.theta[1:])
 
-    def train(x,y,theta0=[1.0]*5):
+    def train(self,x,y,theta0=None):
         self.x = x
         self.y = y
+        if theta0 != None:
+            self.theta = theta0
 
         if self.theta is None:
             print('need to learn hyperparameters first')
@@ -214,11 +220,12 @@ class GaussianProcess:
 
     def predict(self,x_):
         m = np.matrix([self.theta[0]]*x_.size).T
-        d = self.y-np.matrix([self.theta[0]]*self.y.size).T
+        d = self.y-np.matrix([self.theta[0]]*self.y.size)
         K2 = CovMatrix(x_,self.x,self.theta)
         m += K2.K*self.cov.inv(d,sigma=1e-3)
 
         cov = CovMatrix(x_,x_,self.theta).K-K2.K*self.cov.inv(K2.K.T,sigma=1e-3)
         var = np.diag(cov)
+        print(var)
         m = np.squeeze(np.asarray(m))
         return [m,var]

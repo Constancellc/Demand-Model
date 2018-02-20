@@ -11,7 +11,10 @@ day_profiles = {}
 start = datetime.datetime(2007,1,1)
 minDay = {}
 #maxDay = {}
-
+with open(outfile,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        print(row)
 with open('../../Documents/sharonb/7591/csv/edrp_elec.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
