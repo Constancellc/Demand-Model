@@ -164,7 +164,7 @@ class EnergyPrediction:
         # setting up counters which will be used to scale predictions
         self.nPeople = [0]*4
         self.nVehicles = [0]*4
-        self.nOutOfCharge = 0
+        self.nOutOfCharge = [0,0]
         
         # getting the number of people represented to calculate the sf
         with open(households,'rU') as csvfile:
@@ -203,7 +203,7 @@ class EnergyPrediction:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                if row[6] != day:
+                if row[6] != day and row[6] != nextDay[day]:
                     continue
                 if row[7] != month:
                     continue
@@ -222,6 +222,11 @@ class EnergyPrediction:
                 except:
                     continue
 
+                if row[6] == day:
+                    dayNo = 0
+                else:
+                    dayNo = 1
+
                 if rType > 3:
                     continue
 
@@ -229,9 +234,9 @@ class EnergyPrediction:
                     end += 1440
 
                 if vehicle not in self.energy:
-                    self.energy[vehicle] = 0.0
-                    self.endTimes[vehicle] = 0
-                    self.startTimes[vehicle] = 1440
+                    self.energy[vehicle] = [0.0,0.0]
+                    self.endTimes[vehicle] = [0,0]
+                    self.startTimes[vehicle] = [1440,1440]
                     self.vehicleRType[vehicle] = rType
                     self.nVehicles[rType] += 1
 
@@ -240,10 +245,10 @@ class EnergyPrediction:
                     end = int(30*int(end/30)+shift)
                     start = int(30*int(start/30)+shift)
 
-                if start < self.startTimes[vehicle]:
-                    self.startTimes[vehicle] = start
-                if end > self.endTimes[vehicle]:
-                    self.endTimes[vehicle] = end
+                if start < self.startTimes[vehicle][dayNo]:
+                    self.startTimes[vehicle][dayNo] = start
+                if end > self.endTimes[vehicle][dayNo]:
+                    self.endTimes[vehicle][dayNo] = end
 
                 # if the trip is really long, run the motorway artemis
                 if distance > 30000:
@@ -260,7 +265,7 @@ class EnergyPrediction:
                                  '11':0.7,'12':1.3}
 
                 car.load = numParty*75 # add appropriate load to vehicle
-                self.energy[vehicle] += car.getEnergyExpenditure(cycle,
+                self.energy[vehicle][dayNo] += car.getEnergyExpenditure(cycle,
                                                                  acLoad[month])
                 car.load = 0
 
@@ -271,7 +276,7 @@ class EnergyPrediction:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                if row[6] != nextDay[self.day]:
+                if row[6] != nextDay[nextDay[self.day]]:
                     continue
                 
                 if row[2] not in self.energy:
@@ -294,32 +299,37 @@ class EnergyPrediction:
         self.missingEnergy = 0
         
         for vehicle in self.energy:
-            if self.energy[vehicle] > self.car.capacity:
-                        
-                self.missingEnergy += (self.energy[vehicle]-self.car.capacity)\
-                                      *self.sf[self.vehicleRType[vehicle]]
-                self.energy[vehicle] = self.car.capacity
+            for day in range(2):
+                if self.energy[vehicle][day] > self.car.capacity:
+                            
+                    self.missingEnergy += (self.energy[vehicle][day]-self.car.capacity)\
+                                          *self.sf[self.vehicleRType[vehicle]]
+                    self.energy[vehicle][day] = self.car.capacity
 
-                self.nOutOfCharge += 1
+                    self.nOutOfCharge[day] += 1
 
     
-    def getDumbCharging(self,power,nHours=36,allowOverCap=False,units='k'):
+    def getDumbCharging(self,power,nHours=60,allowOverCap=False,units='k'):
         profile = [0.0]*nHours*60
 
         if allowOverCap == False:
             self.removeOverCap()
 
         for vehicle in self.energy:
-            kWh = self.energy[vehicle]
-            end = self.endTimes[vehicle]
-            start = self.startTimes[vehicle]
+            for day in range(2):
+                kWh = self.energy[vehicle][day]
+                end = self.endTimes[vehicle][day]
+                start = self.startTimes[vehicle][day]
 
-            reqTime = int(60*kWh/power)+1
+                reqTime = int(60*kWh/power)+1
 
-            for i in range(start,start+reqTime):
-                if i < 60*nHours:
-                    profile[i] += power*self.sf[self.vehicleRType[vehicle]]\
-                                  /units_scale[units]
+                if reqTime < 2:
+                    continue
+
+                for i in range(start+day*1440,start+reqTime+day*1440):
+                    if i < 60*nHours:
+                        profile[i] += power*self.sf[self.vehicleRType[vehicle]]\
+                                      /units_scale[units]
 
         return profile
 
