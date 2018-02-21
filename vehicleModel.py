@@ -21,7 +21,7 @@ class Drivecycle:
                     v0.append(float(row[0])*0.277778)
 
         elif version == 'motorway':
-            with open('../drivecycles/artemis_mway130.csv','rU') as csvfile:
+            with open('drivecycles/artemis_mway130.csv','rU') as csvfile:
                 reader = csv.reader(csvfile)
                 for row in reader:
                     v0.append(float(row[0])*0.277778)

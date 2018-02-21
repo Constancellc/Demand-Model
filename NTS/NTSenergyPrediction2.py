@@ -20,6 +20,70 @@ trips = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 households = '../../Documents/UKDA-5340-tab/constance-households.csv'
 
 nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
+units_scale = {'k':1,'M':1000,'G':1000000}
+
+def getBaseLoad(day,month,nHours,unit='G',pointsPerHour=60):
+    nDays = int(nHours/24)+1
+
+    # find right date for day of the week
+    calender = {'1':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                '2':{'1':15,'2':16,'3':17,'4':18,'5':19,'6':20,'7':21},
+                '3':{'1':14,'2':15,'3':16,'4':17,'5':18,'6':19,'7':20},
+                '4':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                '5':{'1':16,'2':17,'3':18,'4':19,'5':20,'6':21,'7':22},
+                '6':{'1':13,'2':14,'3':15,'4':16,'5':17,'6':18,'7':19},
+                '7':{'1':11,'2':12,'3':13,'4':14,'5':15,'6':16,'7':17},
+                '8':{'1':15,'2':16,'3':17,'4':18,'5':19,'6':20,'7':21},
+                '9':{'1':12,'2':13,'3':14,'4':15,'5':16,'6':17,'7':18},
+                '10':{'1':17,'2':18,'3':19,'4':20,'5':21,'6':22,'7':23},
+                '11':{'1':14,'2':15,'3':16,'4':17,'5':18,'6':19,'7':20},
+                '12':{'1':12,'2':13,'3':14,'4':15,'5':16,'6':17,'7':18}}
+
+    months = {'1':'-Jan-2016','2':'-Feb-2016','3':'-Mar-2016',
+              '4':'-Apr-2016','5':'-May-2016','6':'-Jun-2016',
+              '7':'-Jul-2016','8':'-Aug-2016','9':'-Sep-2016',
+              '10':'-Oct-2016','11':'-Nov-2016','12':'-Dec-2016'}
+
+    dates = {}
+    n = 0
+
+    profiles = []
+    for i in range(0,nDays):
+        profiles.append([])
+    
+    while nDays > 0:
+        dates[str(calender[month][day])+months[month]] = n
+        n += 1
+        day = nextDay[day]
+        nDays -= 1
+
+    with open('../../Documents/DemandData_2011-2016.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row[0] not in dates:
+                continue
+
+            profiles[dates[row[0]]].append(float(row[4]))
+
+    profile = []
+    for i in range(0,len(profiles)):
+        profile += profiles[i]
+
+    interpolatedLoad = [0.0]*nHours*pointsPerHour
+    for i in range(0,len(interpolatedLoad)):
+        p1 = int(2*i/pointsPerHour)
+        p2 = p1+1
+
+        f2 = 2*float(i)/pointsPerHour - p1
+        f1 = 1.0-f2
+
+        interpolatedLoad[i] = f1*float(profile[p1])+f2*float(profile[p2])
+
+        # Change the units to the specified ones
+        interpolatedLoad[i] = interpolatedLoad[i]*1000000/units_scale[unit]
+
+    return interpolatedLoad
+    
 class EnergyPrediction:
 
     def __init__(self,day,month,regionType,population,car=None,region=None,
@@ -240,7 +304,6 @@ class EnergyPrediction:
 
     
     def getDumbCharging(self,power,nHours=36,allowOverCap=False,units='k'):
-        units_scale = {'k':1,'M':1000,'G':1000000}
         profile = [0.0]*nHours*60
 
         if allowOverCap == False:
@@ -261,13 +324,14 @@ class EnergyPrediction:
         return profile
 
     def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3,nHours=36,
-                                        pointsPerHour=60,deadline=None):
+                                        pointsPerHour=60,deadline=None,
+                                        storeIndividuals=False):
 
         # first cluster on arrival and departure times
 
         self.getNextDayStartTimes()
 
-        k = 10 # number of clusters
+        k = 5 # number of clusters
         T = nHours*pointsPerHour
 
         if deadline == None:
@@ -282,6 +346,8 @@ class EnergyPrediction:
                 d = self.nextDayStartTimes[vehicle]
             except:
                 d = 1440
+            if d+1440 < a: # hack - only happened once in test run
+                d = deadline
             if d > deadline:
                 d = deadline
             data.append([a,d])
@@ -330,7 +396,6 @@ class EnergyPrediction:
         A = sparse([A1,A2])
 
         G = sparse([spdiag([-1]*(T*k)),spdiag([1]*(T*k))])
-        print(G.size)
         h = matrix([0.0]*(T*k)+h*T)
 
         q = [] # incorporates base load into the objective function
@@ -346,25 +411,102 @@ class EnergyPrediction:
         sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
         X = sol['x']
 
-        profiles = [[0.0]*T]*k
+        profiles = []
 
         for i in range(k):
+            profiles.append([0.0]*T)
             for t in range(T):
                 profiles[i][t] = X[i*T+t]
 
         plt.figure(1)
-        plt.plot(profiles)
-        plt.show()
+        total = [0.0]*T
+        for i in range(k):
+            for t in range(T):
+                total[t] += profiles[i][t]
+        plt.plot(total)
         # now individually apply chosen profiles
 
+        total = [0.0]*T
+        if storeIndividuals == True:
+            self.individuals = {}
+
+        for i in range(len(label)):
+            vehicle = v[i]
+            [a,d] = data[i]
+            cluster = label[i]
+            kWh = self.energy[vehicle]
+
+            # copy standard cluster profile
+            p = copy.copy(profiles[cluster])
+            
+            # set individual vehicle avaliability 
+            for i in range(a):
+                p[i] = 0
+            for i in range(d+1440,T):
+                p[i] = 0
+
+            if sum(p) == 0:
+                print(a)
+                print(d)
+
+            # scale to the right energy
+            sf = kWh*60/sum(p)
+            for i in range(T):
+                p[i] = p[i]*sf
+                if p[i] > pMax:
+                    p[i] = pMax
+
+            if storeIndividuals == True:
+                self.inidividuals[vehicle] = p
+
+            for i in range(T):
+                total[i] += p[i]*self.sf[self.vehicleRType[vehicle]]
+
+        plt.plot(total)
+        plt.show()
+
+            
+                           
+class TwoDayEnergyPrediction:
+    def __init__(self,startDay,month,regionType,population,car=None,
+                 smoothTimes=False):
+        self.day1 = EnergyPrediction(startDay,month,regionType,population)
+        self.day2 = EnergyPrediction(nextDay[startDay],month,regionType,
+                                     population)
+        
+    def getDumbCharging(self,power,nHours=60,allowOverCap=False,units='k'):
+
+        total = [0.0]*nHours*60
+
+        dumb1 = self.day1.getDumbCharging(power,36,allowOverCap=allowOverCap,
+                                          units=units)
+        dumb2 = self.day2.getDumbCharging(power,36,allowOverCap=allowOverCap,
+                                          units=units)
+
+        for i in range(len(dumb1)):
+            total[i] += dumb1[i]
+
+            if i+1440 < nHours*60:
+                total[i+1440] += dumb2[i]
+
+        return total
+
+    def getOptimalLoadFlatteningProfile(self):
+        return ''
         
 class NationalEnergyPrediction(EnergyPrediction):
 
     def __init__(self,day,month,car=None,smoothTimes=False,yearsLower=2002):
-        EnergyPrediction.__init__(self,day,month,[0.4,0.4,0.1,0.1],
+        EnergyPrediction.__init__(self,day,month,[0.369,0.446,0.092,0.093],
                                   65640000,car=car,smoothTimes=smoothTimes,
                                   yearsLower=yearsLower)
 
-        
-        
-
+    def getOptimalLoadFlattening(self,pMax,nHours=36,pointsPerHour=60,
+                                  deadline=None):
+        self.baseload = getBaseLoad(self.day,self.month,nHours,unit='k',
+                                    pointsPerHour=60)
+        EnergyPrediction.getOptimalLoadFlatteningProfile(self,self.baseload,
+                                                         pMax=pMax,
+                                                         nHours=nHours,
+                                                         pointsPerHour=pointsPerHour,
+                                                         deadline=deadline)
