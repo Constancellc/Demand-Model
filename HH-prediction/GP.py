@@ -261,9 +261,9 @@ class GaussianProcess:
         K2 = CovMatrix(x_,self.x,self.theta)
         m += K2.K*self.cov.inv(d)
 
-        #cov = CovMatrix(x_,x_,self.theta).K-K2.K*self.cov.inv(K2.K.T,sigma=1e-3)
-        #var = np.diag(cov)
+        cov = CovMatrix(x_,x_,self.theta).K+K2.K*self.cov.inv(K2.K.T,sigma=1e-4)
+        var = np.diag(cov)
         #print(var)
-        var = None
+        #var = None
         m = np.squeeze(np.asarray(m))
         return [m,var]

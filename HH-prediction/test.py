@@ -31,24 +31,24 @@ for i in range(300):
 x_train = np.matrix(x_train)
 y_train = np.matrix(y_train)
 '''
-x_train = np.matrix(x[:700])
-y_train = np.matrix(y[:700])
-x_test = x[700:850]
-y_test = y[700:850]
+x_train = np.matrix(x[:350])
+y_train = np.matrix(y[:350])
+x_test = x[350:400]
+y_test = y[350:400]
 #'''
 GP = GaussianProcess()
 theta = [0.13456641,0.08,0.16965769,1.30353067,0.145682,0.03243102]
 GP.train(x_train,y_train,theta)
 #GP.learn_hyperparameters(x_train,y_train)
-test = np.arange(1,850,1)
+test = np.arange(0,400,1)
 [m,var] = GP.predict(np.matrix(test))
-'''
+
 u = copy.copy(m)
 l = copy.copy(m)
 for i in range(len(m)):
     u[i] += 2*np.sqrt(var[i])
     l[i] -= 2*np.sqrt(var[i])
-'''
+
 
 # creating x ticks
 x_ticks = []
@@ -56,18 +56,29 @@ px = []
 for i in range(int(len(test)/48)):
     px.append(48*i+48)
     x_ticks.append('00:00')
+    
 plt.figure(1)
-plt.plot(test,m,label='Predicted')
+plt.subplot(2,1,1)
+plt.title('Training')
+plt.plot(test[:x_train.size],m[:x_train.size])
+plt.fill_between(test[:x_train.size],u[:x_train.size],l[:x_train.size],alpha=0.2)
+plt.scatter(np.squeeze(np.asarray(x_train)),np.squeeze(np.asarray(y_train)))
+
+plt.subplot(2,1,2)
+plt.title('Testing')
+plt.plot(test[x_train.size:],m[x_train.size:],label='Predicted')
+plt.fill_between(test[x_train.size:],u[x_train.size:],
+                 l[x_train.size:],alpha=0.2)
 plt.plot(x_test,y_test,label='Observed')
-plt.legend()
-plt.ylabel('Power (kW)')
-plt.xlabel('Time')
-plt.xticks(px,x_ticks)
-plt.xlim(0,len(test))
-plt.grid()
+#plt.legend()
+#plt.ylabel('Power (kW)')
+#plt.xlabel('Time')
+#plt.xticks(px,x_ticks)
+#plt.xlim(0,len(test))
+#plt.grid()
 
 #plt.plot(test,u)
 #plt.plot(test,l)
-plt.scatter(np.squeeze(np.asarray(x_train)),np.squeeze(np.asarray(y_train)))
+
 plt.show()
 

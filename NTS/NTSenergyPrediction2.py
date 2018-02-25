@@ -13,7 +13,7 @@ sys.path.append('../')
 from vehicleModel import Drivecycle, Vehicle
 
 # This version is going to be more geared explicitly towards the national
-# simiulation and journal paper
+# simiulation and journal paper - a two day simulation
 
 # these are the csv files containing the data
 trips = '../../Documents/UKDA-5340-tab/constance-trips.csv'
@@ -501,7 +501,16 @@ class TwoDayEnergyPrediction:
 
         return total
 
-    def getOptimalLoadFlatteningProfile(self):
+    def getOptimalLoadFlatteningProfile(self,pMax,nHours=60):
+
+        base1 = None
+        base2 = None
+
+        smart1 = sellf.day1.getOptimalLoadFlatteningProfile(self,base1,
+                                                            pMax=pMax,nHours=36,
+                                                            pointsPerHour=60,
+                                                            deadline=None,
+                                                            storeIndividuals=False)
         return ''
         
 class NationalEnergyPrediction(EnergyPrediction):
