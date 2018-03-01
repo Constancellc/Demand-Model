@@ -39,19 +39,22 @@ vehicles = {'nissanLeafS':Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0),
             'mitsubishiMiEV':Vehicle(1306.8,19.484,0.43515,0.016133,0.752,16.0)}
 
 pvehicles = ['bmwI3','mitsubishiMiEV','nissanLeafS','teslaS60D','teslaSP100D']
+p_vehicles = {'bmwI3':'BMW\ni3','mitsubishiMiEV':'Mitsubishi\nMiEV',
+              'nissanLeafS':'Nissan\nLeaf S','teslaS60D':'Tesla S 60D',
+              'teslaSP100D': 'Tesla\nS P100D'}
 plt.figure(1)
-n = 1
+
 for dc in ['rural','urban','motorway']:
     cycle = Drivecycle(10000,dc)        
     x_ticks = []
     energy = []
     for v in pvehicles:
-        x_ticks.append(v)
+        x_ticks.append(p_vehicles[v])
         energy.append(vehicles[v].getEnergyExpenditure(cycle,0))
-    plt.subplot(3,1,n)
-    plt.bar(range(len(energy)),energy)
-    plt.xticks(range(len(energy)),x_ticks,rotation='vertical')
-    plt.title(dc)
-    n += 1
+    plt.plot(range(len(energy)),energy,'x-',label=dc)
+plt.xticks(range(len(energy)),x_ticks)#,rotation='vertical')
+plt.legend()
+plt.ylabel('Energy Consumption per 10 km (kWh)')
+plt.grid()
 plt.show()
         

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from NTSenergyPrediction2 import NationalEnergyPrediction, TwoDayEnergyPrediction
+from NTSenergyPrediction2 import NationalEnergyPrediction
 '''
 run = NationalEnergyPrediction('3','1',smoothTimes=True)
 run.getOptimalLoadFlattening(3.5)
@@ -8,13 +8,15 @@ run.getOptimalLoadFlattening(3.5)
 '''
 
 run = NationalEnergyPrediction('2','1')
-p = run.getOptimalLoadFlattening(3.5)
-
+#d = run.getDumbCharging(3.5)
+p = run.getOptimalLoadFlattening(3.5,60)
+'''
 for i in range(len(p)):
     p[i] += baseload[i]
-    
+    '''
 plt.figure(1)
-plt.plot(p)
+#plt.plot(p)
+plt.plot(d)
 plt.plot(run.baseload)
 plt.show()
 

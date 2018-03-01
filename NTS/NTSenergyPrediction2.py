@@ -341,61 +341,79 @@ class EnergyPrediction:
 
         self.getNextDayStartTimes()
 
-        k = 5 # number of clusters
+        k = 6 # number of clusters
         T = nHours*pointsPerHour
 
         if deadline == None:
-            deadline = pointsPerHour*(nHours-24)
+            deadline = 16#pointsPerHour*(nHours-24)
 
-        data = []
-        v = []
+        data = [[],[]]
+        v = [[],[]]
         for vehicle in self.energy:
-            v.append(vehicle)
-            a = self.endTimes[vehicle]
-            try:
-                d = self.nextDayStartTimes[vehicle]
-            except:
-                d = 1440
-            if d+1440 < a: # hack - only happened once in test run
-                d = deadline
-            if d > deadline:
-                d = deadline
-            data.append([a,d])
+            for day in range(2):
+                if self.energy[vehicle][day] == 0.0:
+                    continue
+                
+                v[day].append(vehicle)
 
-        centroid, label, inertia = clst.k_means(data,k)
-        
-        # for visualisation of clusters
-        '''
-        x = {}
-        y = {}
-        for i in range(3):
-            x[i] = []
-            y[i] = []
+                a = self.endTimes[vehicle][day]
+                if day == 0:
+                    try:
+                        d = self.startTimes[vehicle][1]+24*pointsPerHour
+                    except:
+                        d = (24+deadline)*pointsPerHour
+                else:
+                    try:
+                        d = self.nextDayStartTimes[vehicle]+24*pointsPerHour
+                    except:
+                        d = (24+deadline)*pointsPerHour
+
+                if d > (24+deadline)*pointsPerHour:
+                    d = (24+deadline)*pointsPerHour
+
+                data[day].append([a,d])
+                
+        centroid = [[],[]]
+        label = [[],[]]
+        inertia = [[],[]]
+
+        for day in range(2):
+            centroid[day], label[day], inertia[day] = clst.k_means(data[day],k)
             
-        for i in range(len(data)):
-            x[label[i]].append(data[i][0])
-            y[label[i]].append(data[i][1])
-        
-        plt.figure(1)
-        for i in range(3):
-            plt.scatter(x[i],y[i],alpha=0.2)
+            # for visualisation of clusters
+            '''
+            x = {}
+            y = {}
+            for i in range(k):
+                x[i] = []
+                y[i] = []
+                
+            for i in range(len(data[day])):
+                x[label[i]].append(data[day][i][0])
+                y[label[i]].append(data[day][i][1])
+            
+            plt.figure(day+1)
+            for i in range(k):
+                plt.scatter(x[i],y[i],alpha=0.2)
         plt.show()
         '''
         print(centroid)
 
         # stack vehicles into units
-        b = [0.0]*(2*k)
-        h = [0.0]*k
-        for i in range(len(label)):
-            vehicle = v[i]
-            b[label[i]] += self.energy[vehicle]*\
-                           self.sf[self.vehicleRType[vehicle]]
-            h[label[i]] += self.sf[self.vehicleRType[vehicle]]*pMax
+        b = [0.0]*(4*k)
+        h = [0.0]*(2*k)
+        for day in range(2):
+            for i in range(len(label[day])):
+                vehicle = v[day][i]
+                b[label[day][i]+day*k] += self.energy[vehicle][day]*\
+                               self.sf[self.vehicleRType[vehicle]]
+                h[label[day][i]+day*k] += self.sf[self.vehicleRType[vehicle]]*pMax
 
         # now set up the optimization
-        A1 = matrix(0.0,(k,T*k)) # ensures right amount of energy provided
-        A2 = matrix(0.0,(k,T*k)) # ensures vehicle only charges when avaliable
+        A1 = matrix(0.0,(k*2,T*k)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(k*2,T*k)) # ensures vehicle only charges when avaliable
 
+        # I GOT TO HERE
         for j in range(k):
             for t in range(T):
                 A1[k*(T*j+t)+j] = 1.0/pointsPerHour
@@ -520,7 +538,7 @@ class NationalEnergyPrediction(EnergyPrediction):
                                   65640000,car=car,smoothTimes=smoothTimes,
                                   yearsLower=yearsLower)
 
-    def getOptimalLoadFlattening(self,pMax,nHours=36,pointsPerHour=60,
+    def getOptimalLoadFlattening(self,pMax,nHours=60,pointsPerHour=60,
                                   deadline=None):
         self.baseload = getBaseLoad(self.day,self.month,nHours,unit='k',
                                     pointsPerHour=60)

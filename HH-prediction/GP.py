@@ -33,8 +33,9 @@ class CovMatrix:
         else:
             self.square = False
 
-        self.func = func
-        self.calc_matrix()
+        self.update_hyperparameters(theta)
+        #self.func = func
+        #self.calc_matrix()
         
     def calc_matrix(self):
         # initialising the matrix
@@ -173,6 +174,83 @@ class Periodic(CovMatrix):
                 
         g[0] = (np.trace(self.inv(dKdh))-self.d.T*self.inv(dKdh)*self.inv(self.d))[0,0]
         g[1] = (np.trace(self.inv(dKdl))-self.d.T*self.inv(dKdl)*self.inv(self.d))[0,0] 
+                    
+        return g
+
+    def map_likelihood(self,hmin,hmax,hstep,lmin,lmax,lstep):
+        n = int((hmax-hmin)/hstep)
+        m = int((lmax-lmin)/lstep)
+        heatmap = np.zeros((n,m))
+
+        h = np.arange(hmin,hmax,hstep)
+        l = np.arange(lmin,lmax,lstep)
+
+        for i in range(n):
+            for j in range(m):
+                heatmap[n-1-i][j] = -self.f([h[i],l[j]])
+
+        return heatmap
+
+class TwoPeriodicMult(CovMatrix):
+    def __init__(self,x1,x2,theta):
+        
+        self.h = theta[0]
+        self.l1 = theta[1]
+        self.l2 = theta[2]
+        
+        self.T1 = 48
+        self.T2 = 336
+        self.omega1 = 2*np.pi/self.T1
+        self.omega2 = 2*np.pi/self.T2
+
+        def func(a,b):
+            return p(a,b,self.h,self.l1,self.omega1)*\
+                   p(a,b,1,self.l2,self.omega2)
+        
+        CovMatrix.__init__(self,x1,x2,theta,func)
+
+
+    def update_hyperparameters(self,theta):
+        
+        self.h = theta[0]
+        self.l1 = theta[1]
+        self.l2 = theta[2]
+        
+        def func(a,b):
+            return p(a,b,self.h,self.l1,self.omega1)*\
+                   p(a,b,1,self.l2,self.omega2)
+        
+        self.func = func
+        self.calc_matrix()
+        
+    def g(self,theta):
+        
+        self.update_hyperparameters(theta)
+        self.add_noise(1e-5)
+
+        # check k(x,x)
+        if self.x1.all != self.x2.all:
+            raise Exception()
+        
+        g = [0.0]*len(theta)
+
+        dKdh = 2*self.K/theta[0]
+        dKdl1 = np.matrix(np.zeros((self.n,self.m)))
+        dKdl2 = np.matrix(np.zeros((self.n,self.m)))
+        for i in range(self.n):
+            for j in range(self.m):
+                dij = self.x1[0,i]-self.x2[0,j]
+                dKdl1[i,j] = np.power(2*np.sin(dij*self.omega1/2),2)*self.K[i,j]\
+                            /np.power(self.l1,3)
+                dKdl1[j,i] = dKdl1[i,j]
+                
+                dKdl2[i,j] = np.power(2*np.sin(dij*self.omega2/2),2)*self.K[i,j]\
+                            /np.power(self.l2,3)
+                dKdl2[j,i] = dKdl2[i,j]
+                
+        g[0] = (np.trace(self.inv(dKdh))-self.d.T*self.inv(dKdh)*self.inv(self.d))[0,0]
+        g[1] = (np.trace(self.inv(dKdl1))-self.d.T*self.inv(dKdl1)*self.inv(self.d))[0,0] 
+        g[2] = (np.trace(self.inv(dKdl2))-self.d.T*self.inv(dKdl2)*self.inv(self.d))[0,0] 
                     
         return g
 
@@ -563,10 +641,11 @@ class GaussianProcess:
             print('need to learn hyperparameters first')
         # set up covariance matrix of right size
         self.cov = self.CType(x,x,self.theta)
+        self.cov.add_noise(1e-5)
 
     def predict(self,x_):
-        m = np.matrix([self.theta[0]]*x_.size).T
-        d = self.y-np.matrix([self.theta[0]]*self.y.size)
+        m = np.matrix([self.mean]*x_.size).T
+        d = self.y-np.matrix([self.mean]*self.y.size)
         K2 = self.CType(x_,self.x,self.theta)
         m += K2.K*self.cov.inv(d)
 

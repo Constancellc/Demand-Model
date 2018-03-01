@@ -1,4 +1,4 @@
-from GP import GaussianProcess, Periodic
+from GP import GaussianProcess, Periodic, TwoPeriodicMult
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
@@ -22,7 +22,11 @@ GP = GaussianProcess(Periodic)
 #theta = [0.13456641,0.08,0.16965769,1.30353067,0.145682,0.03243102]
 #GP.train(x_train,y_train,theta)
 GP.learn_hyperparameters(x_train,y_train,[1]*2)
-test = np.arange(0,8,1)
+#hp = GP.cov.map_likelihood(0.1,20,0.1,0.1,20,0.1)
+#plt.figure(1)
+#plt.imshow(hp)
+#plt.show()
+test = np.arange(0,8,0.1)
 [m,var] = GP.predict(np.matrix(test))
 
 u = copy.copy(m)
