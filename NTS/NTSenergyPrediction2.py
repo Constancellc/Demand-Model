@@ -333,19 +333,38 @@ class EnergyPrediction:
 
         return profile
 
-    def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3,nHours=36,
-                                        pointsPerHour=60,deadline=None,
+    def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3,
+                                        pointsPerHour=60,deadline=12,
                                         storeIndividuals=False):
 
+        # ok so in the new plan we cluster the two days seperately and optimise
+        # considering them independantly
+
+        '''
+
+        however the time horizon defined will be different - we will set a
+        deadline time - e.g. 12:00 and the vehicle will consider 24+deadline
+        hours - in the example 36 hours
+
+        However we load flatten over 48+deadline hours
+
+        This is going to make the quadratic term slightly more complicated as
+        not all vehicles entirely overlap
+
+        the linear term will be fine - we will just use a time-shifted baseload
+        for the day 2 vehicles
+
+        '''
         # first cluster on arrival and departure times
-
         self.getNextDayStartTimes()
+        sTimes = [self.startTimes,self.nextDayStartTimes]
 
-        k = 6 # number of clusters
-        T = nHours*pointsPerHour
+        k = 4 # number of clusters
+        
+        T = (24+deadline)*pointsPerHour
+        To = deadline*pointsPerHour # overlap time
+        Ts = 24*pointsPerHour
 
-        if deadline == None:
-            deadline = 16#pointsPerHour*(nHours-24)
 
         data = [[],[]]
         v = [[],[]]
@@ -357,19 +376,15 @@ class EnergyPrediction:
                 v[day].append(vehicle)
 
                 a = self.endTimes[vehicle][day]
-                if day == 0:
-                    try:
-                        d = self.startTimes[vehicle][1]+24*pointsPerHour
-                    except:
-                        d = (24+deadline)*pointsPerHour
-                else:
-                    try:
-                        d = self.nextDayStartTimes[vehicle]+24*pointsPerHour
-                    except:
-                        d = (24+deadline)*pointsPerHour
+                try:
+                    d = sTimes[day][vehicle]+1440
+                except:
+                    d = 1440+deadline*60
+                if d > 1440+deadline*60:
+                    d = 1440+deadline*60
 
-                if d > (24+deadline)*pointsPerHour:
-                    d = (24+deadline)*pointsPerHour
+                a = int(pointsPerHour*a/60)
+                d = int(pointsPerHour*d/60)
 
                 data[day].append([a,d])
                 
@@ -400,42 +415,103 @@ class EnergyPrediction:
         print(centroid)
 
         # stack vehicles into units
-        b = [0.0]*(4*k)
-        h = [0.0]*(2*k)
+        b = [0.0]*(3*k)
+        h0 = [0.0]*(2*k)
         for day in range(2):
             for i in range(len(label[day])):
                 vehicle = v[day][i]
                 b[label[day][i]+day*k] += self.energy[vehicle][day]*\
                                self.sf[self.vehicleRType[vehicle]]
-                h[label[day][i]+day*k] += self.sf[self.vehicleRType[vehicle]]*pMax
+                h0[label[day][i]+day*k] += self.sf[self.vehicleRType[vehicle]]*pMax
+
+        h = []
+        for j in range(k):
+            for t in range(Ts):
+                h.append(h0[j])
+        for j in range(2*k):
+            for t in range(To):
+                h.append(h0[j])
+        for j in range(k,2*k):
+            for t in range(Ts):
+                h.append(h0[j])
 
         # now set up the optimization
         A1 = matrix(0.0,(k*2,T*k)) # ensures right amount of energy provided
         A2 = matrix(0.0,(k*2,T*k)) # ensures vehicle only charges when avaliable
 
+        # new idea for the decision variable:
+        # first k*Ts variables represent the day 1 vehicles first 24 hours
+        # the next 2*k*To variables represent the fleet during the overlap time
+        # the final k*Ts variables represent the day 2 vehicles at the horizon
+        
         # I GOT TO HERE
+        # day 1 
         for j in range(k):
-            for t in range(T):
-                A1[k*(T*j+t)+j] = 1.0/pointsPerHour
-                if t<centroid[j][0] or t>(centroid[j][1]+24*pointsPerHour):
-                    A2[k*(T*j+t)+j] = 1.0
+            for t in range(Ts):
+                A1[j,j*Ts+t] = 1.0/pointsPerHour
+                if t < centroid[0][j][0] or t > centroid[0][j][1]:
+                    A2[j,j*Ts+t] = 1.0
+                    
+            for t in range(To):
+                A1[j,k*Ts+j*To+t] = 1.0/pointsPerHour
+                
+                if t < centroid[0][j][0] or t > centroid[0][j][1]:
+                    A2[j,k*Ts+j*To+t] = 1.0
+        # day 2                    
+        for j in range(k):
+            for t in range(To):
+                A1[j+k,j*To+t] = 1.0/pointsPerHour
+                if t < centroid[1][j][0] or t > centroid[1][j][1]:
+                    A2[j+k,j*To+t] = 1.0
+            for t in range(Ts):
+                A1[j+k,j*Ts+k*To+t] = 1.0/pointsPerHour
+                if t < centroid[1][j][0] or t > centroid[1][j][1]:
+                    A2[j+k,j*Ts+k*To+t] = 1.0
 
         b = matrix(b)
         A = sparse([A1,A2])
 
         G = sparse([spdiag([-1]*(T*k)),spdiag([1]*(T*k))])
-        h = matrix([0.0]*(T*k)+h*T)
+        h = matrix([0.0]*(2*T*k)+h)
 
         q = [] # incorporates base load into the objective function
-        for i in range(0,k):
-            for t in range(0,T):
+        for i in range(k):
+            for t in range(Ts):
                 q.append(baseLoad[t])
-
+        for i in range(2*k):
+            for t in range(Ts,T):
+                q.append(baseLoad[t])
+        for i in range(k):
+            for t in range(Ts):
+                q.append(baseLoad[T+t])
+                
         q = matrix(q)
 
-        I = spdiag([1]*T)
-        P = sparse([[I]*k]*k)
- 
+        P = matrix(0.0,(2*k*T,2*k*T))
+        # day 1 solo
+        for i in range(k):
+            for j in range(k):
+                for t in range(Ts):
+                    P[i*Ts+t,j*Ts+t] = 1
+        # overlap
+        for i in range(2*k):
+            for j in range(2*k):
+                for t in range(To):
+                    P[k*Ts+i*To+t,k*Ts+j*To+t] = 1
+
+        # day 2 solo
+        for i in range(k,2*k):
+            for j in range(k,2*k):
+                for t in range(Ts):
+                    P[2*k*To+i*Ts+t,2*k*To+j*Ts+t] = 1
+
+        print(A.size)
+        print(b.size)
+        print(G.size)
+        print(h.size)
+        print(P.size)
+        print(q.size)
+        
         sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
         X = sol['x']
 
@@ -443,14 +519,27 @@ class EnergyPrediction:
 
         for i in range(k):
             profiles.append([0.0]*T)
-            for t in range(T):
-                profiles[i][t] = X[i*T+t]
+            for t in range(Ts):
+                profiles[i][t] = X[i*Ts+t]
+            for t in range(Ts,T):
+                profiles[i][t] = X[k*Ts+i*To+t]
+                
+        for i in range(k,2*k):
+            profiles.append([0.0]*T)
+            for t in range(To):
+                profiles[i][t] = X[k*Ts+i*To+t]
+            for t in range(To,T):
+                profiles[i][t] = X[i*Ts+t+2*k*To]
 
         plt.figure(1)
-        total = [0.0]*T
-        for i in range(k):
+        total = [0.0]*(T+Ts)
+        for i in range(k*2):
             for t in range(T):
-                total[t] += profiles[i][t]
+                if i < k:
+                    total[t] += profiles[i][t]
+                else:
+                    total[t+Ts] += profiles[i][t]
+                    
         plt.plot(total)
         # now individually apply chosen profiles
 
@@ -538,12 +627,11 @@ class NationalEnergyPrediction(EnergyPrediction):
                                   65640000,car=car,smoothTimes=smoothTimes,
                                   yearsLower=yearsLower)
 
-    def getOptimalLoadFlattening(self,pMax,nHours=60,pointsPerHour=60,
-                                  deadline=None):
-        self.baseload = getBaseLoad(self.day,self.month,nHours,unit='k',
+    def getOptimalLoadFlattening(self,pMax,pointsPerHour=60,
+                                  deadline=12):
+        self.baseload = getBaseLoad(self.day,self.month,48+deadline,unit='k',
                                     pointsPerHour=60)
         EnergyPrediction.getOptimalLoadFlatteningProfile(self,self.baseload,
                                                          pMax=pMax,
-                                                         nHours=nHours,
                                                          pointsPerHour=pointsPerHour,
                                                          deadline=deadline)
