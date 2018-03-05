@@ -344,8 +344,8 @@ class EnergyPrediction:
         self.getNextDayStartTimes()
         sTimes = [self.startTimes,self.nextDayStartTimes]
 
-        k = 10 # number of clusters
-        pointsPerHour = 4
+        k = 4 # number of clusters
+        pointsPerHour = 6
         
         T = (24+deadline)*pointsPerHour
         To = deadline*pointsPerHour # overlap time
@@ -560,8 +560,7 @@ class EnergyPrediction:
             for t in range(Ts):
                 profiles[i][t+To] = X[j*Ts+t+nV*To]
             j += 1
-
-        plt.figure(1)
+            
         total = [0.0]*(T+Ts)
         for i in range(2*k):
             for t in range(T):
@@ -570,11 +569,8 @@ class EnergyPrediction:
                 else:
                     total[t+Ts] += profiles[i][t]
                     
-        plt.plot(total)
-        plt.plot(np.linspace(0,T+Ts,num=len(baseLoad)),baseLoad)
-        for i in range(T+Ts):
-            total[i] += baseLoad[int(i*60/pointsPerHour)]
-        plt.plot(total)
+        ideal = total
+
         # now individually apply chosen profiles
 
         total = [0.0]*(T+Ts)
@@ -617,17 +613,19 @@ class EnergyPrediction:
 
                 for i in range(T):
                     total[i+day*Ts] += p[i]*self.sf[self.vehicleRType[vehicle]]
-        for i in range(T+Ts):
-            total[i] += baseLoad[int(i*60/pointsPerHour)]
-        plt.plot(total)
-        plt.show()
+
+        return [ideal,total]
 
     def getApproximateLoadFlatteningProfile(self,baseLoad,pMax,deadline=16,
                                             storeIndividuals=False):
 
-        total = [0.0]
+        total = [0.0]*len(baseLoad)
+
+        if storeIndividuals == True:
+            self.individuals = {}
+
         # get inverse shape
-        ibase = [0/0]*len(baseLoad)
+        ibase = [0.0]*len(baseLoad)
         for i in range(len(baseLoad)):
             ibase[i] = max(baseLoad)+0.01-baseLoad[i]
             
@@ -636,7 +634,7 @@ class EnergyPrediction:
                 if self.energy[vehicle][day] == 0.0:
                     continue
 
-                a = self.endTimes[vehicle][day]+day*1400
+                a = self.endTimes[vehicle][day]+day*1440
                 try:
                     d = sTimes[day][vehicle]+1440*(day+1)
                 except:
@@ -666,37 +664,72 @@ class EnergyPrediction:
                         for t in range(len(p)):
                             self.individuals[vehicle][t] += p[t]
                     else:
-                        self.inidividuals[vehicle] = p
+                        self.individuals[vehicle] = p
 
                 for i in range(len(p)):
                     total[i] += p[i]*self.sf[self.vehicleRType[vehicle]]
 
         return total
 
+    def testDemandTurnUp(self,pMax,baseLoad,upTime):
+
+        upTime = upTime+1440 # assume we are considering day two of simulation
+        
+        approx = self.getApproximateLoadFlatteningProfile(baseLoad,
+                                                          pMax,
+                                                          storeIndividuals=True)
+        total = [0.0]*len(approx)
+        for i in range(upTime):
+            total[i] = approx[i]
+            
+        for vehicle in self.individuals:
+            p = self.individuals[vehicle][upTime:]
+            i = 0
+            while p[i] == 0 and i < len(p)-1:
+                i += 1
+            start = i
+            while p[i] > 0 and i < len(p)-1:
+                i += 1
+            end = i
+            
+            if sum(p[start:end]) > 0.1:
+                tot = 0
+                for t in range(start,end):
+                    tot += p[t]
+                    p[t] = 0
+
+                for t in range(start,int(start+tot/pMax)):
+                    if t < len(p):
+                        p[t] = pMax
+
+            for i in range(len(p)):
+                total[upTime+i] += p[i]*self.sf[self.vehicleRType[vehicle]]
+
+        return [approx,total]
+            
          
 class NationalEnergyPrediction(EnergyPrediction):
 
-    def __init__(self,day,month,car=None,smoothTimes=False,yearsLower=2002):
+    def __init__(self,day,month,deadline=16,car=None,smoothTimes=False,
+                 yearsLower=2002):
         EnergyPrediction.__init__(self,day,month,[0.369,0.446,0.092,0.093],
                                   65640000,car=car,smoothTimes=smoothTimes,
                                   yearsLower=yearsLower)
 
+        self.baseLoad = getBaseLoad(self.day,self.month,48+deadline,unit='k',
+                                    pointsPerHour=60)
+
     def getOptimalLoadFlattening(self,pMax,pointsPerHour=60,
                                   deadline=16):
-        self.baseload = getBaseLoad(self.day,self.month,48+deadline,unit='k',
-                                    pointsPerHour=60)
-        EnergyPrediction.getOptimalLoadFlatteningProfile(self,self.baseload,
-                                                         pMax=pMax,
-                                                         pointsPerHour=pointsPerHour,
-                                                         deadline=deadline)
+        [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
+                        self.baseload,pMax=pMax,pointsPerHour=pointsPerHour,
+                        deadline=deadline)
+        
+        return total
 
     def getApproximateLoadFlattening(self,deadline,storeIndividuals=False):
-        try:
-            test = self.baseLoad[0]
-        except:
-            self.baseload = getBaseLoad(self.day,self.month,48+deadline,
-                                        unit='k',pointsPerHour=60)
-        EnergyPrediction.getApproximateLoadFlatteningProfile(self.baseLoad,3,
-                                                             deadline=16,
-                                                             storeIndividuals=storeIndividuals)
+        total = EnergyPrediction.getApproximateLoadFlatteningProfile(self,
+                self.baseLoad,3,deadline=16,storeIndividuals=storeIndividuals)
+
+        return total
             
