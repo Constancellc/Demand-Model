@@ -9,14 +9,15 @@ run.getOptimalLoadFlattening(3.5)
 
 run = NationalEnergyPrediction('2','1')
 #d = run.getDumbCharging(3.5)
-p = run.getOptimalLoadFlattening(3.5,60)
-'''
+p = run.getApproximateLoadFlattening(3.5,60)
+
+
 for i in range(len(p)):
-    p[i] += baseload[i]
-    '''
+    p[i] += run.baseLoad[i]
+
+
 plt.figure(1)
-#plt.plot(p)
-plt.plot(d)
+plt.plot(p)
 plt.plot(run.baseload)
 plt.show()
 
