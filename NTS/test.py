@@ -1,9 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from NTSenergyPrediction2 import NationalEnergyPrediction
-'''
+
 run = NationalEnergyPrediction('3','1',smoothTimes=True)
-run.getOptimalLoadFlattening(3.5)
+s = run.getOptimalLoadFlattening(3.5)
+b = []
+for i in range(len(s)):
+    s[i] += run.baseLoad[i*10]
+    b.append(run.baseLoad[i*10])
+
+plt.figure(1)
+plt.plot(s)
+plt.plot(b)
+plt.show()
 
 '''
 
@@ -48,7 +57,7 @@ plt.grid()
 plt.title('8PM',y=0.8)
 plt.show()
 #d = run.getDumbCharging(3.5)
-'''
+
 p = run.getApproximateLoadFlattening(16)
 o = run.getOptimalLoadFlattening(3)
 

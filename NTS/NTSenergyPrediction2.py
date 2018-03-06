@@ -333,7 +333,7 @@ class EnergyPrediction:
 
         return profile
 
-    def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3,
+    def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3.5,
                                         pointsPerHour=60,deadline=16,
                                         storeIndividuals=False):
 
@@ -345,7 +345,6 @@ class EnergyPrediction:
         sTimes = [self.startTimes,self.nextDayStartTimes]
 
         k = 4 # number of clusters
-        pointsPerHour = 6
         
         T = (24+deadline)*pointsPerHour
         To = deadline*pointsPerHour # overlap time
@@ -690,7 +689,8 @@ class EnergyPrediction:
             start = i
             while p[i] > 0 and i < len(p)-1:
                 i += 1
-            end = i
+            #end = i
+            end = len(p)
             
             if sum(p[start:end]) > 0.1:
                 tot = 0
@@ -719,10 +719,9 @@ class NationalEnergyPrediction(EnergyPrediction):
         self.baseLoad = getBaseLoad(self.day,self.month,48+deadline,unit='k',
                                     pointsPerHour=60)
 
-    def getOptimalLoadFlattening(self,pMax,pointsPerHour=60,
-                                  deadline=16):
+    def getOptimalLoadFlattening(self,pMax,pointsPerHour=6,deadline=16):
         [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
-                        self.baseload,pMax=pMax,pointsPerHour=pointsPerHour,
+                        self.baseLoad,pMax=pMax,pointsPerHour=pointsPerHour,
                         deadline=deadline)
         
         return total

@@ -44,6 +44,8 @@ p_vehicles = {'bmwI3':'BMW\ni3','mitsubishiMiEV':'Mitsubishi\nMiEV',
               'teslaSP100D': 'Tesla\nS P100D'}
 plt.figure(1)
 
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 10
 for dc in ['rural','urban','motorway']:
     cycle = Drivecycle(10000,dc)        
     x_ticks = []
