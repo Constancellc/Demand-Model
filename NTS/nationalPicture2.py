@@ -18,7 +18,7 @@ for month in ['1','4','7','10']:
 
     psuedo = run.getApproximateLoadFlattening(deadline=deadline)
     
-    smart = getOptimalLoadFlattening(7,deadline=deadline)[1]
+    smart = run.getOptimalLoadFlattening(7,deadline=deadline)[1]
     
 
     # interpolating smart and clustered
