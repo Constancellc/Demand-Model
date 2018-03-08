@@ -2,20 +2,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from NTSenergyPrediction2 import NationalEnergyPrediction
 
-run = NationalEnergyPrediction('3','1',smoothTimes=True)
-s = run.getOptimalLoadFlattening(3.5)
+run = NationalEnergyPrediction('2','7',smoothTimes=True)
+[s,t] = run.getOptimalLoadFlattening(3.5)
 b = []
 for i in range(len(s)):
-    s[i] += run.baseLoad[i*10]
-    b.append(run.baseLoad[i*10])
+    s[i] += run.baseLoad[i*6]
+    t[i] += run.baseLoad[i*6]
+    b.append(run.baseLoad[i*6])
 
 plt.figure(1)
+plt.plot(t)
 plt.plot(s)
 plt.plot(b)
 plt.show()
 
-'''
 
+'''
 run = NationalEnergyPrediction('2','1')
 [a,t] = run.testDemandTurnUp(3.5,run.baseLoad,12*60)
 [a1,t1] = run.testDemandTurnUp(3.5,run.baseLoad,16*60)

@@ -342,9 +342,8 @@ class EnergyPrediction:
 
         # first cluster on arrival and departure times
         self.getNextDayStartTimes()
-        sTimes = [self.startTimes,self.nextDayStartTimes]
 
-        k = 4 # number of clusters
+        k = 10 # number of clusters
         
         T = (24+deadline)*pointsPerHour
         To = deadline*pointsPerHour # overlap time
@@ -353,6 +352,8 @@ class EnergyPrediction:
 
         data = [[],[]]
         v = [[],[]]
+        aMax = 0
+        dMax = 0
         for vehicle in self.energy:
             for day in range(2):
                 if self.energy[vehicle][day] == 0.0:
@@ -361,17 +362,26 @@ class EnergyPrediction:
                 v[day].append(vehicle)
 
                 a = self.endTimes[vehicle][day]
-                try:
-                    d = sTimes[day][vehicle]+1440
-                except:
-                    d = 1440+deadline*60
+                if day == 0:
+                    d = self.startTimes[vehicle][1]+1440
+                else:
+                    try:
+                        d = self.nextDayStartTimes[vehicle]+1440
+                    except:
+                        d = 1440+deadline*60
                     
                 if d > 1440+deadline*60:
                     d = 1440+deadline*60
 
-                a = int(pointsPerHour*a/60)+1
-                d = int(pointsPerHour*d/60)
+                a = float(pointsPerHour*a/60)
+                d = float(pointsPerHour*d/60)
 
+                if a > aMax:
+                    aMax = a
+                if d > dMax:
+                    dMax = d
+
+                #data[day].append([a,d,self.energy[vehicle][day]])
                 data[day].append([a,d])
                 
         centroid = [[],[]]
@@ -380,7 +390,6 @@ class EnergyPrediction:
 
         for day in range(2):
             centroid[day], label[day], inertia[day] = clst.k_means(data[day],k)
-            
             # for visualisation of clusters
             '''
             x = {}
@@ -431,6 +440,7 @@ class EnergyPrediction:
                 centroid2[1].append(centroid[1][i])
         centroid[0] = np.array(centroid2[0])
         centroid[1] = np.array(centroid2[1])
+
         b = b2
 
         # updated number of vehicles in optimization
@@ -527,13 +537,6 @@ class EnergyPrediction:
             for j in range(v1,nV):
                 for t in range(Ts):
                     P[nV*To+i*Ts+t,nV*To+j*Ts+t] = 1
-
-        print(A.size)
-        print(b.size)
-        print(G.size)
-        print(h.size)
-        print(P.size)
-        print(q.size)
         
         sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
         X = sol['x']
@@ -579,20 +582,20 @@ class EnergyPrediction:
         for day in range(2):
             for i in range(len(label[day])):
                 vehicle = v[day][i]
-                [a,d] = data[day][i]
+                [a,d] = data[day][i][:2]
                 cluster = label[day][i]
                 kWh = self.energy[vehicle][day]
 
                 # copy standard cluster profile
                 p = copy.copy(profiles[cluster+k*day])
 
-                if a > d: # hack, shouldn't happen often
+                if int(a) >= int(d): # hack, shouldn't happen often
                     d = T
                 
                 # set individual vehicle avaliability 
-                for i in range(a):
+                for i in range(int(a)):
                     p[i] = 0
-                for i in range(d,T):
+                for i in range(int(d),T):
                     p[i] = 0
 
                 if sum(p) == 0:
@@ -634,10 +637,13 @@ class EnergyPrediction:
                     continue
 
                 a = self.endTimes[vehicle][day]+day*1440
-                try:
-                    d = sTimes[day][vehicle]+1440*(day+1)
-                except:
-                    d = 1440*(day+1)+deadline*60
+                if day == 0:
+                    d = self.startTimes[vehicle][1]+1440
+                else:
+                    try:
+                        d = self.nextDayStartTimes[vehicle]+1440*2
+                    except:
+                        d = 1440*2+deadline*60
 
                 if a > d: # hack, shouldn't happen often
                     d += 1440
@@ -719,16 +725,16 @@ class NationalEnergyPrediction(EnergyPrediction):
         self.baseLoad = getBaseLoad(self.day,self.month,48+deadline,unit='k',
                                     pointsPerHour=60)
 
-    def getOptimalLoadFlattening(self,pMax,pointsPerHour=6,deadline=16):
+    def getOptimalLoadFlattening(self,pMax,pointsPerHour=10,deadline=16):
         [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
                         self.baseLoad,pMax=pMax,pointsPerHour=pointsPerHour,
                         deadline=deadline)
         
-        return total
+        return [ideal,total]
 
-    def getApproximateLoadFlattening(self,deadline,storeIndividuals=False):
+    def getApproximateLoadFlattening(self,deadline=16,storeIndividuals=False):
         total = EnergyPrediction.getApproximateLoadFlatteningProfile(self,
-                self.baseLoad,3,deadline=16,storeIndividuals=storeIndividuals)
+                self.baseLoad,7,deadline=deadline,storeIndividuals=storeIndividuals)
 
         return total
             
