@@ -2,6 +2,7 @@ import csv
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import copy
 from clustering import Cluster, ClusteringExercise
 
 
@@ -46,7 +47,6 @@ with open(data,'rU') as csvfile:
         
         if vehicle not in profiles:
             profiles[vehicle] = [0]*48
-       
 
         if start < end:
             l = end-start
@@ -104,7 +104,6 @@ for vehicle in weProfiles:
     for i in range(0,48):
         if weProfiles[vehicle][i] > maxWeDist:
             maxWeDist = weProfiles[vehicle][i]
-            
         
 # max Distance isn't what i actuall want to use, come back here!
 for vehicle in wProfiles:
@@ -124,6 +123,20 @@ for vehicle in wProfiles:
 
 random.shuffle(data)
 
+x = [8,24,40]
+x_ticks = ['04:00','12:00','20:00']
+
+plt.figure(5)
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '8'
+for i in range(9):
+    plt.subplot(3,3,i+1)
+    plt.ylim(0,0.2)
+    plt.plot(data[i])
+    plt.xlim(0,48)
+    plt.xticks(x,x_ticks)
+    plt.grid()
+    
 sampleN = 30000
 CE = ClusteringExercise(data[:sampleN])
 
@@ -173,13 +186,23 @@ locs = {1:[2.5,-0.4],2:[1.3,-0.6],3:[0.1,-0.8],4:[2.5,0.2],5:[1.3,0.0]}
 
 for label in CE.clusters:
     plt.subplot(2,3,n)
-    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label],
+
+    mean = copy.copy(CE.clusters[label].mean)
+    upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
+    # convert to mph
+    for i in range(48):
+        mean[i] = mean[i]*maxWDist*2
+        upper[i] = upper[i]*maxWDist*2
+        lower[i] = lower[i]*maxWDist*2
+        
+    plt.plot(np.arange(0.5,48.5),mean,clrs[label],
              label=str(CE.clusters[label].get_av_distance(maxWDist,1))+' miles')
 
-    upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
     plt.fill_between(np.arange(0.5,48.5),lower,upper,alpha=0.2,color=clrs[label])
 
-    plt.ylim(0,0.6)
+    plt.ylim(0,35)
+    if n == 1 or n ==4:
+        plt.ylabel('Average Speed (mph)')
 
     plt.title(str(int(label)+1)+'\n('+
               str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'%)',y=0.7)
@@ -240,7 +263,7 @@ for vehicle in meaProfiles:
     n = len(meaProfiles[vehicle])
     for day in meaProfiles[vehicle]:
         for i in range(48):
-            av[i] += meaProfiles[vehicle][day][i]/n
+            av[i] += meaProfiles[vehicle][day][i]/(n*maxWDist)
     test_data.append(av)
     
 plt.figure(4)

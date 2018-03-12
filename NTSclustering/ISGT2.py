@@ -2,10 +2,14 @@ import csv
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import copy
 from clustering import Cluster, ClusteringExercise
 
 
+
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
+
+data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
 rTypes = {}
 
@@ -14,6 +18,8 @@ wProfiles = {}
 weProfiles = {}
 
 nDays = {}
+
+sHist = [0.0]*60
 
 with open(data,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -39,11 +45,12 @@ with open(data,'rU') as csvfile:
         except:
             continue
 
+        sHist[start%60] += 1
+
         distance = float(row[11])
         
         if vehicle not in profiles:
             profiles[vehicle] = [0]*48
-       
 
         if start < end:
             l = end-start
@@ -51,6 +58,14 @@ with open(data,'rU') as csvfile:
             l = end+24*60-start
 
         distPerMin = distance/l
+        
+        for t in range(start,end):
+            if t < 1440:
+                profiles[vehicle][int(t/30)] += distPerMin/5
+            else:
+                profiles[vehicle][int((t-1440)/30)] += distPerMin/5
+
+        ''''
 
         start_index = int(start/30)
         delay = start%30
@@ -75,6 +90,7 @@ with open(data,'rU') as csvfile:
                 index += 1
                 if index >= 48:
                     index -= 48
+        '''
         
 wTotal = [0]*48
 weTotal = [0]*48
@@ -92,7 +108,6 @@ for vehicle in weProfiles:
     for i in range(0,48):
         if weProfiles[vehicle][i] > maxWeDist:
             maxWeDist = weProfiles[vehicle][i]
-            
         
 # max Distance isn't what i actuall want to use, come back here!
 for vehicle in wProfiles:
@@ -105,93 +120,62 @@ for vehicle in weProfiles:
         weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/maxWeDist
         weTotal[i] += weProfiles[vehicle][i]
 
-'''
-plt.figure(1)
-plt.rcParams["font.family"] = 'serif'
-i = 1
-for vehicle in wProfiles:
-    if i > 12:
-        continue
-    plt.subplot(4,3,i)
-    plt.plot(wProfiles[vehicle])
-    plt.xticks([12,24,36],['06:00','12:00','18:00'])
-    plt.grid()
-    plt.ylim(0,0.22)
-    plt.xlim(0,48)
-    i += 1
-
-'''
-
+    
 data = []
 for vehicle in wProfiles:
     data.append(wProfiles[vehicle])
 
 random.shuffle(data)
 
+x = [8,24,40]
+x_ticks = ['04:00','12:00','20:00']
+
 sampleN = 30000
 CE = ClusteringExercise(data[:sampleN])
 
+x = [8,24,40]
+x_ticks = ['04:00','12:00','20:00']
+
+css = []
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
-CE.k_means(4)
-n = 1
+plt.rcParams["font.size"] = '10'
+for k in range(1,11):
+    plt.subplot(3,4,k)
 
-x = range(4,52,8)
-x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
+    CE.k_means(k)
+    css.append(CE.get_sum_of_squares())
+    #'''
+    for label in CE.clusters:
+        plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
+    '''
+    medians = CE.get_cluster_median()
+    for label in medians:
+        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
 
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-
-biggest = [0,'']
-
-for label in CE.clusters:
-    plt.subplot(2,2,n)
-    plt.plot(np.arange(0.5,48.5),CE.clusters[label].mean,clrs[label],
-             label=str(CE.clusters[label].get_av_distance(maxWDist,7))+' miles')
-
-    upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
-    plt.fill_between(np.arange(0.5,48.5),lower,upper,alpha=0.2,color=clrs[label])
-
-    plt.ylim(0,0.6)
-
-    if CE.clusters[label].nPoints > biggest[0]:
-        biggest[0] = CE.clusters[label].nPoints
-        biggest[1] = label
-
-    plt.title(str(int(CE.clusters[label].nPoints*10000/sampleN)/100)+'%',
-              y = 0.85)
-
-    plt.xlim(0,48)
-    plt.xticks(x,x_ticks)
-    plt.grid()
+    '''
     plt.legend()
 
-    n += 1
-#'''
-# zooming into the largest cluster
-'''
-newData = []
-
-for point in CE.clusters[biggest[1]].points:
-    newData.append(CE.clusters[biggest[1]].points[point])
-
-CE2 = ClusteringExercise(newData)
-x = range(4,52,8)
-x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
-plt.figure(2)
-plt.rcParams["font.family"] = 'serif'
-for i in range(1,4):
-    plt.subplot(2,2,i)
-    CE2.k_means(2*i)
-    plt.title('k='+str(2*i),y=0.85)
-    plt.grid()
-    for label in CE2.clusters:
-        plt.plot(CE2.clusters[label].mean,
-                 label=str(int(CE2.clusters[label].nPoints*100/len(newData)))+'%')
-    plt.xlim(0,48)
-    plt.ylim(0,0.1)
+    CE.reset_clusters()
+    plt.title('k='+str(k),y=0.8)
     plt.xlim(0,48)
     plt.xticks(x,x_ticks)
-    CE2.reset_clusters()
-    plt.legend()
-'''
+    plt.ylim(0,0.35)
+    plt.grid()
+
+plt.figure(3)
+plt.plot(range(1,11),css,linestyle='-',marker='x')
+plt.xlabel('Number of clusters')
+plt.ylabel('Within cluster sum of squares')
+plt.grid()
+
+s = sum(sHist)
+for i in range(60):
+    sHist[i] = sHist[i]/s
+    
+plt.figure(4)
+plt.bar(range(60),sHist)
+plt.xlabel('Mins past hour of journey start time')
+plt.ylabel('Probability')
+plt.grid()
 plt.show()
