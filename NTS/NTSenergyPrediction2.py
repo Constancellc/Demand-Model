@@ -318,8 +318,7 @@ class EnergyPrediction:
         for vehicle in self.energy:
             for day in range(2):
                 kWh = self.energy[vehicle][day]
-                end = self.endTimes[vehicle][day]
-                start = self.startTimes[vehicle][day]
+                start = self.endTimes[vehicle][day]
 
                 reqTime = int(60*kWh/power)+1
 
@@ -333,9 +332,34 @@ class EnergyPrediction:
 
         return profile
 
+    def approximateApply(self,profile,vehicle,day,a,d,pMax,pointsPerHour):
+
+        kWh = self.energy[vehicle][day]
+        p = copy.copy(profile)
+
+        # set individual vehicle avaliability
+        for i in range(int(a)):
+            p[i] = 0
+        for i in range(int(d),len(p)):
+            p[i] = 0
+
+        if sum(p) == 0:
+            return [0.0]*len(p)
+        
+        # scale to the right energy
+        sf = kWh*pointsPerHour/sum(p)
+        for i in range(len(p)):
+            p[i] = p[i]*sf
+            if p[i] > pMax:
+                p[i] = pMax
+
+        return p
+
+
     def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3.5,
                                         pointsPerHour=60,deadline=16,
-                                        storeIndividuals=False):
+                                        storeIndividuals=False,rand=False,
+                                        err=None):
 
         # ok so in the new plan we cluster the two days seperately and optimise
         # considering them independantly
@@ -352,8 +376,7 @@ class EnergyPrediction:
 
         data = [[],[]]
         v = [[],[]]
-        aMax = 0
-        dMax = 0
+        
         for vehicle in self.energy:
             for day in range(2):
                 if self.energy[vehicle][day] == 0.0:
@@ -376,12 +399,6 @@ class EnergyPrediction:
                 a = float(pointsPerHour*a/60)
                 d = float(pointsPerHour*d/60)
 
-                if a > aMax:
-                    aMax = a
-                if d > dMax:
-                    dMax = d
-
-                #data[day].append([a,d,self.energy[vehicle][day]])
                 data[day].append([a,d])
                 
         centroid = [[],[]]
@@ -390,23 +407,6 @@ class EnergyPrediction:
 
         for day in range(2):
             centroid[day], label[day], inertia[day] = clst.k_means(data[day],k)
-            # for visualisation of clusters
-            '''
-            x = {}
-            y = {}
-            for i in range(k):
-                x[i] = []
-                y[i] = []
-                
-            for i in range(len(data[day])):
-                x[label[i]].append(data[day][i][0])
-                y[label[i]].append(data[day][i][1])
-            
-            plt.figure(day+1)
-            for i in range(k):
-                plt.scatter(x[i],y[i],alpha=0.2)
-        plt.show()
-        '''
 
         # stack vehicles into units
         b = [0.0]*(2*k)
@@ -584,34 +584,19 @@ class EnergyPrediction:
                 vehicle = v[day][i]
                 [a,d] = data[day][i][:2]
                 cluster = label[day][i]
-                kWh = self.energy[vehicle][day]
+                
+                if storeIndividuals == True:
+                    if vehicle not in self.individuals:
+                        self.individuals[vehicle] = {}
 
                 # copy standard cluster profile
                 p = copy.copy(profiles[cluster+k*day])
 
-                if int(a) >= int(d): # hack, shouldn't happen often
-                    d = T
-                
-                # set individual vehicle avaliability 
-                for i in range(int(a)):
-                    p[i] = 0
-                for i in range(int(d),T):
-                    p[i] = 0
+                p = self.approximateApply(p,vehicle,day,a,d,pMax,
+                                          pointsPerHour)
 
-                if sum(p) == 0:
-                    print(a)
-                    print(d)
-
-                # scale to the right energy
-                sf = kWh*pointsPerHour/sum(p)
-                for i in range(T):
-                    p[i] = p[i]*sf
-                    '''
-                    if p[i] > pMax:
-                        p[i] = pMax
-                    '''
                 if storeIndividuals == True:
-                    self.inidividuals[vehicle] = p
+                    self.inidividuals[vehicle][day] = p
 
                 for i in range(T):
                     total[i+day*Ts] += p[i]*self.sf[self.vehicleRType[vehicle]]
@@ -650,20 +635,11 @@ class EnergyPrediction:
                     
                 if d > 1440*(day+1)+deadline*60:
                     d = 1440*(day+1)+deadline*60
-                
-                p = copy.copy(ibase)
-                for i in range(a):
-                    p[i] = 0.0
-                for i in range(d,len(p)):
-                    p[i] = 0.0
-
-                kWh = self.energy[vehicle][day]
-
-                # scale to the right energy
-                sf = kWh*60/sum(p)
-                for i in range(len(p)):
-                    p[i] = p[i]*sf
                     
+                p = copy.copy(ibase)
+                p = self.approximateApply(p,vehicle,day,a,d,pMax,
+                                          pointsPerHour)
+                
                 if storeIndividuals == True:
                     if vehicle in self.individuals:
                         for t in range(len(p)):
@@ -675,6 +651,7 @@ class EnergyPrediction:
                     total[i] += p[i]*self.sf[self.vehicleRType[vehicle]]
 
         return total
+
 
     def testDemandTurnUp(self,pMax,baseLoad,upTime):
 
@@ -731,6 +708,12 @@ class NationalEnergyPrediction(EnergyPrediction):
                         deadline=deadline)
         
         return [ideal,total]
+
+    def getStochasticOptimalFlattening(self,pMax,pointsPerHour=10,deadline=16):
+        
+        [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
+                        self.baseLoad,pMax=pMax,pointsPerHour=pointsPerHour,
+                        deadline=deadline,rand=True,err=0.1)
 
     def getApproximateLoadFlattening(self,deadline=16,storeIndividuals=False):
         total = EnergyPrediction.getApproximateLoadFlatteningProfile(self,
