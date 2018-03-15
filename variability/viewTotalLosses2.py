@@ -25,9 +25,6 @@ for mc in range(100):
         for i in range(1,6):
             results[i].append(new[i])
             if i == 1:
-                print(sum(new[i]))
-                print(noEV)
-                print(100*sum(new[i])/noEV)
                 results2[i].append(100*sum(new[i])/noEV)
             else:
                 results2[i].append(100*sum(new[i])/withEV)
