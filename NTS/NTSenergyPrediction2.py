@@ -87,7 +87,7 @@ def getBaseLoad(day,month,nHours,unit='G',pointsPerHour=60):
 class EnergyPrediction:
 
     def __init__(self,day,month,regionType,population,car=None,region=None,
-                 smoothTimes=False,yearsLower=2002):
+                 smoothTimes=False,yearsLower=2002,recordVehicles=False):
 
         if car == None or car == 'nissanLeafS':
             car = Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0)
@@ -198,13 +198,13 @@ class EnergyPrediction:
         self.vehicleRType = {}
         self.startTimes = {}
         self.endTimes = {}
+        if recordVehicles == True:
+            self.vehicles = []
         
         with open(trips,'rU') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                if row[6] != day and row[6] != nextDay[day]:
-                    continue
                 if row[7] != month:
                     continue
                 if int(row[8]) < yearsLower:
@@ -221,7 +221,14 @@ class EnergyPrediction:
                     numParty = int(row[14])
                 except:
                     continue
+                
+                if recordVehicles == True:
+                    if vehicle not in self.vehicles:
+                        self.vehicles.append(vehicle)
 
+                if row[6] != day and row[6] != nextDay[day]:
+                    continue
+                
                 if row[6] == day:
                     dayNo = 0
                 else:
@@ -307,6 +314,30 @@ class EnergyPrediction:
                     self.energy[vehicle][day] = self.car.capacity
 
                     self.nOutOfCharge[day] += 1
+
+    def get_vehicle_requirements(self,nProfiles):
+        self.removeOverCap()
+        results = []
+        if nProfiles < sum(self.nVehicles):
+            nProfiles = sum(self.nVehicles)
+
+        chosen = []
+        while len(chosen) < nProfiles:
+            ran = int(random.random()*len(self.vehicles))
+            if ran not in chosen:
+                vehicle = self.vehicles[ran]
+                chosen.append(ran)
+                try:
+                    kWh = self.energy[vehicle][0]
+                    d = self.startTimes[vehicle][1]
+                    a = self.endTimes[vehicle][0]
+                except:
+                    kWh = 0.0
+                    d = 0
+                    a = 0
+                results.append([kWh,d,a])
+
+        return results
 
     
     def getDumbCharging(self,power,nHours=60,allowOverCap=False,units='k'):
