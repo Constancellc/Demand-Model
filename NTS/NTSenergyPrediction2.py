@@ -2,15 +2,16 @@
 import csv
 import random
 import copy
-import matplotlib.pyplot as plt
 import numpy as np
-from cvxopt import matrix, spdiag, solvers, sparse
+import matplotlib.pyplot as plt
 import sklearn.cluster as clst
 import sys
+from cvxopt import matrix, spdiag, solvers, sparse
 
 # my code
 sys.path.append('../')
 from vehicleModel import Drivecycle, Vehicle
+from fitDistributions import Inference
 
 # This version is going to be more geared explicitly towards the national
 # simiulation and journal paper - a two day simulation
@@ -389,8 +390,16 @@ class EnergyPrediction:
 
     def getOptimalLoadFlatteningProfile(self,baseLoad,pMax=3.5,
                                         pointsPerHour=60,deadline=16,
-                                        storeIndividuals=False,rand=False,
-                                        err=None):
+                                        storeIndividuals=False):
+        '''
+        This function finds the optimal load flattening vehicle charging profile
+
+        Vehicles are first clustered to reduce complexity, then a quadratic
+        program is set up using avaliability from the cluster centroids.
+
+        Finally the optimal profiles are adjusted to fit each individual
+        vehicle in the cluster.
+        '''
 
         # ok so in the new plan we cluster the two days seperately and optimise
         # considering them independantly
@@ -683,6 +692,375 @@ class EnergyPrediction:
 
         return total
 
+    def getStochasticOptimalLoadFlatteningProfile(self,baseLoad,
+                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
+                                                  pMax=3.5,pointsPerHour=60,
+                                                  deadline=16):
+        '''
+        This function uses stochastic optimisation considering the scnearios
+        defined by the vector pDist.
+
+        Vehicles from the pool are first clustered to reduce complexity, then
+        within the cluster vehicles are ranked by energy and split into subgroups
+        defined by the probability distribution
+
+        Each subgroup represents a scenario in the stochasitc optimization. The
+        energy demand is calculated by scaling the subgroup energy to that of
+        the whole cluster and the avaliability is chosen as the average of the
+        subgroup.
+        '''
+
+        # chek that pDist is a valid pdf
+        if sum(pDist) != 1:
+            raise Exception('pDist must sum to 1 not '+str(sum(pDist)))
+
+        # ok so in the new plan we cluster the two days seperately and optimise
+        # considering them independantly
+
+        # first cluster on arrival and departure times
+        self.getNextDayStartTimes()
+
+        k = 4 # number of clusters
+        nS = len(pDist) # number of scenarios for stochastic optimisation
+        nV = k*nS*2
+        
+        T = (24+deadline)*pointsPerHour
+        To = deadline*pointsPerHour # overlap time
+        Ts = 24*pointsPerHour
+
+        data = [[],[]]
+        v = [[],[]]
+        
+        for vehicle in self.energy:
+            for day in range(2):
+                if self.energy[vehicle][day] == 0.0:
+                    continue
+                
+                v[day].append(vehicle)
+
+                a = self.endTimes[vehicle][day]
+                if day == 0:
+                    d = self.startTimes[vehicle][1]+1440
+                else:
+                    try:
+                        d = self.nextDayStartTimes[vehicle]+1440
+                    except:
+                        d = 1440+deadline*60
+                    
+                if d > 1440+deadline*60:
+                    d = 1440+deadline*60
+
+                a = float(pointsPerHour*a/60)
+                d = float(pointsPerHour*d/60)
+
+                data[day].append([a,d])
+                
+        label = [[],[]]
+        
+        for day in range(2):
+            centroid, label[day], inertia = clst.k_means(data[day],k)
+
+        # for each cluster we need to sort vehicles - for now by energy
+        b = [] # energy requirements
+        h0 = [] 
+        a_ = [] # arrival times
+        d_ = [] # departure times
+        original_pts = [] # stores the original points
+        
+        for day in range(2):
+            for i in range(k):
+                # this will store the individual vehicle requirements
+                pts = []
+
+                cV = 0 # number of vehicles represented by cluster
+
+                # these are vectors to store the distribution of energy and timings
+                e_pdf = [0.0]*60
+                a_pdf = [0]*T
+                d_pdf = [0]*T
+                
+                for j in range(len(label[day])):
+                    if label[day][j] != i:
+                        continue
+                    vehicle = v[day][j]
+                    try:
+                        e_pdf[int(self.energy[vehicle][day])] += self.sf[self.vehicleRType[vehicle]]
+                    except:
+                        e_pdf[-1] += self.sf[self.vehicleRType[vehicle]]
+
+                    cV += self.sf[self.vehicleRType[vehicle]]
+                    if data[day][j][0] != 0:
+                        a_pdf[int(data[day][j][0])] += 1
+                    if data[day][j][1] != T:
+                        d_pdf[int(data[day][j][1])] += 1
+
+                    pts.append([self.energy[vehicle][day]*\
+                                self.sf[self.vehicleRType[vehicle]]]+data[day][j])
+
+                original_pts.append(pts) # storing for approx apply later
+                if len(pts) == 0:
+                    continue
+
+                # now I need to turn the pdfs from individual vehicles to
+                # fleet pdfs
+
+                # first fit standard ditributions to individual pdfs
+                [ea,eb] = Inference(e_pdf).fit_gamma()
+                [am,av] = Inference(a_pdf).fit_normal()
+                [dm,dv] = Inference(d_pdf).fit_normal()
+
+                # then calculate the number of vehicles represented by the cluster
+                cV = int(cV)
+                h0.append(cV*pMax)
+
+                # then calculate the distributions of the summed states
+                e_pdf = [0]*6000 # round to the nearest 0.01 kWh per vehicle
+                a_pdf = [0]*T
+                d_pdf = [0]*T
+
+                for mc in range(1000):
+                    try:
+                        e_pdf[int(np.random.gamma(ea*cV,eb)*100/cV)] += 1
+                        a_pdf[int(np.random.normal(am*cV,av*cV)/cV)] += 1
+                        d_pdf[int(np.random.normal(dm*cV,dv*cV)/cV)] += 1
+                    except:
+                        continue
+
+                # normalise
+                for pdf in [e_pdf,a_pdf,d_pdf]:
+                    s = sum(pdf)
+                    for i in range(len(pdf)):
+                        pdf[i] = pdf[i]/s
+                    
+                # now find the scenario optimization points
+                c = 0
+                for p in pDist:
+                    c2 = c
+                    en = 0.0
+                    while sum(e_pdf[c:c2]) < p and c2<len(e_pdf):
+                        en += e_pdf[c2]*c2/100 
+                        c2 += 1
+                    c = c2-1
+                    b.append(en*cV)
+
+                c = 0
+                for p in pDist:
+                    c2 = c
+                    a = 0.0
+                    while sum(a_pdf[c:c2]) < p and c2<len(a_pdf):
+                        a += a_pdf[c2]*c2
+                        c2 += 1
+                    c = c2-1
+                    a_.append(a)
+
+                c = 0
+                for p in pDist:
+                    c2 = c
+                    a = 0.0
+                    while sum(d_pdf[c:c2]) < p and c2<len(d_pdf):
+                        d += d_pdf[c2]*c2
+                        c2 += 1
+                    c = c2-1
+                    d_.append(d)
+
+                # what now?
+                    
+                '''
+
+                clusterSize = len(pts)
+                
+                pts = sorted(pts)
+
+                if clusterSize < 20:
+                    print(clusterSize)
+                
+                c = 0
+                for p in pDist:
+                    subgroup = []
+                    while len(subgroup) < int(p*clusterSize) and c < len(pts):
+                        subgroup.append(pts[c])
+                        c += 1
+
+                    en = 0.0
+                    a = 0
+                    d = 0
+                    for pt in subgroup:
+                        en += pt[0]
+                        a += pt[1]
+                        d += pt[2]
+
+                    if len(subgroup) == 0:
+                        b.append(0.0)
+                        ad.append([T,0])
+
+                    else:
+                        b.append(en*clusterSize/len(subgroup))
+                        ad.append([int(a/len(subgroup)),int(d/len(subgroup))+1])
+
+                '''
+
+        # now reorder the matricies to be grouped first by probability
+        b2 = []
+        ad = []
+        h0 = h0*nS
+
+        for s in range(nS):
+            for i in range(k*2):
+                b2.append(b[nS*i+s])
+                ad.append([a_[nS*i+s],d_[nS*i+s]])
+
+        print(b2)
+        print(ad)
+        b = b2 + [0.0]*len(b2)
+
+        # then set up the optimization
+
+        h = []
+        for j in range(nV):
+            for t in range(T):
+                h.append(h0[j])
+
+        # now set up the optimization
+        A1 = matrix(0.0,(nV,T*nV)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(nV,T*nV)) # ensures vehicle only charges when avaliable
+
+        # for scenario
+        for s in range(nS):
+            # day 1 
+            for j in range(k):
+                for t in range(Ts):
+                    A1[(2*k*s)+j,(2*k*s)+j*Ts+t] = 1.0/pointsPerHour
+                    if t < ad[s*(2*k)+j][0] or t > ad[s*(2*k)+j][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
+                        
+                for t in range(To):
+                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
+                    
+                    if t+Ts < ad[s*(2*k)+j][0] or t+Ts > ad[s*(2*k)+j][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
+            # day 2                    
+            for j in range(k,2*k):
+                for t in range(To):
+                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
+                    if t < ad[s*(2*k)+j][0] or t > ad[s*(2*k)+j][1]:
+                        A2[(2*k*s)+j,(2*T*k*s)+k*Ts+j*To+t] = 1.0
+                        
+                for t in range(Ts):
+                    A1[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0/pointsPerHour
+                    if t+To < ad[s*(2*k)+j][0] or t+To > ad[s*(2*k)+j][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0
+
+        b = matrix(b)
+        A = sparse([A1,A2])
+
+        G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
+        h = matrix([0.0]*(T*nV)+h)
+
+        q = [] # incorporates base load into the objective function
+        for s in range(nS):
+            for i in range(k):
+                for t in range(Ts):
+                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
+            for i in range(2*k):
+                for t in range(Ts,T):
+                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
+            for i in range(k):
+                for t in range(Ts):
+                    q.append(pDist[s]*baseLoad[int((t+T)*60/pointsPerHour)])
+                
+        q = matrix(q)
+
+        P = matrix(0.0,(nV*T,nV*T))
+        # for each scenario
+        for s in range(nS):
+            # day 1 solo
+            for i in range(k):
+                for j in range(k):
+                    for t in range(Ts):
+                        P[(2*k*s*T)+i*Ts+t,(2*k*s*T)+j*Ts+t] = pDist[s]
+            # overlap
+            for i in range(2*k):
+                for j in range(2*k):
+                    for t in range(To):
+                        P[(2*k*s*T)+k*Ts+i*To+t,(2*k*s*T)+k*Ts+j*To+t] = pDist[s]
+
+            # day 2 solo
+            for i in range(k,2*k):
+                for j in range(k,2*k):
+                    for t in range(Ts):
+                        P[(2*k*s*T)+2*k*To+i*Ts+t,(2*k*s*T)+2*k*To+j*Ts+t] = pDist[s]
+        
+        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
+        X = sol['x']
+
+        profiles = []
+        for s in range(nS):
+            profiles.append([])
+            for i in range(k):
+                profiles[s].append([0.0]*T)
+                for t in range(Ts):
+                    profiles[s][i][t] = X[(2*k*s*T)+i*Ts+t]
+                for t in range(To):
+                    profiles[s][i][t+Ts] = X[(2*k*T*s)+k*Ts+i*To+t]
+
+            for i in range(k,2*k):
+                profiles[s].append([0.0]*T)
+                for t in range(To):
+                    profiles[s][i][t] = X[(2*T*k*s)+k*Ts+i*To+t]
+                for t in range(Ts):
+                    profiles[s][i][t+To] = X[(2*T*k*s)+i*Ts+t+2*k*To]
+
+        totals = []
+
+        for s in range(nS):
+            totals.append([0.0]*(T+Ts))
+            for i in range(2*k):
+                for t in range(T):
+                    if i < k:
+                        totals[s][t] += profiles[s][i][t]
+                    else:
+                        totals[s][t+Ts] += profiles[s][i][t]
+        base = []
+        for t in range(T+Ts):
+            base.append(baseLoad[int(t*60/pointsPerHour)])
+            for s in range(nS):
+                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
+                           
+        ideal = totals
+
+        # now individually apply chosen profiles
+        '''
+        total = [0.0]*(T+Ts)
+        if storeIndividuals == True:
+            self.individuals = {}
+
+        for day in range(2):
+            for i in range(len(label[day])):
+                vehicle = v[day][i]
+                [a,d] = data[day][i][:2]
+                cluster = label[day][i]
+                
+                if storeIndividuals == True:
+                    if vehicle not in self.individuals:
+                        self.individuals[vehicle] = {}
+
+                # copy standard cluster profile
+                p = copy.copy(profiles[cluster+k*day])
+
+                p = self.approximateApply(p,vehicle,day,a,d,pMax,
+                                          pointsPerHour)
+
+                if storeIndividuals == True:
+                    self.inidividuals[vehicle][day] = p
+
+                for i in range(T):
+                    total[i+day*Ts] += p[i]*self.sf[self.vehicleRType[vehicle]]
+
+        return [ideal,total]
+        '''
+
+        return ideal, base
+
 
     def testDemandTurnUp(self,pMax,baseLoad,upTime):
 
@@ -740,11 +1118,16 @@ class NationalEnergyPrediction(EnergyPrediction):
         
         return [ideal,total]
 
-    def getStochasticOptimalFlattening(self,pMax,pointsPerHour=10,deadline=16):
-        
-        [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
-                        self.baseLoad,pMax=pMax,pointsPerHour=pointsPerHour,
-                        deadline=deadline,rand=True,err=0.1)
+    def getStochasticOptimalLoadFlatteningProfile(self,pMax=3.5,deadline=16,
+                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
+                                                  pointsPerHour=1):
+
+        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,self.baseLoad,
+                                                                           pMax=pMax,
+                                                                           deadline=deadline,
+                                                                           pDist=pDist,
+                                                                           pointsPerHour=pointsPerHour)
+        return ideal
 
     def getApproximateLoadFlattening(self,deadline=16,storeIndividuals=False):
         total = EnergyPrediction.getApproximateLoadFlatteningProfile(self,

@@ -1,18 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from NTSenergyPrediction2 import NationalEnergyPrediction
+from fitDistributions import Inference
+import copy
 
-run = NationalEnergyPrediction('2','7',smoothTimes=True)
-[s,t] = run.getOptimalLoadFlattening(3.5)
-b = []
-for i in range(len(s)):
-    s[i] += run.baseLoad[i*6]
-    t[i] += run.baseLoad[i*6]
-    b.append(run.baseLoad[i*6])
+
+run = NationalEnergyPrediction('3','1')
+o,b = run.getStochasticOptimalLoadFlatteningProfile(pDist=[0.3,0.4,0.3])
 
 plt.figure(1)
-plt.plot(t)
-plt.plot(s)
+for p in o:
+    plt.plot(p)
 plt.plot(b)
 plt.show()
 
