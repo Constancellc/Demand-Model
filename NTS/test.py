@@ -6,7 +6,7 @@ import copy
 
 
 run = NationalEnergyPrediction('3','1')
-o,b = run.getStochasticOptimalLoadFlatteningProfile(pDist=[0.3,0.4,0.3])
+o,b = run.getStochasticOptimalLoadFlatteningProfile(pDist=[0.05,0.2,0.5,0.2,0.05])
 
 plt.figure(1)
 for p in o:

@@ -694,7 +694,7 @@ class EnergyPrediction:
 
     def getStochasticOptimalLoadFlatteningProfile(self,baseLoad,
                                                   pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pMax=3.5,pointsPerHour=60,
+                                                  pMax=7.0,pointsPerHour=60,
                                                   deadline=16):
         '''
         This function uses stochastic optimisation considering the scnearios
@@ -720,7 +720,7 @@ class EnergyPrediction:
         # first cluster on arrival and departure times
         self.getNextDayStartTimes()
 
-        k = 4 # number of clusters
+        k = 3 # number of clusters
         nS = len(pDist) # number of scenarios for stochastic optimisation
         nV = k*nS*2
         
@@ -789,9 +789,9 @@ class EnergyPrediction:
                         e_pdf[-1] += self.sf[self.vehicleRType[vehicle]]
 
                     cV += self.sf[self.vehicleRType[vehicle]]
-                    if data[day][j][0] != 0:
+                    if data[day][j][0] > 0:
                         a_pdf[int(data[day][j][0])] += 1
-                    if data[day][j][1] != T:
+                    if data[day][j][1] < T:
                         d_pdf[int(data[day][j][1])] += 1
 
                     pts.append([self.energy[vehicle][day]*\
@@ -799,6 +799,11 @@ class EnergyPrediction:
 
                 original_pts.append(pts) # storing for approx apply later
                 if len(pts) == 0:
+                    for s in range(nS):
+                        b.append(0.0)
+                        h0.append(pMax)
+                        a_.append(0.0)
+                        d_.append(0.0)
                     continue
 
                 # now I need to turn the pdfs from individual vehicles to
@@ -814,13 +819,13 @@ class EnergyPrediction:
                 h0.append(cV*pMax)
 
                 # then calculate the distributions of the summed states
-                e_pdf = [0]*6000 # round to the nearest 0.01 kWh per vehicle
+                e_pdf = [0]*60000 # round to the nearest 0.01 kWh per vehicle
                 a_pdf = [0]*T
                 d_pdf = [0]*T
 
-                for mc in range(1000):
+                for mc in range(10000):
                     try:
-                        e_pdf[int(np.random.gamma(ea*cV,eb)*100/cV)] += 1
+                        e_pdf[int(np.random.gamma(ea*cV,eb)*1000/cV)] += 1
                         a_pdf[int(np.random.normal(am*cV,av*cV)/cV)] += 1
                         d_pdf[int(np.random.normal(dm*cV,dv*cV)/cV)] += 1
                     except:
@@ -837,10 +842,18 @@ class EnergyPrediction:
                 for p in pDist:
                     c2 = c
                     en = 0.0
-                    while sum(e_pdf[c:c2]) < p and c2<len(e_pdf):
-                        en += e_pdf[c2]*c2/100 
+                    pMass = 0
+                    while pMass < p and c2<len(e_pdf):
+                        pMass += e_pdf[c2]
+                        en += e_pdf[c2]*c2/(1000*p) 
                         c2 += 1
+
+                    # work out and correct for overshoot
                     c = c2-1
+                    e_pdf[c] = pMass-p
+                    en -= c*e_pdf[c]/(1000*p)
+                    
+                    print(en)
                     b.append(en*cV)
 
                 c = 0
@@ -848,7 +861,7 @@ class EnergyPrediction:
                     c2 = c
                     a = 0.0
                     while sum(a_pdf[c:c2]) < p and c2<len(a_pdf):
-                        a += a_pdf[c2]*c2
+                        a += a_pdf[c2]*c2/p
                         c2 += 1
                     c = c2-1
                     a_.append(a)
@@ -856,9 +869,9 @@ class EnergyPrediction:
                 c = 0
                 for p in pDist:
                     c2 = c
-                    a = 0.0
+                    d = 0.0
                     while sum(d_pdf[c:c2]) < p and c2<len(d_pdf):
-                        d += d_pdf[c2]*c2
+                        d += d_pdf[c2]*c2/p
                         c2 += 1
                     c = c2-1
                     d_.append(d)
@@ -908,9 +921,10 @@ class EnergyPrediction:
             for i in range(k*2):
                 b2.append(b[nS*i+s])
                 ad.append([a_[nS*i+s],d_[nS*i+s]])
+                if (ad[-1][1]-ad[-1][0])*h0[s*k*2+i] < b2[-1]*pointsPerHour:
+                    print('infeasible constraint')
 
-        print(b2)
-        print(ad)
+        print(matrix(b2))
         b = b2 + [0.0]*len(b2)
 
         # then set up the optimization
@@ -929,7 +943,7 @@ class EnergyPrediction:
             # day 1 
             for j in range(k):
                 for t in range(Ts):
-                    A1[(2*k*s)+j,(2*k*s)+j*Ts+t] = 1.0/pointsPerHour
+                    A1[(2*k*s)+j,(2*k*s*T)+j*Ts+t] = 1.0/pointsPerHour
                     if t < ad[s*(2*k)+j][0] or t > ad[s*(2*k)+j][1]:
                         A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
                         
@@ -1118,9 +1132,9 @@ class NationalEnergyPrediction(EnergyPrediction):
         
         return [ideal,total]
 
-    def getStochasticOptimalLoadFlatteningProfile(self,pMax=3.5,deadline=16,
+    def getStochasticOptimalLoadFlatteningProfile(self,pMax=7.0,deadline=16,
                                                   pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pointsPerHour=1):
+                                                  pointsPerHour=4):
 
         ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,self.baseLoad,
                                                                            pMax=pMax,
