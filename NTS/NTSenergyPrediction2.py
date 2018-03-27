@@ -765,7 +765,8 @@ class EnergyPrediction:
         h0 = [] 
         a_ = [] # arrival times
         d_ = [] # departure times
-        original_pts = [] # stores the original points
+        distribution_variables = [] # stores the original points
+        cluster_vehicles = []
         
         for day in range(2):
             for i in range(k):
@@ -797,7 +798,6 @@ class EnergyPrediction:
                     pts.append([self.energy[vehicle][day]*\
                                 self.sf[self.vehicleRType[vehicle]]]+data[day][j])
 
-                original_pts.append(pts) # storing for approx apply later
                 if len(pts) == 0:
                     for s in range(nS):
                         b.append(0.0)
@@ -814,9 +814,12 @@ class EnergyPrediction:
                 [am,av] = Inference(a_pdf).fit_normal()
                 [dm,dv] = Inference(d_pdf).fit_normal()
 
+                distribution_variables.append([ea,eb,am,av,dm,dv])
+
                 # then calculate the number of vehicles represented by the cluster
                 cV = int(cV)
                 h0.append(cV*pMax)
+                cluster_vehicles.append(cV)
 
                 # then calculate the distributions of the summed states
                 e_pdf = [0]*60000 # round to the nearest 0.01 kWh per vehicle
@@ -826,8 +829,8 @@ class EnergyPrediction:
                 for mc in range(10000):
                     try:
                         e_pdf[int(np.random.gamma(ea*cV,eb)*1000/cV)] += 1
-                        a_pdf[int(np.random.normal(am*cV,av*cV)/cV)] += 1
-                        d_pdf[int(np.random.normal(dm*cV,dv*cV)/cV)] += 1
+                        a_pdf[int(np.random.normal(am*cV,np.sqrt(av*cV))/cV)] += 1
+                        d_pdf[int(np.random.normal(dm*cV,np.sqrt(dv*cV))/cV)] += 1
                     except:
                         continue
 
@@ -852,65 +855,38 @@ class EnergyPrediction:
                     c = c2-1
                     e_pdf[c] = pMass-p
                     en -= c*e_pdf[c]/(1000*p)
-                    
-                    print(en)
                     b.append(en*cV)
-
                 c = 0
                 for p in pDist:
                     c2 = c
                     a = 0.0
-                    while sum(a_pdf[c:c2]) < p and c2<len(a_pdf):
-                        a += a_pdf[c2]*c2/p
+                    pMass = 0
+                    while pMass < p and c2<len(a_pdf):
+                        pMass += a_pdf[c2]
+                        a += a_pdf[c2]*c2/p 
                         c2 += 1
+
+                    # work out and correct for overshoot
                     c = c2-1
+                    a_pdf[c] = pMass-p
+                    a -= c*a_pdf[c]/p
                     a_.append(a)
 
                 c = 0
                 for p in pDist:
                     c2 = c
                     d = 0.0
-                    while sum(d_pdf[c:c2]) < p and c2<len(d_pdf):
-                        d += d_pdf[c2]*c2/p
+                    pMass = 0
+                    while pMass < p and c2<len(d_pdf):
+                        pMass += d_pdf[c2]
+                        d += d_pdf[c2]*c2/p 
                         c2 += 1
+
+                    # work out and correct for overshoot
                     c = c2-1
+                    d_pdf[c] = pMass-p
+                    d -= c*d_pdf[c]/p
                     d_.append(d)
-
-                # what now?
-                    
-                '''
-
-                clusterSize = len(pts)
-                
-                pts = sorted(pts)
-
-                if clusterSize < 20:
-                    print(clusterSize)
-                
-                c = 0
-                for p in pDist:
-                    subgroup = []
-                    while len(subgroup) < int(p*clusterSize) and c < len(pts):
-                        subgroup.append(pts[c])
-                        c += 1
-
-                    en = 0.0
-                    a = 0
-                    d = 0
-                    for pt in subgroup:
-                        en += pt[0]
-                        a += pt[1]
-                        d += pt[2]
-
-                    if len(subgroup) == 0:
-                        b.append(0.0)
-                        ad.append([T,0])
-
-                    else:
-                        b.append(en*clusterSize/len(subgroup))
-                        ad.append([int(a/len(subgroup)),int(d/len(subgroup))+1])
-
-                '''
 
         # now reorder the matricies to be grouped first by probability
         b2 = []
@@ -923,6 +899,7 @@ class EnergyPrediction:
                 ad.append([a_[nS*i+s],d_[nS*i+s]])
                 if (ad[-1][1]-ad[-1][0])*h0[s*k*2+i] < b2[-1]*pointsPerHour:
                     print('infeasible constraint')
+                    b2[-1] = (ad[-1][1]-ad[-1][0])*h0[s*k*2+i]/pointsPerHour-1
 
         print(matrix(b2))
         b = b2 + [0.0]*len(b2)
@@ -949,7 +926,6 @@ class EnergyPrediction:
                         
                 for t in range(To):
                     A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    
                     if t+Ts < ad[s*(2*k)+j][0] or t+Ts > ad[s*(2*k)+j][1]:
                         A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
             # day 2                    
@@ -1043,37 +1019,40 @@ class EnergyPrediction:
         ideal = totals
 
         # now individually apply chosen profiles
-        '''
-        total = [0.0]*(T+Ts)
-        if storeIndividuals == True:
-            self.individuals = {}
+        totals = []
+        for s in range(nS):
+            totals.append([0.0]*(T+Ts))
+            for i in range(2*k):
+                cV = int(cluster_vehicles[i]/1000)
+                scale = cluster_vehicles[i]/cV
+                [ea,eb,am,av,dm,dv] = distribution_variables[i]
+                for j in range(cV):
+                    en = scale*np.random.gamma(ea,eb)
+                    a = int(np.random.normal(am,np.sqrt(av)))
+                    d = int(np.random.normal(dm,np.sqrt(dv)))
+                    
+                    p = copy.copy(profiles[s][i])
 
-        for day in range(2):
-            for i in range(len(label[day])):
-                vehicle = v[day][i]
-                [a,d] = data[day][i][:2]
-                cluster = label[day][i]
-                
-                if storeIndividuals == True:
-                    if vehicle not in self.individuals:
-                        self.individuals[vehicle] = {}
+                    for t in range(int(a)):
+                        p[t] = 0.0
+                    for t in range(int(d),T):
+                        p[t] = 0.0
 
-                # copy standard cluster profile
-                p = copy.copy(profiles[cluster+k*day])
+                    if sum(p) == 0:
+                        continue
 
-                p = self.approximateApply(p,vehicle,day,a,d,pMax,
-                                          pointsPerHour)
+                    sf = en*pointsPerHour/sum(p)
+                    for t in range(T):
+                        p[t] = p[t]*sf
+                        if i < k:
+                            totals[s][t] += p[t]
+                        else:
+                            totals[s][t+Ts] += p[t]
+                        
+            for t in range(T+Ts):
+                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
 
-                if storeIndividuals == True:
-                    self.inidividuals[vehicle][day] = p
-
-                for i in range(T):
-                    total[i+day*Ts] += p[i]*self.sf[self.vehicleRType[vehicle]]
-
-        return [ideal,total]
-        '''
-
-        return ideal, base
+        return [ideal, totals, base]
 
 
     def testDemandTurnUp(self,pMax,baseLoad,upTime):
@@ -1134,7 +1113,7 @@ class NationalEnergyPrediction(EnergyPrediction):
 
     def getStochasticOptimalLoadFlatteningProfile(self,pMax=7.0,deadline=16,
                                                   pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pointsPerHour=4):
+                                                  pointsPerHour=6):
 
         ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,self.baseLoad,
                                                                            pMax=pMax,

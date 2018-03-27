@@ -243,7 +243,7 @@ class ClusteringExercise:
             total += self.clusters[cluster].get_sum_of_squares()
             n += 1
 
-        return total
+        return total/n
 
     def get_per_explained_var(self):
         exp = 0

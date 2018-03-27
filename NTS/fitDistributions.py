@@ -51,5 +51,5 @@ class Inference:
                 lowest = f
                 best = v
 
-        return [self.x_,np.sqrt(best)]
+        return [self.x_,best]
         
