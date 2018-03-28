@@ -9,62 +9,71 @@ plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = 8
 
-t = []
-base = []
-p1 = []
-p2 = []
-p3 = []
-p4 = []
-p5 = []
+months = {'1':'Jan','4':'Apr','7':'Jul','10':'Oct'}
+n = 1
+for m in months:
+    plt.subplot(2,2,n)
+    n += 1
+    plt.title(months[m],y=0.88)
 
-with open(resultsStem+'1_planned.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        t.append(float(row[0]))
-        base.append(float(row[1]))
-        p1.append(float(row[2]))
-        p2.append(float(row[3]))
-        p3.append(float(row[4]))
-        p4.append(float(row[5]))
-        p5.append(float(row[6]))
+    t = []
+    base = []
+    p1 = []
+    p2 = []
+    p3 = []
+    p4 = []
+    p5 = []
+    pav = []
 
-min1 = []
-max1 = []
-min2 = []
-max2 = []
+    with open(resultsStem+m+'_experienced.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            t.append(float(row[0]))
+            base.append(float(row[1]))
+            p1.append(float(row[2]))
+            p2.append(float(row[3]))
+            p3.append(float(row[4]))
+            p4.append(float(row[5]))
+            p5.append(float(row[6]))
+            pav.append(0.05*p1[-1]+0.2*p2[-1]+0.5*p3[-1]+0.2*p4[-1]+0.05*p5[-1])
 
-for i in range(len(base)):
-    lowest = 100
-    highest = 0
-    for p in [p2,p3,p4]:
-        if p[i] < lowest:
-            lowest = p[i]
-        if p[i] > highest:
-            highest = p[i]
-            
-    min1.append(lowest)
-    max1.append(highest)
-    
-    for p in [p1,p5]:
-        if p[i] < lowest:
-            lowest = p[i]
-        if p[i] > highest:
-            highest = p[i]
-            
-    min2.append(lowest)
-    max2.append(highest)
-#plt.subplot(1,2,1)
-plt.plot(t,base,'k',ls=':')
-plt.plot(t,p3,'b')
-plt.fill_between(t,min1,max1,color='b',alpha=0.1)
-plt.fill_between(t,min2,max2,color='b',alpha=0.1)
+    min1 = []
+    max1 = []
+    min2 = []
+    max2 = []
 
-x = np.linspace(26*60,46*60,num=6)
-x_ticks = ['02:00','08:00','12:00','16:00','18:00','22:00']
-plt.xticks(x,x_ticks)
-plt.xlim(24*60,48*60)
-plt.grid()
+    for i in range(len(base)):
+        lowest = 100
+        highest = 0
+        for p in [p2,p3,p4]:
+            if p[i] < lowest:
+                lowest = p[i]
+            if p[i] > highest:
+                highest = p[i]
+                
+        min1.append(lowest)
+        max1.append(highest)
+        
+        for p in [p1,p5]:
+            if p[i] < lowest:
+                lowest = p[i]
+            if p[i] > highest:
+                highest = p[i]
+                
+        min2.append(lowest)
+        max2.append(highest)
+    #plt.subplot(1,2,1)
+    plt.plot(t,base,'k',ls=':')
+    plt.plot(t,pav,'b')
+    #plt.fill_between(t,min1,max1,color='b',alpha=0.1)
+    plt.fill_between(t,min2,max2,color='b',alpha=0.1)
+
+    x = np.linspace(26*60,46*60,num=6)
+    x_ticks = ['02:00','08:00','12:00','16:00','18:00','22:00']
+    plt.xticks(x,x_ticks)
+    plt.xlim(24*60,48*60)
+    plt.grid()
 '''
 
 p1 = []
@@ -120,4 +129,5 @@ plt.xticks(x,x_ticks)
 plt.xlim(24*60,48*60)
 plt.grid()
 '''
+plt.tight_layout()
 plt.show()

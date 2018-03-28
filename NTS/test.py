@@ -5,13 +5,13 @@ from fitDistributions import Inference
 import copy
 
 
-run = NationalEnergyPrediction('3','1')
-o,a = run.getStochasticOptimalLoadFlatteningProfile(pDist=[0.3,0.4,0.3])
+run = NationalEnergyPrediction('3','7')
+[o,a,b] = run.getStochasticOptimalLoadFlatteningProfile2()
 
 plt.figure(1)
 for i in range(len(o)):
     plt.plot(o[i],label=str(i))
-    plt.plot(a[i])
+    plt.plot(a[i],label=str(i))
 plt.legend()
 plt.show()
 
