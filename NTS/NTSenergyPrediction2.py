@@ -23,7 +23,7 @@ households = '../../Documents/UKDA-5340-tab/constance-households.csv'
 nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 units_scale = {'k':1,'M':1000,'G':1000000}
 
-def getBaseLoad(day,month,nHours,unit='G',pointsPerHour=60):
+def getBaseLoad(day,month,nHours,unit='G',pointsPerHour=60,scale=1):
     nDays = int(nHours/24)+1
 
     # find right date for day of the week
@@ -81,7 +81,7 @@ def getBaseLoad(day,month,nHours,unit='G',pointsPerHour=60):
         interpolatedLoad[i] = f1*float(profile[p1])+f2*float(profile[p2])
 
         # Change the units to the specified ones
-        interpolatedLoad[i] = interpolatedLoad[i]*1000/units_scale[unit]
+        interpolatedLoad[i] = interpolatedLoad[i]*1000*scale/units_scale[unit]
 
     return interpolatedLoad
     
@@ -407,7 +407,7 @@ class EnergyPrediction:
         # first cluster on arrival and departure times
         self.getNextDayStartTimes()
 
-        k = 10 # number of clusters
+        k = 4 # number of clusters
         
         T = (24+deadline)*pointsPerHour
         To = deadline*pointsPerHour # overlap time
@@ -1395,4 +1395,64 @@ class NationalEnergyPrediction(EnergyPrediction):
                 self.baseLoad,7,deadline=deadline,storeIndividuals=storeIndividuals)
 
         return total
+
+class CornwallEnergyPrediction(EnergyPrediction):
+
+    def __init__(self,day,month,deadline=16,car='teslaS60D',smoothTimes=True,
+                 yearsLower=2002,solar=False):
+        EnergyPrediction.__init__(self,day,month,[0.0,0.386,0.274,0.340],
+                                  532273,car=car,smoothTimes=smoothTimes,
+                                  region='9',yearsLower=yearsLower)
+        self.solar = solar
+
+        self.baseLoad = getBaseLoad(self.day,self.month,48+deadline,unit='k',
+                                    pointsPerHour=60,
+                                    scale=float(532273)/65640000)
+
+        if solar == True:
+            ms = {'1':'jan','2':'feb','3':'mar','4':'apr','5':'may','6':'jun',
+             '7':'jul','8':'aug','9':'sep','10':'oct','11':'nov','12':'dec'}
+            allProfiles = [] 
+            with open('../../Documents/cornwall-pv-predictions/'+ms[month]+
+                      '.csv','rU') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    allProfiles.append(row)
+            median = allProfiles[int(len(allProfiles)/2)]
+            t_int = 30 # data half hourly
             
+            # repeat profile as necessary
+            median = median*3
+
+            newBase = [0.0]*len(self.baseLoad)
+            # interpolate and remove from base load
+            for i in range(len(self.baseLoad)):
+                p = int(i/t_int)
+                if i % t_int == 0:
+                    newBase[i] = self.baseLoad[i]-float(median[p])
+                else:
+                    f = float(i%t_int)/t_int
+                    newBase[i] = self.baseLoad[i]-(1-f)*float(median[p])-\
+                                 f*float(median[p+1])
+
+            self.baseLoad = newBase
+                    
+                
+
+    def getOptimalLoadFlattening(self,pMax,pointsPerHour=10,deadline=16):
+        [ideal,total] = EnergyPrediction.getOptimalLoadFlatteningProfile(self,
+                        self.baseLoad,pMax=pMax,pointsPerHour=pointsPerHour,
+                        deadline=deadline)
+        
+        return [ideal,total]
+            
+    def getStochasticOptimalLoadFlatteningProfile2(self,pMax=7.0,deadline=16,
+                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
+                                                  pointsPerHour=6):
+
+        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile2(self,self.baseLoad,
+                                                                           pMax=pMax,
+                                                                           deadline=deadline,
+                                                                           pDist=pDist,
+                                                                           pointsPerHour=pointsPerHour)
+        return ideal

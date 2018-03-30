@@ -1,18 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from NTSenergyPrediction2 import NationalEnergyPrediction
+from NTSenergyPrediction2 import NationalEnergyPrediction, CornwallEnergyPrediction
 from fitDistributions import Inference
 import copy
 
 
-run = NationalEnergyPrediction('3','7')
-[o,a,b] = run.getStochasticOptimalLoadFlatteningProfile2()
+run = CornwallEnergyPrediction('3','7',solar=True)
+d = run.getDumbCharging(3.5,nHours=16+48)
 
+[op,to,ba] = run.getStochasticOptimalLoadFlatteningProfile2()
+
+t = np.linspace(0,len(d),num=len(op[0]))
+
+for i in range(len(d)):
+    d[i] += run.baseLoad[i]
+    
 plt.figure(1)
-for i in range(len(o)):
-    plt.plot(o[i],label=str(i))
-    plt.plot(a[i],label=str(i))
-plt.legend()
+plt.plot(d)
+for p in to:
+    plt.plot(t,p)
+plt.plot(run.baseLoad)
 plt.show()
 
 
