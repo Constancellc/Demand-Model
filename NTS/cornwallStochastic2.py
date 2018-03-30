@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from NTSenergyPrediction2 import NationalEnergyPrediction, CornwallEnergyPrediction
 from fitDistributions import Inference
 import copy
+import csv
 
 resultsStem = '../../Documents/simulation_results/NTS/cornwall2/'
 
