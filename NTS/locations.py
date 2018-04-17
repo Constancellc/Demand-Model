@@ -10,12 +10,11 @@ def getLocations(day,month,normalise=True,smooth=False):
 
     nextDay = {'1':'2','2':'3','3':'4','4':'5','5':'6','6':'7','7':'1'}
 
-    with open('../../Documents/UKDA-5340-tab/csv/tripsUseful.csv','rU') as csvfile:
+    with open('../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
-        reader.next()
+        next(reader)
         for row in reader:
-            
-            if row[6] != month:
+            if row[7] != month:
                 continue
 
             vehicle = row[2]
@@ -23,16 +22,16 @@ def getLocations(day,month,normalise=True,smooth=False):
             if vehicle not in locations:
                 locations[vehicle] = [0]*(48*60)
 
-            if row[5] != day:
+            if row[6] != day:
                 continue
            
             
-            purposeFrom = row[11]
-            purposeTo = row[12]
+            purposeFrom = row[12]
+            purposeTo = row[13]
 
             try:
-                tripStart = int(row[8])
-                tripEnd = int(row[9])
+                tripStart = int(row[9])
+                tripEnd = int(row[10])
             except:
                 continue
 
@@ -54,17 +53,26 @@ def getLocations(day,month,normalise=True,smooth=False):
 
 
     # now get the next day info
-    with open('../../Documents/UKDA-5340-tab/csv/tripsUseful.csv','rU') as csvfile:
+    
+    with open('../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
-        reader.next()
+        next(reader)
         for row in reader:
-            if row[5] != nextDay[day]:
-                continue
-            if row[6] != month:
+            if row[7] != month:
                 continue
 
             vehicle = row[2]
-            purposeTo = row[12]
+
+            if row[6] != nextDay[day]:
+                continue
+            
+            purposeTo = row[13]
+
+            try:
+                tripStart = int(row[9])
+                tripEnd = int(row[10])
+            except:
+                continue
 
             if purposeTo == '1': # work
                 location = 2
@@ -228,9 +236,9 @@ others = run[1]
 t = np.linspace(0,48,num=len(totals[1]))
 labels = {3:'Home',1:'in transit',2:'Work',4:'Shops',5:'other'}
 styles = {1:'-',2:'--',3:'-',4:'-.',5:':'}
-plt.figure(1)
-#plt.style.use('classic')
+plt.figure(figsize=(4,2.2))
 plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = 8
 #plt.subplot(1,2,1)
 for line in [3,2,4]:#totals:
     if line == 1:
@@ -248,11 +256,14 @@ plt.ylabel('Percentage of Vehicles')
 x = np.linspace(26,46,num=6)
 my_xticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
 plt.xticks(x, my_xticks)
-plt.xlabel('Time')
 plt.xlim(24,48)
+plt.ylim(0,100)
+plt.xlabel('Time')
 plt.legend(loc='upper center')
 plt.grid()
 
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/smart-charging/locations.eps', format='eps', dpi=1000)
 
 '''
 plt.subplot(1,2,2)
