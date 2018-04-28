@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
+import scipy.ndimage
 
 resultsStem = '../../Documents/simulation_results/NTS/cornwall2/'
 
@@ -22,9 +23,13 @@ for m in months:
     base1 = []
     base2 = []
     base3 = []
+    base4 = []
+    base5 = []
     p1 = []
     p2 = []
     p3 = []
+    p5 = []
+    p4 = []
     pav = []
 
     with open(resultsStem+m+'.csv','rU') as csvfile:
@@ -35,40 +40,40 @@ for m in months:
             base1.append(float(row[1]))
             base2.append(float(row[2]))
             base3.append(float(row[3]))
-            p1.append(float(row[4]))
-            p2.append(float(row[5]))
-            p3.append(float(row[6]))
-            pav.append(0.1*p1[-1]+0.8*p2[-1]+0.1*p3[-1])
+            base4.append(float(row[4]))
+            base5.append(float(row[5]))
+            p1.append(float(row[6]))
+            p2.append(float(row[7]))
+            p3.append(float(row[8]))
+            p4.append(float(row[10]))
+            p5.append(float(row[9]))
 
-    min1 = []
-    max1 = []
+    p1 = scipy.ndimage.filters.gaussian_filter1d(p1,2)
+    p2 = scipy.ndimage.filters.gaussian_filter1d(p2,2)
+    p3 = scipy.ndimage.filters.gaussian_filter1d(p3,2)
+    p4 = scipy.ndimage.filters.gaussian_filter1d(p4,2)
+    p5 = scipy.ndimage.filters.gaussian_filter1d(p5,2)
 
-    for i in range(len(base1)):
-        lowest = 1000
-        highest = 0
-        for p in [p2,p3,p1]:
-            if p[i] < lowest:
-                lowest = p[i]
-            if p[i] > highest:
-                highest = p[i]
-                
-        min1.append(lowest)
-        max1.append(highest)
-        
-    plt.plot(t,base2,'k',ls=':',label='Base load')
-    plt.plot(t,pav,color='#0d50bc',label='Controlled')
-    plt.fill_between(t,base3,base1,color='#dddddd')
-    plt.fill_between(t,min1,max1,color='#82abed')
+    
+ 
+    #plt.fill_between(t,p1,p5,color='#dddddd')
+    plt.fill_between(t,p1,p2,color='#b7d2ff')
+    plt.fill_between(t,p5,p4,color='#b7d2ff')
+    plt.fill_between(t,p2,p5,color='#7fadff')
+    #plt.fill_between(t,p2,p4,color='#82abed')
+    plt.plot(t,base1,'k',ls=':',label='Max Net Demand')
+    plt.plot(t,base5,'k',ls=':',label='Min Net Demand')
+    plt.plot(t,p3,color='#0d50bc',label='Including EVs')
 
     x = np.linspace(26*60,46*60,num=6)
     x_ticks = ['02:00','08:00','12:00','16:00','18:00','22:00']
     plt.xticks(x,x_ticks)
     plt.xlim(24*60,48*60)
+    plt.ylim(-50,600)
     plt.grid()
-    plt.ylim(-250,550)
 
     if n == 2 or n == 4:
-        plt.ylabel('Power Demand (GW)')
+        plt.ylabel('Power Demand (MW)')
 
     if n == 2:
         plt.legend(loc=8)
@@ -76,5 +81,5 @@ for m in months:
 
 
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/smart-charging/cornwall2.eps', format='eps', dpi=1000)
+#plt.savefig('../../Dropbox/papers/smart-charging/cornwall2.eps', format='eps', dpi=1000)
 plt.show()

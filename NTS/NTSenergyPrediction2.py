@@ -1311,7 +1311,7 @@ class EnergyPrediction:
         '''
 
     def getStochasticOptimalLoadFlatteningProfile3(self,baseLoads,
-                                                  pDist=[0.1,0.8,0.1],
+                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
                                                   pMax=7.0,pointsPerHour=60,
                                                   deadline=16):
         
@@ -1667,18 +1667,18 @@ class CornwallEnergyPrediction(EnergyPrediction):
 
         self.baseLoad = getBaseLoad(self.day,self.month,48+deadline,unit='k',
                                     pointsPerHour=60,
-                                    scale=float(532273)/65640000)
+                                    scale=1349.8/116997.9)
 
         if solar == True:
             ms = {'1':'jan','2':'feb','3':'mar','4':'apr','5':'may','6':'jun',
              '7':'jul','8':'aug','9':'sep','10':'oct','11':'nov','12':'dec'}
             self.allProfiles = [] 
-            with open('../../Documents/cornwall-pv-predictions/'+ms[month]+
+            with open('../../Documents/cornwall-pv-predictions/av-'+ms[month]+
                       '.csv','rU') as csvfile:
                 reader = csv.reader(csvfile)
                 for row in reader:
                     self.allProfiles.append(row)
-            median = self.allProfiles[int(len(self.allProfiles)/2)]
+            median = self.allProfiles[2]
             t_int = 30 # data half hourly
             
             # repeat profile as necessary
@@ -1696,7 +1696,6 @@ class CornwallEnergyPrediction(EnergyPrediction):
                                  f*float(median[p+1])
 
             self.baseLoad = newBase
-                    
                 
 
     def getOptimalLoadFlattening(self,pMax,pointsPerHour=10,deadline=16):
@@ -1720,22 +1719,41 @@ class CornwallEnergyPrediction(EnergyPrediction):
     def getStochasticOptimalLoadFlatteningProfile3(self,pMax=7.0,deadline=16,
                                                   pointsPerHour=6):
 
-        h = self.allProfiles[0]*3
-        l = self.allProfiles[-1]*3
-        m = self.allProfiles[int(len(self.allProfiles)/2)]*3
+        p1 = self.allProfiles[0]*3
+        p2 = self.allProfiles[1]*3
+        p3 = self.allProfiles[2]*3
+        p4 = self.allProfiles[3]*3
+        p5 = self.allProfiles[4]*3
 
-        bl1 = [0.0]*len(self.baseLoad)
-        bl2 = [0.0]*len(self.baseLoad)
+        p = []
+        bl = []
+        for i in range(5):
+            p.append([])
+            bl.append([0.0]*len(self.baseLoad))
 
-        for i in range(len(self.baseLoad)):
-            p = int(i/30)
-            # below is ugly hack - improve later
-            bl1[i] = self.baseLoad[i] + float(h[p])-float(m[p])
-            bl2[i] = self.baseLoad[i] + float(l[p])-float(m[p])
+        for t in range(len(self.baseLoad)):
+            if t%30 == 0:
+                p[0].append(float(p1[int(t/30)]))
+                p[1].append(float(p2[int(t/30)]))
+                p[2].append(float(p3[int(t/30)]))
+                p[3].append(float(p4[int(t/30)]))
+                p[4].append(float(p5[int(t/30)]))
+            else:
+                x1 = int(t/30)
+                x2 = x1+1
+                f = float(t%30)/30
+                p[0].append((1-f)*float(p1[x1])+f*float(p1[x2]))
+                p[1].append((1-f)*float(p2[x1])+f*float(p2[x2]))
+                p[2].append((1-f)*float(p3[x1])+f*float(p3[x2]))
+                p[3].append((1-f)*float(p4[x1])+f*float(p4[x2]))
+                p[4].append((1-f)*float(p5[x1])+f*float(p5[x2]))
 
-        baseLoads=[bl1,self.baseLoad,bl2]
+        for t in range(len(self.baseLoad)):
+            for i in range(5):
+                bl[i][t] += self.baseLoad[t] - p[i][t] + p[2][t]
 
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile3(self,baseLoads,
+
+        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile3(self,bl,
                                                                            pMax=pMax,
                                                                            deadline=deadline,
                                                                            pointsPerHour=pointsPerHour)
