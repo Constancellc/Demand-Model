@@ -99,9 +99,9 @@ def getBaseLoad2(day,month,nHours,unit='G',pointsPerHour=60,scale=1,
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                l.append(float(row[1])*1000000/units_scale[unit])
-                m.append(float(row[2])*1000000/units_scale[unit])
-                h.append(float(row[3])*1000000/units_scale[unit])
+                l.append(float(row[1])*1000000*scale/units_scale[unit])
+                m.append(float(row[2])*1000000*scale/units_scale[unit])
+                h.append(float(row[3])*1000000*scale/units_scale[unit])
         day = nextDay[day]
         nDays -= 1
     
@@ -109,15 +109,15 @@ def getBaseLoad2(day,month,nHours,unit='G',pointsPerHour=60,scale=1,
     interpolatedM = [0.0]*nHours*pointsPerHour
     interpolatedH = [0.0]*nHours*pointsPerHour
     for i in range(0,len(interpolatedL)):
-        p1 = int(2*i/pointsPerHour)
+        p1 = int(12*i/pointsPerHour)
         p2 = p1+1
 
-        f2 = 2*float(i)/pointsPerHour - p1
+        f2 = 12*float(i)/pointsPerHour - p1
         f1 = 1.0-f2
 
         interpolatedL[i] = f1*l[p1]+f2*l[p2]
-        interpolatedM[i] = f1*l[p1]+f2*l[p2]
-        interpolatedH[i] = f1*l[p1]+f2*l[p2]
+        interpolatedM[i] = f1*m[p1]+f2*m[p2]
+        interpolatedH[i] = f1*h[p1]+f2*h[p2]
 
     if returnSingle == True:
         return interpolatedM
@@ -233,7 +233,8 @@ class EnergyPrediction:
         # now calculating the required sf
         self.sf = [0.0]*4
         for i in range(4):
-            self.sf[i] = self.population*self.regionType[i]/self.nPeople[i]
+            self.sf[i] = self.population*self.regionType[i]/\
+                         (self.nPeople[i]*self.chargingEfficiency)
 
         self.energy = {}
         self.vehicleRType = {}
@@ -732,884 +733,6 @@ class EnergyPrediction:
 
         return total
 
-    def getStochasticOptimalLoadFlatteningProfile(self,baseLoad,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pMax=7.0,pointsPerHour=60,
-                                                  deadline=16):
-        '''
-        This function uses stochastic optimisation considering the scnearios
-        defined by the vector pDist.
-
-        Vehicles from the pool are first clustered to reduce complexity, then
-        within the cluster vehicles are ranked by energy and split into subgroups
-        defined by the probability distribution
-
-        Each subgroup represents a scenario in the stochasitc optimization. The
-        energy demand is calculated by scaling the subgroup energy to that of
-        the whole cluster and the avaliability is chosen as the average of the
-        subgroup.
-        '''
-
-        # chek that pDist is a valid pdf
-        if sum(pDist) != 1:
-            raise Exception('pDist must sum to 1 not '+str(sum(pDist)))
-
-        # ok so in the new plan we cluster the two days seperately and optimise
-        # considering them independantly
-
-        # first cluster on arrival and departure times
-        self.getNextDayStartTimes()
-
-        k = 3 # number of clusters
-        nS = len(pDist) # number of scenarios for stochastic optimisation
-        nV = k*nS*2
-        
-        T = (24+deadline)*pointsPerHour
-        To = deadline*pointsPerHour # overlap time
-        Ts = 24*pointsPerHour
-
-        data = [[],[]]
-        v = [[],[]]
-        
-        for vehicle in self.energy:
-            for day in range(2):
-                if self.energy[vehicle][day] == 0.0:
-                    continue
-                
-                v[day].append(vehicle)
-
-                a = self.endTimes[vehicle][day]
-                if day == 0:
-                    d = self.startTimes[vehicle][1]+1440
-                else:
-                    try:
-                        d = self.nextDayStartTimes[vehicle]+1440
-                    except:
-                        d = 1440+deadline*60
-                    
-                if d > 1440+deadline*60:
-                    d = 1440+deadline*60
-
-                a = float(pointsPerHour*a/60)
-                d = float(pointsPerHour*d/60)
-
-                data[day].append([a,d])
-                
-        label = [[],[]]
-        
-        for day in range(2):
-            centroid, label[day], inertia = clst.k_means(data[day],k)
-
-        # for each cluster we need to sort vehicles - for now by energy
-        b = [] # energy requirements
-        h0 = [] 
-        a_ = [] # arrival times
-        d_ = [] # departure times
-        distribution_variables = [] # stores the original points
-        cluster_vehicles = []
-        
-        for day in range(2):
-            for i in range(k):
-                # this will store the individual vehicle requirements
-                pts = []
-
-                cV = 0 # number of vehicles represented by cluster
-
-                # these are vectors to store the distribution of energy and timings
-                e_pdf = [0.0]*60
-                a_pdf = [0]*T
-                d_pdf = [0]*T
-                
-                for j in range(len(label[day])):
-                    if label[day][j] != i:
-                        continue
-                    vehicle = v[day][j]
-                    try:
-                        e_pdf[int(self.energy[vehicle][day])] += self.sf[self.vehicleRType[vehicle]]
-                    except:
-                        e_pdf[-1] += self.sf[self.vehicleRType[vehicle]]
-
-                    cV += self.sf[self.vehicleRType[vehicle]]
-                    if data[day][j][0] > 0:
-                        a_pdf[int(data[day][j][0])] += self.sf[self.vehicleRType[vehicle]]
-                    if data[day][j][1] < T:
-                        d_pdf[int(data[day][j][1])] += self.sf[self.vehicleRType[vehicle]]
-
-                    pts.append([self.energy[vehicle][day]*\
-                                self.sf[self.vehicleRType[vehicle]]]+data[day][j])
-
-                if len(pts) == 0:
-                    for s in range(nS):
-                        b.append(0.0)
-                        h0.append(pMax)
-                        a_.append(0.0)
-                        d_.append(0.0)
-                    continue
-
-                # now I need to turn the pdfs from individual vehicles to
-                # fleet pdfs
-
-                # first fit standard ditributions to individual pdfs
-                [ea,eb] = Inference(e_pdf).fit_gamma()
-                [am,av] = Inference(a_pdf).fit_normal()
-                [dm,dv] = Inference(d_pdf).fit_normal()
-
-                distribution_variables.append([ea,eb,am,av,dm,dv])
-
-                # then calculate the number of vehicles represented by the cluster
-                cV = int(cV)
-                h0.append(cV*pMax)
-                cluster_vehicles.append(cV)
-
-                # then calculate the distributions of the summed states
-                e_pdf = [0]*60000 # round to the nearest 0.01 kWh per vehicle
-                a_pdf = [0]*T
-                d_pdf = [0]*T
-
-                for mc in range(10000):
-                    try:
-                        e_pdf[int(np.random.gamma(ea*cV,eb)*1000/cV)] += 1
-                        a_pdf[int(np.random.normal(am*cV,np.sqrt(av*cV))/cV)] += 1
-                        d_pdf[int(np.random.normal(dm*cV,np.sqrt(dv*cV))/cV)] += 1
-                    except:
-                        continue
-
-                # normalise
-                for pdf in [e_pdf,a_pdf,d_pdf]:
-                    s = sum(pdf)
-                    for i in range(len(pdf)):
-                        pdf[i] = pdf[i]/s
-                    
-                # now find the scenario optimization points
-                c = 0
-                for p in pDist:
-                    c2 = c
-                    en = 0.0
-                    pMass = 0
-                    while pMass < p and c2<len(e_pdf):
-                        pMass += e_pdf[c2]
-                        en += e_pdf[c2]*c2/(1000*p) 
-                        c2 += 1
-
-                    # work out and correct for overshoot
-                    c = c2-1
-                    e_pdf[c] = pMass-p
-                    en -= c*e_pdf[c]/(1000*p)
-                    b.append(en*cV)
-                c = 0
-                for p in pDist:
-                    c2 = c
-                    a = 0.0
-                    pMass = 0
-                    while pMass < p and c2<len(a_pdf):
-                        pMass += a_pdf[c2]
-                        a += a_pdf[c2]*c2/p 
-                        c2 += 1
-
-                    # work out and correct for overshoot
-                    c = c2-1
-                    a_pdf[c] = pMass-p
-                    a -= c*a_pdf[c]/p
-                    a_.append(a)
-
-                c = 0
-                for p in pDist:
-                    c2 = c
-                    d = 0.0
-                    pMass = 0
-                    while pMass < p and c2<len(d_pdf):
-                        pMass += d_pdf[c2]
-                        d += d_pdf[c2]*c2/p 
-                        c2 += 1
-
-                    # work out and correct for overshoot
-                    c = c2-1
-                    d_pdf[c] = pMass-p
-                    d -= c*d_pdf[c]/p
-                    d_.append(d)
-
-        # now reorder the matricies to be grouped first by probability
-        b2 = []
-        ad = []
-        h0 = h0*nS
-
-        for s in range(nS):
-            for i in range(k*2):
-                b2.append(b[nS*i+s])
-                ad.append([a_[nS*i+s],d_[nS*i+s]])
-                if (ad[-1][1]-ad[-1][0])*h0[s*k*2+i] < b2[-1]*pointsPerHour:
-                    print('infeasible constraint')
-                    b2[-1] = (ad[-1][1]-ad[-1][0])*h0[s*k*2+i]/pointsPerHour-1
-
-        print(matrix(b2))
-        b = b2 + [0.0]*len(b2)
-
-        # then set up the optimization
-
-        h = []
-        for j in range(nV):
-            for t in range(T):
-                h.append(h0[j])
-
-        # now set up the optimization
-        A1 = matrix(0.0,(nV,T*nV)) # ensures right amount of energy provided
-        A2 = matrix(0.0,(nV,T*nV)) # ensures vehicle only charges when avaliable
-
-        # for scenario
-        for s in range(nS):
-            # day 1 
-            for j in range(k):
-                for t in range(Ts):
-                    A1[(2*k*s)+j,(2*k*s*T)+j*Ts+t] = 1.0/pointsPerHour
-                    if t < ad[s*(2*k)+j][0] or t > ad[s*(2*k)+j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
-                        
-                for t in range(To):
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t+Ts < ad[s*(2*k)+j][0] or t+Ts > ad[s*(2*k)+j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
-            # day 2                    
-            for j in range(k,2*k):
-                for t in range(To):
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t < ad[s*(2*k)+j][0] or t > ad[s*(2*k)+j][1]:
-                        A2[(2*k*s)+j,(2*T*k*s)+k*Ts+j*To+t] = 1.0
-                        
-                for t in range(Ts):
-                    A1[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0/pointsPerHour
-                    if t+To < ad[s*(2*k)+j][0] or t+To > ad[s*(2*k)+j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0
-
-        b = matrix(b)
-        A = sparse([A1,A2])
-
-        G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
-        h = matrix([0.0]*(T*nV)+h)
-
-        q = [] # incorporates base load into the objective function
-        for s in range(nS):
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
-            for i in range(2*k):
-                for t in range(Ts,T):
-                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoad[int((t+T)*60/pointsPerHour)])
-                
-        q = matrix(q)
-
-        P = matrix(0.0,(nV*T,nV*T))
-        # for each scenario
-        for s in range(nS):
-            # day 1 solo
-            for i in range(k):
-                for j in range(k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+i*Ts+t,(2*k*s*T)+j*Ts+t] = pDist[s]
-            # overlap
-            for i in range(2*k):
-                for j in range(2*k):
-                    for t in range(To):
-                        P[(2*k*s*T)+k*Ts+i*To+t,(2*k*s*T)+k*Ts+j*To+t] = pDist[s]
-
-            # day 2 solo
-            for i in range(k,2*k):
-                for j in range(k,2*k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+2*k*To+i*Ts+t,(2*k*s*T)+2*k*To+j*Ts+t] = pDist[s]
-        
-        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
-        X = sol['x']
-
-        profiles = []
-        for s in range(nS):
-            profiles.append([])
-            for i in range(k):
-                profiles[s].append([0.0]*T)
-                for t in range(Ts):
-                    profiles[s][i][t] = X[(2*k*s*T)+i*Ts+t]
-                for t in range(To):
-                    profiles[s][i][t+Ts] = X[(2*k*T*s)+k*Ts+i*To+t]
-
-            for i in range(k,2*k):
-                profiles[s].append([0.0]*T)
-                for t in range(To):
-                    profiles[s][i][t] = X[(2*T*k*s)+k*Ts+i*To+t]
-                for t in range(Ts):
-                    profiles[s][i][t+To] = X[(2*T*k*s)+i*Ts+t+2*k*To]
-
-        totals = []
-
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for i in range(2*k):
-                for t in range(T):
-                    if i < k:
-                        totals[s][t] += profiles[s][i][t]
-                    else:
-                        totals[s][t+Ts] += profiles[s][i][t]
-        base = []
-        for t in range(T+Ts):
-            base.append(baseLoad[int(t*60/pointsPerHour)])
-            for s in range(nS):
-                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
-                           
-        ideal = totals
-
-        # now individually apply chosen profiles
-        totals = []
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for i in range(2*k):
-                cV = int(cluster_vehicles[i]/1000)
-                scale = cluster_vehicles[i]/cV
-                [ea,eb,am,av,dm,dv] = distribution_variables[i]
-                for j in range(cV):
-                    en = scale*np.random.gamma(ea,eb)
-                    a = int(np.random.normal(am,np.sqrt(av)))
-                    d = int(np.random.normal(dm,np.sqrt(dv)))
-                    
-                    p = copy.copy(profiles[s][i])
-
-                    for t in range(int(a)):
-                        p[t] = 0.0
-                    for t in range(int(d),T):
-                        p[t] = 0.0
-
-                    if sum(p) == 0:
-                        continue
-
-                    sf = en*pointsPerHour/sum(p)
-                    for t in range(T):
-                        p[t] = p[t]*sf
-                        if i < k:
-                            totals[s][t] += p[t]
-                        else:
-                            totals[s][t+Ts] += p[t]
-                        
-            for t in range(T+Ts):
-                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
-
-        return [ideal, totals, base]
-
-    def getStochasticOptimalLoadFlatteningProfile2(self,baseLoad,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pMax=7.0,pointsPerHour=60,
-                                                  deadline=16):
-        
-        '''
-        This one is investigating stochasticity in plug-in percentage
-        '''
-
-        # chek that pDist is a valid pdf
-        if sum(pDist) != 1:
-            raise Exception('pDist must sum to 1 not '+str(sum(pDist)))
-
-        # ok so in the new plan we cluster the two days seperately and optimise
-        # considering them independantly
-
-        # first cluster on arrival and departure times
-        self.getNextDayStartTimes()
-
-        k = 3 # number of clusters
-        nS = len(pDist) # number of scenarios for stochastic optimisation
-        nV = k*nS*2
-        
-        T = (24+deadline)*pointsPerHour
-        To = deadline*pointsPerHour # overlap time
-        Ts = 24*pointsPerHour
-
-        thresholds = [7.8,14.4,31.2,46.2,54.2]
-
-        if len(thresholds) != nS:
-            raise Exception('thresholds is currently length '+
-                            str(len(thresholds))+' while it needs to be '+
-                            str(nS)+' to match up with pDist')
-
-        data = []
-        v = []
-        label = []
-        centroid = []
-
-        b = [0.0]*nV
-        h0 = [0.0]*nV
-        
-        for s in range(nS):
-            data.append([[],[]])
-            v.append([[],[]])
-            label.append([[],[]])
-            centroid.append([[],[]])
-
-        for s in range(nS):
-            threshold_energy = thresholds[s]
-            for vehicle in self.energy:
-                for day in range(2):
-                    if self.energy[vehicle][day] == 0.0:
-                        continue
-
-                    if self.energy[vehicle][day] < threshold_energy:
-                        nDays = int(threshold_energy/self.energy[vehicle][day])+1
-                        if random.random() > 1/float(nDays):
-                            continue
-
-                    v[s][day].append(vehicle)
-
-                    a = self.endTimes[vehicle][day]
-                    if day == 0:
-                        d = self.startTimes[vehicle][1]+1440
-                    else:
-                        try:
-                            d = self.nextDayStartTimes[vehicle]+1440
-                        except:
-                            d = 1440+deadline*60
-                        
-                    if d > 1440+deadline*60:
-                        d = 1440+deadline*60
-
-                    a = float(pointsPerHour*a/60)
-                    d = float(pointsPerHour*d/60)
-
-                    data[s][day].append([a,d])
-                
-        for s in range(nS):
-            for day in range(2):
-                centroid[s][day], label[s][day], inertia = clst.k_means(data[s][day],k)
-
-                for i in range(k):
-                    for j in range(len(label[s][day])):
-                        if label[s][day][j] != i:
-                            continue
-                        vehicle = v[s][day][j]
-                        en = self.energy[vehicle][day]
-
-                        if en < thresholds[s]:
-                            en = en*(int(thresholds[s]/en)+1)
-                        elif en >= 60:
-                            en = 60
-                            
-                        b[s*2*k+day*k+i] += en*self.sf[self.vehicleRType[vehicle]]
-                        h0[s*2*k+day*k+i] += pMax*self.sf[self.vehicleRType[vehicle]]
-
-        # now set up the optimization                   
-        b += [0.0]*len(b)
-        h = [0.0]*(nV*T)
-        
-        A1 = matrix(0.0,(nV,T*nV)) # ensures right amount of energy provided
-        A2 = matrix(0.0,(nV,T*nV)) # ensures vehicle only charges when avaliable
-
-        # for scenario
-        for s in range(nS):
-            # day 1 
-            for j in range(k):
-                for t in range(Ts):
-                    h[(2*k*s*T)+j*Ts+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*s*T)+j*Ts+t] = 1.0/pointsPerHour
-                    if t < centroid[s][0][j][0] or t > centroid[s][0][j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
-                        
-                for t in range(To):
-                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t+Ts < centroid[s][0][j][0] or t+Ts > centroid[s][0][j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
-            # day 2                    
-            for j in range(k,2*k):
-                for t in range(To):
-                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t < centroid[s][1][j-k][0] or t > centroid[s][1][j-k][1]:
-                        A2[(2*k*s)+j,(2*T*k*s)+k*Ts+j*To+t] = 1.0
-                        
-                for t in range(Ts):
-                    h[(2*k*T*s)+j*Ts+2*k*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0/pointsPerHour
-                    if t+To < centroid[s][1][j-k][0] or t+To > centroid[s][1][j-k][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0
-
-        b = matrix(b)
-        A = sparse([A1,A2])
-
-        G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
-        h = matrix([0.0]*(T*nV)+h)
-
-        q = [] # incorporates base load into the objective function
-        for s in range(nS):
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
-            for i in range(2*k):
-                for t in range(Ts,T):
-                    q.append(pDist[s]*baseLoad[int(t*60/pointsPerHour)])
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoad[int((t+T)*60/pointsPerHour)])
-                
-        q = matrix(q)
-
-        P = matrix(0.0,(nV*T,nV*T))
-        # for each scenario
-        for s in range(nS):
-            # day 1 solo
-            for i in range(k):
-                for j in range(k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+i*Ts+t,(2*k*s*T)+j*Ts+t] = pDist[s]
-            # overlap
-            for i in range(2*k):
-                for j in range(2*k):
-                    for t in range(To):
-                        P[(2*k*s*T)+k*Ts+i*To+t,(2*k*s*T)+k*Ts+j*To+t] = pDist[s]
-
-            # day 2 solo
-            for i in range(k,2*k):
-                for j in range(k,2*k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+2*k*To+i*Ts+t,(2*k*s*T)+2*k*To+j*Ts+t] = pDist[s]
-        
-        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
-        X = sol['x']
-
-        profiles = []
-        for s in range(nS):
-            profiles.append([])
-            for i in range(k):
-                profiles[s].append([0.0]*T)
-                for t in range(Ts):
-                    profiles[s][i][t] = X[(2*k*s*T)+i*Ts+t]
-                for t in range(To):
-                    profiles[s][i][t+Ts] = X[(2*k*T*s)+k*Ts+i*To+t]
-
-            for i in range(k,2*k):
-                profiles[s].append([0.0]*T)
-                for t in range(To):
-                    profiles[s][i][t] = X[(2*T*k*s)+k*Ts+i*To+t]
-                for t in range(Ts):
-                    profiles[s][i][t+To] = X[(2*T*k*s)+i*Ts+t+2*k*To]
-
-        totals = []
-
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for i in range(2*k):
-                for t in range(T):
-                    if i < k:
-                        totals[s][t] += profiles[s][i][t]
-                    else:
-                        totals[s][t+Ts] += profiles[s][i][t]
-        base = []
-        for t in range(T+Ts):
-            base.append(baseLoad[int(t*60/pointsPerHour)])
-            for s in range(nS):
-                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
-                                 
-        ideal = totals
-
-        # now individually apply chosen profiles
-        totals = []
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for day in range(2):
-                for i in range(k):
-                    for j in range(len(label[s][day])):
-                        if label[s][day][j] != i:
-                            continue
-                        vehicle = v[s][day][j]
-                        en = self.energy[vehicle][day]
-
-                        if en < thresholds[s]:
-                            en = en*(int(thresholds[s]/en)+1)
-                        elif en >= 60:
-                            en = 60
-
-                        en = en*self.sf[self.vehicleRType[vehicle]]
-
-                        [a,d] = data[s][day][j]
-                    
-                        p = copy.copy(profiles[s][i+k*day])
-
-                        for t in range(int(a)):
-                            p[t] = 0.0
-                        for t in range(int(d),T):
-                            p[t] = 0.0
-
-                        if sum(p) == 0:
-                            continue
-
-                        sf = en*pointsPerHour/sum(p)
-                        for t in range(T):
-                            p[t] = p[t]*sf
-                            totals[s][t+Ts*day] += p[t]
-                            
-            for t in range(T+Ts):
-                totals[s][t] += baseLoad[int(t*60/pointsPerHour)]
-
-        return [ideal, totals, base]
-        '''
-        return totals
-        '''
-
-    def getStochasticOptimalLoadFlatteningProfile3(self,baseLoads,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pMax=7.0,pointsPerHour=60,
-                                                  deadline=16):
-        
-        '''
-        This one is investigates stochasticity in baseLoad
-        '''
-
-        # chek that pDist is a valid pdf
-        if sum(pDist) != 1:
-            raise Exception('pDist must sum to 1 not '+str(sum(pDist)))        # chek that pDist is a valid pdf
-        if len(pDist) != len(baseLoads):
-            raise Exception('pDist must be '+str(len(baseLoads))+' long')
-
-        # ok so in the new plan we cluster the two days seperately and optimise
-        # considering them independantly
-
-        # first cluster on arrival and departure times
-        self.getNextDayStartTimes()
-
-        k = 3 # number of clusters
-        nS = len(pDist) # number of scenarios for stochastic optimisation
-        nV = k*nS*2
-        
-        T = (24+deadline)*pointsPerHour
-        To = deadline*pointsPerHour # overlap time
-        Ts = 24*pointsPerHour
-
-        thresholds = [0.0]*nS
-
-        if len(thresholds) != nS:
-            raise Exception('thresholds is currently length '+
-                            str(len(thresholds))+' while it needs to be '+
-                            str(nS)+' to match up with pDist')
-
-        data = []
-        v = []
-        label = []
-        centroid = []
-
-        b = [0.0]*nV
-        h0 = [0.0]*nV
-        
-        for s in range(nS):
-            data.append([[],[]])
-            v.append([[],[]])
-            label.append([[],[]])
-            centroid.append([[],[]])
-
-        for s in range(nS):
-            threshold_energy = thresholds[s]
-            for vehicle in self.energy:
-                for day in range(2):
-                    if self.energy[vehicle][day] == 0.0:
-                        continue
-
-                    if self.energy[vehicle][day] < threshold_energy:
-                        nDays = int(threshold_energy/self.energy[vehicle][day])+1
-                        if random.random() > 1/float(nDays):
-                            continue
-
-                    v[s][day].append(vehicle)
-
-                    a = self.endTimes[vehicle][day]
-                    if day == 0:
-                        d = self.startTimes[vehicle][1]+1440
-                    else:
-                        try:
-                            d = self.nextDayStartTimes[vehicle]+1440
-                        except:
-                            d = 1440+deadline*60
-                        
-                    if d > 1440+deadline*60:
-                        d = 1440+deadline*60
-
-                    a = float(pointsPerHour*a/60)
-                    d = float(pointsPerHour*d/60)
-
-                    data[s][day].append([a,d])
-                
-        for s in range(nS):
-            for day in range(2):
-                centroid[s][day], label[s][day], inertia = clst.k_means(data[s][day],k)
-
-                for i in range(k):
-                    for j in range(len(label[s][day])):
-                        if label[s][day][j] != i:
-                            continue
-                        vehicle = v[s][day][j]
-                        en = self.energy[vehicle][day]
-
-                        if en < thresholds[s]:
-                            en = en*(int(thresholds[s]/en)+1)
-                        elif en >= 60:
-                            en = 60
-                            
-                        b[s*2*k+day*k+i] += en*self.sf[self.vehicleRType[vehicle]]
-                        h0[s*2*k+day*k+i] += pMax*self.sf[self.vehicleRType[vehicle]]
-
-        # now set up the optimization                   
-        b += [0.0]*len(b)
-        h = [0.0]*(nV*T)
-        
-        A1 = matrix(0.0,(nV,T*nV)) # ensures right amount of energy provided
-        A2 = matrix(0.0,(nV,T*nV)) # ensures vehicle only charges when avaliable
-
-        # for scenario
-        for s in range(nS):
-            # day 1 
-            for j in range(k):
-                for t in range(Ts):
-                    h[(2*k*s*T)+j*Ts+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*s*T)+j*Ts+t] = 1.0/pointsPerHour
-                    if t < centroid[s][0][j][0] or t > centroid[s][0][j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
-                        
-                for t in range(To):
-                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t+Ts < centroid[s][0][j][0] or t+Ts > centroid[s][0][j][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
-            # day 2                    
-            for j in range(k,2*k):
-                for t in range(To):
-                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
-                    if t < centroid[s][1][j-k][0] or t > centroid[s][1][j-k][1]:
-                        A2[(2*k*s)+j,(2*T*k*s)+k*Ts+j*To+t] = 1.0
-                        
-                for t in range(Ts):
-                    h[(2*k*T*s)+j*Ts+2*k*To+t] = h0[s*2*k+j]
-                    A1[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0/pointsPerHour
-                    if t+To < centroid[s][1][j-k][0] or t+To > centroid[s][1][j-k][1]:
-                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0
-
-        b = matrix(b)
-        A = sparse([A1,A2])
-
-        G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
-        h = matrix([0.0]*(T*nV)+h)
-
-        q = [] # incorporates base load into the objective function
-        for s in range(nS):
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoads[s][int(t*60/pointsPerHour)])
-            for i in range(2*k):
-                for t in range(Ts,T):
-                    q.append(pDist[s]*baseLoads[s][int(t*60/pointsPerHour)])
-            for i in range(k):
-                for t in range(Ts):
-                    q.append(pDist[s]*baseLoads[s][int((t+T)*60/pointsPerHour)])
-                
-        q = matrix(q)
-
-        P = matrix(0.0,(nV*T,nV*T))
-        # for each scenario
-        for s in range(nS):
-            # day 1 solo
-            for i in range(k):
-                for j in range(k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+i*Ts+t,(2*k*s*T)+j*Ts+t] = pDist[s]
-            # overlap
-            for i in range(2*k):
-                for j in range(2*k):
-                    for t in range(To):
-                        P[(2*k*s*T)+k*Ts+i*To+t,(2*k*s*T)+k*Ts+j*To+t] = pDist[s]
-
-            # day 2 solo
-            for i in range(k,2*k):
-                for j in range(k,2*k):
-                    for t in range(Ts):
-                        P[(2*k*s*T)+2*k*To+i*Ts+t,(2*k*s*T)+2*k*To+j*Ts+t] = pDist[s]
-        
-        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
-        X = sol['x']
-
-        profiles = []
-        for s in range(nS):
-            profiles.append([])
-            for i in range(k):
-                profiles[s].append([0.0]*T)
-                for t in range(Ts):
-                    profiles[s][i][t] = X[(2*k*s*T)+i*Ts+t]
-                for t in range(To):
-                    profiles[s][i][t+Ts] = X[(2*k*T*s)+k*Ts+i*To+t]
-
-            for i in range(k,2*k):
-                profiles[s].append([0.0]*T)
-                for t in range(To):
-                    profiles[s][i][t] = X[(2*T*k*s)+k*Ts+i*To+t]
-                for t in range(Ts):
-                    profiles[s][i][t+To] = X[(2*T*k*s)+i*Ts+t+2*k*To]
-
-        totals = []
-
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for i in range(2*k):
-                for t in range(T):
-                    if i < k:
-                        totals[s][t] += profiles[s][i][t]
-                    else:
-                        totals[s][t+Ts] += profiles[s][i][t]
-        base = []
-        for s in range(nS):
-            base.append([])
-        for t in range(T+Ts):
-            for s in range(nS):
-                base[s].append(baseLoads[s][int(t*60/pointsPerHour)])
-                totals[s][t] += baseLoads[s][int(t*60/pointsPerHour)]
-                                 
-        ideal = totals
-
-        # now individually apply chosen profiles
-        totals = []
-        for s in range(nS):
-            totals.append([0.0]*(T+Ts))
-            for day in range(2):
-                for i in range(k):
-                    for j in range(len(label[s][day])):
-                        if label[s][day][j] != i:
-                            continue
-                        vehicle = v[s][day][j]
-                        en = self.energy[vehicle][day]
-
-                        if en < thresholds[s]:
-                            en = en*(int(thresholds[s]/en)+1)
-                        elif en >= 60:
-                            en = 60
-
-                        en = en*self.sf[self.vehicleRType[vehicle]]
-
-                        [a,d] = data[s][day][j]
-                    
-                        p = copy.copy(profiles[s][i+k*day])
-
-                        for t in range(int(a)):
-                            p[t] = 0.0
-                        for t in range(int(d),T):
-                            p[t] = 0.0
-
-                        if sum(p) == 0:
-                            continue
-
-                        sf = en*pointsPerHour/sum(p)
-                        for t in range(T):
-                            p[t] = p[t]*sf
-                            totals[s][t+Ts*day] += p[t]
-                            
-            for t in range(T+Ts):
-                totals[s][t] += baseLoads[s][int(t*60/pointsPerHour)]
-
-        return [ideal, totals, base]
-        '''
-        return totals
-        '''
-
     def getStochasticOptimalLoadFlatteningProfile4(self,baseLoads,thresholds,
                                                    pDist,pMax=7.0,
                                                    pointsPerHour=60,
@@ -1701,7 +824,6 @@ class EnergyPrediction:
         for s in range(nT):
             for day in range(2):
                 centroid[s][day], label[s][day], inertia = clst.k_means(data[s][day],k)
-
                 for i in range(k):
                     for j in range(len(label[s][day])):
                         if label[s][day][j] != i:
@@ -1717,9 +839,9 @@ class EnergyPrediction:
                         b[s*2*k+day*k+i] += en*self.sf[self.vehicleRType[vehicle]]
                         h0[s*2*k+day*k+i] += pMax*self.sf[self.vehicleRType[vehicle]]
         
-        # now set up the optimization                   
+        # now set up the optimization 
+        b = b*nB                  
         b += [0.0]*len(b)
-        b = b*nB
         
         h = [0.0]*(nV*T)
         
@@ -1765,7 +887,7 @@ class EnergyPrediction:
         q = [] # incorporates base load into the objective function
         for si in range(nB):
             for sj in range(nT):
-                s = int(si*nT+sj)
+                #s = int(si*nT+sj)
                 for i in range(k):
                     for t in range(Ts):
                         q.append(pDist[si][sj]*baseLoads[si][int(t*60/pointsPerHour)])
@@ -1831,13 +953,13 @@ class EnergyPrediction:
                     else:
                         totals[s][t+Ts] += profiles[s][i][t]
         base = []
-        for s in range(nS):
+        for s in range(nB):
             base.append([])
         for t in range(T+Ts):
             for si in range(nB):
+                base[si].append(baseLoads[si][int(t*60/pointsPerHour)])
                 for sj in range(nT):
                     s = int(si*nT+sj)
-                    base[s].append(baseLoads[si][int(t*60/pointsPerHour)])
                     totals[s][t] += baseLoads[si][int(t*60/pointsPerHour)]
                                  
         ideal = totals
@@ -1849,20 +971,20 @@ class EnergyPrediction:
         for sj in range(nT):
             for day in range(2):
                 for i in range(k):
-                    for j in range(len(label[s][day])):
-                        if label[s][day][j] != i:
+                    for j in range(len(label[sj][day])):
+                        if label[sj][day][j] != i:
                             continue
-                        vehicle = v[s][day][j]
+                        vehicle = v[sj][day][j]
                         en = self.energy[vehicle][day]
 
-                        if en < thresholds[s]:
-                            en = en*(int(thresholds[s]/en)+1)
+                        if en < thresholds[sj]:
+                            en = en*(int(thresholds[sj]/en)+1)
                         elif en >= 60:
                             en = 60
 
                         en = en*self.sf[self.vehicleRType[vehicle]]
 
-                        [a,d] = data[s][day][j]
+                        [a,d] = data[sj][day][j]
 
                         for si in range(nB):
                             s = int(si*nT+sj)
@@ -1885,7 +1007,7 @@ class EnergyPrediction:
             for sj in range(nT):
                 s = int(si*nT+sj)
                 for t in range(T+Ts):
-                    totals[s][t] += baseLoads[s][int(t*60/pointsPerHour)]
+                    totals[s][t] += baseLoads[si][int(t*60/pointsPerHour)]
 
         return [ideal, totals, base]
         '''
@@ -1949,41 +1071,21 @@ class NationalEnergyPrediction(EnergyPrediction):
                         deadline=deadline)
         
         return [ideal,total]
-
-    def getStochasticOptimalLoadFlatteningProfile(self,pMax=7.0,deadline=16,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pointsPerHour=6):
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,self.baseLoad,
-                                                                           pMax=pMax,
-                                                                           deadline=deadline,
-                                                                           pDist=pDist,
-                                                                           pointsPerHour=pointsPerHour)
-        return ideal
     
-    def getStochasticOptimalLoadFlatteningProfile2(self,pMax=7.0,deadline=16,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pointsPerHour=6):
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile2(self,self.baseLoad,
-                                                                           pMax=pMax,
-                                                                           deadline=deadline,
-                                                                           pDist=pDist,
-                                                                           pointsPerHour=pointsPerHour)
-        return ideal
-    
-    def getStochasticOptimalLoadFlatteningProfile4(self,deadline=16):
+    def getStochasticOptimalLoadFlatteningProfile4(self,deadline=16,pointsPerHour=6):
 
         baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
                                 pointsPerHour=60,returnSingle=False)
 
-        thresholds = [0.0]
-        pDist = [[0.25],[0.5],[0.25]]
+        thresholds = thresholds = [23.9,15.7,6.6]#[20.2,47.6,77.8]
+        
+        pDist = [[0.0625,0.125,0.0625],[0.125,0.25,0.125],[0.0625,0.125,0.0625]]
 
         ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile4(self,
                                                                             baseLoads,
                                                                             thresholds,
-                                                                            pDist)
+                                                                            pDist,
+                                                                            pointsPerHour=pointsPerHour)
         return ideal
 
     def getApproximateLoadFlattening(self,deadline=16,storeIndividuals=False):
@@ -2094,3 +1196,43 @@ class CornwallEnergyPrediction(EnergyPrediction):
                                                                            deadline=deadline,
                                                                            pointsPerHour=pointsPerHour)
         return ideal
+
+    def get(self):
+
+        baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
+                                 pointsPerHour=60,returnSingle=False,
+                                 scale=1349.8/116997.9)
+        
+
+        thresholds = thresholds = [23.9,15.7,6.6]#[20.2,47.6,77.8]
+        
+        pDist = [[0.0625,0.125,0.0625],[0.125,0.25,0.125],[0.0625,0.125,0.0625]]
+
+        p1 = self.allProfiles[0]*3
+        p2 = self.allProfiles[1]*3
+        p3 = self.allProfiles[2]*3
+        p4 = self.allProfiles[3]*3
+        p5 = self.allProfiles[4]*3
+
+        p = []
+        bl = []
+        for i in range(5):
+            p.append([])
+            bl.append([0.0]*len(self.baseLoad))
+
+        for t in range(len(self.baseLoad)):
+            if t%30 == 0:
+                p[0].append(float(p1[int(t/30)]))
+                p[1].append(float(p2[int(t/30)]))
+                p[2].append(float(p3[int(t/30)]))
+                p[3].append(float(p4[int(t/30)]))
+                p[4].append(float(p5[int(t/30)]))
+            else:
+                x1 = int(t/30)
+                x2 = x1+1
+                f = float(t%30)/30
+                p[0].append((1-f)*float(p1[x1])+f*float(p1[x2]))
+                p[1].append((1-f)*float(p2[x1])+f*float(p2[x2]))
+                p[2].append((1-f)*float(p3[x1])+f*float(p3[x2]))
+                p[3].append((1-f)*float(p4[x1])+f*float(p4[x2]))
+                p[4].append((1-f)*float(p5[x1])+f*float(p5[x2]))

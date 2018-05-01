@@ -15,10 +15,11 @@ for i in range(len(d)):
     d[i] += run.baseLoad[i]
     
 plt.figure(1)
-plt.plot(d)
+#plt.plot(d)
 for p in to:
-    plt.plot(t,p)
-plt.plot(run.baseLoad)
+    plt.plot(p)
+for b in ba:
+    plt.plot(b,ls=':')
 plt.show()
 
 
