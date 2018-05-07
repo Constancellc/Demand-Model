@@ -719,7 +719,7 @@ class EnergyPrediction:
                     
                 p = copy.copy(ibase)
                 p = self.approximateApply(p,vehicle,day,a,d,pMax,
-                                          pointsPerHour)
+                                          60)
                 
                 if storeIndividuals == True:
                     if vehicle in self.individuals:

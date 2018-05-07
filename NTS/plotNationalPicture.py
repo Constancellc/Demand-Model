@@ -34,7 +34,7 @@ for month in ['1','4','7','10']:
             smart.append(float(row[4]))
             if plotPsuedo == True:
                 psuedo.append(float(row[5]))
-        
+    plt.figure(1)
     plt.subplot(2,2,plotMonths[month])
     plt.plot(t,base,ls=':',c='g',label='Base Load')
     plt.plot(t,dumb3,label='Uncontrolled Charging 3kW')
@@ -63,5 +63,23 @@ for month in ['1','4','7','10']:
     plt.ylim(0,70)
     plt.title(titles[month],y=0.8)
     plt.grid()
+
+    if month == '1':
+        plt.figure(figsize=(5,4)) # January only
+        plt.rcParams["font.size"] =9
+        plt.plot(t,base,ls=':',c='k',label='Base')
+        plt.plot(t,dumb3,label='Uncontrolled')
+        plt.plot(t,smart,ls='--',label='Optimal')
+        plt.plot(t,psuedo,label='Approximate')
+        plt.ylabel('Power Demand (GW)')
+        plt.xticks(x, my_xticks)
+        plt.xlabel('time')
+        plt.xlim(24,48)
+        #plt.ylim(0,70)
+        plt.legend(ncol=2)
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig('../../Documents/policy-summary.pdf', format='pdf', dpi=1000)
+
 
 plt.show()
