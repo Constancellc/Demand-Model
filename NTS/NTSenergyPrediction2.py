@@ -1014,6 +1014,297 @@ class EnergyPrediction:
         return totals
         '''
 
+    def getStochasticOptimalLoadFlatteningProfile(self,baseLoads,thresholds,
+                                                  bDist,tDist,pMax=7.0,
+                                                  pointsPerHour=60,deadline=16):
+        
+        '''
+        DEAR GOD. OKAY. single stage baseload, multistage charging.
+
+        I'm going to assume independance. 
+        
+        '''
+        nB = len(baseLoads)
+        nT = len(thresholds)
+        nS = int(nB*nT)
+
+        # chek that distributions are valid pdfs
+        if len(bDist) != nB or len(tDist) != nT:
+            raise Exception('bDist must be '+str(nB)+' long and tDist muct be'+
+                            str(nT)+' long.')
+        total = 0
+        for i in range(nB):
+            total += bDist[i]
+        if total != 1:
+            raise Exception('bDist must sum to 1 not '+str(total))
+        
+        total = 0
+        for i in range(nT):
+            total += tDist[i]
+        if total != 1:
+            raise Exception('tDist must sum to 1 not '+str(total))
+
+        # ok so in the new plan we cluster the two days seperately and optimise
+        # considering them independantly
+
+        # first cluster on arrival and departure times
+        self.getNextDayStartTimes()
+
+        k = 3 # number of clusters
+        nV = k*nT*2
+        
+        T = (24+deadline)*pointsPerHour
+        To = deadline*pointsPerHour # overlap time
+        Ts = 24*pointsPerHour
+
+        data = []
+        v = []
+        label = []
+        centroid = []
+
+        b = [0.0]*(k*2*nT)
+        h0 = [0.0]*(k*2*nT)
+        
+        for s in range(nT):
+            data.append([[],[]])
+            v.append([[],[]])
+            label.append([[],[]])
+            centroid.append([[],[]])
+
+        for s in range(nT):
+            threshold_energy = thresholds[s]
+            for vehicle in self.energy:
+                for day in range(2):
+                    if self.energy[vehicle][day] == 0.0:
+                        continue
+
+                    if self.energy[vehicle][day] < threshold_energy:
+                        nDays = int(threshold_energy/self.energy[vehicle][day])+1
+                        if random.random() > 1/float(nDays):
+                            continue
+
+                    v[s][day].append(vehicle)
+
+                    a = self.endTimes[vehicle][day]
+                    if day == 0:
+                        d = self.startTimes[vehicle][1]+1440
+                    else:
+                        try:
+                            d = self.nextDayStartTimes[vehicle]+1440
+                        except:
+                            d = 1440+deadline*60
+                        
+                    if d > 1440+deadline*60:
+                        d = 1440+deadline*60
+
+                    a = float(pointsPerHour*a/60)
+                    d = float(pointsPerHour*d/60)
+
+                    data[s][day].append([a,d])
+                
+        for s in range(nT):
+            for day in range(2):
+                centroid[s][day], label[s][day], inertia = clst.k_means(data[s][day],k)
+                for i in range(k):
+                    for j in range(len(label[s][day])):
+                        if label[s][day][j] != i:
+                            continue
+                        vehicle = v[s][day][j]
+                        en = self.energy[vehicle][day]
+
+                        if en < thresholds[s]:
+                            en = en*(int(thresholds[s]/en)+1)
+                        elif en >= 60:
+                            en = 60
+                            
+                        b[s*2*k+day*k+i] += en*self.sf[self.vehicleRType[vehicle]]
+                        h0[s*2*k+day*k+i] += pMax*self.sf[self.vehicleRType[vehicle]]
+        
+        # now set up the optimization 
+        #b = b*nB                  
+        b += [0.0]*len(b)
+        
+        h = [0.0]*(nV*T)
+        
+        A1 = matrix(0.0,(nV,T*nV)) # ensures right amount of energy provided
+        A2 = matrix(0.0,(nV,T*nV)) # ensures vehicle only charges when avaliable
+
+        # for scenario
+        for s in range(nT):
+            # day 1
+            for j in range(k):
+                for t in range(Ts):
+                    h[(2*k*s*T)+j*Ts+t] = h0[s*2*k+j]
+                    A1[(2*k*s)+j,(2*k*s*T)+j*Ts+t] = 1.0/pointsPerHour
+                    if t < centroid[s][0][j][0] or t > centroid[s][0][j][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+t] = 1.0
+                            
+                for t in range(To):
+                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
+                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
+                    if t+Ts < centroid[s][0][j][0] or t+Ts > centroid[s][0][j][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0
+            # day 2
+            for j in range(k,2*k):
+                for t in range(To):
+                    h[(2*k*T*s)+k*Ts+j*To+t] = h0[s*2*k+j]
+                    A1[(2*k*s)+j,(2*k*T*s)+k*Ts+j*To+t] = 1.0/pointsPerHour
+                    if t < centroid[s][1][j-k][0] or t > centroid[s][1][j-k][1]:
+                        A2[(2*k*s)+j,(2*T*k*s)+k*Ts+j*To+t] = 1.0
+                            
+                for t in range(Ts):
+                    h[(2*k*T*s)+j*Ts+2*k*To+t] = h0[s*2*k+j]
+                    A1[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0/pointsPerHour
+                    if t+To < centroid[s][1][j-k][0] or t+To > centroid[s][1][j-k][1]:
+                        A2[(2*k*s)+j,(2*k*T*s)+j*Ts+2*k*To+t] = 1.0
+
+
+        b = matrix(b)
+        A = sparse([A1,A2])
+        G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
+        h = matrix([0.0]*(T*nV)+h)
+
+        q = [] # incorporates base load into the objective function
+
+        q = [0.0]*(nV*T)
+        for si in range(nT):
+            for sj in range(nB):
+                for i in range(k):
+                    for t in range(Ts):
+                        q[(si*2*k*T)+i*Ts+t] += baseLoads[sj][\
+                            int(t*60/pointsPerHour)]*bDist[sj]*tDist[si]
+
+                    for t in range(To):
+                        q[(2*k*T*si)+k*Ts+i*To+t] += baseLoads[sj][\
+                            int((t+Ts)*60/pointsPerHour)]*bDist[sj]*tDist[si]
+                        
+                for i in range(k,2*k):
+                    for t in range(To):
+                        q[(2*k*T*si)+k*Ts+i*To+t] += baseLoads[sj][\
+                            int((t+Ts)*60/pointsPerHour)]*bDist[sj]*tDist[si]
+                        
+                    for t in range(Ts):
+                        q[(2*k*T*si)+i*Ts+2*k*To+t] += baseLoads[sj][\
+                            int((t+T)*60/pointsPerHour)]*bDist[sj]*tDist[si]
+
+        q = matrix(q)
+        P = matrix(0.0,(nV*T,nV*T))
+        
+        # for each scenario
+        for si in range(nB):
+            for sj in range(nT):
+                # day 1 solo
+                for i in range(k):
+                    for j in range(k):
+                        for t in range(Ts):
+                            P[(2*k*sj*T)+i*Ts+t,
+                              (2*k*sj*T)+j*Ts+t] = bDist[si]*tDist[sj]
+                # overlap
+                for i in range(2*k):
+                    for j in range(2*k):
+                        for t in range(To):
+                            P[(2*k*sj*T)+k*Ts+i*To+t,
+                              (2*k*sj*T)+k*Ts+j*To+t] = bDist[si]*tDist[sj]
+
+                # day 2 solo
+                for i in range(k,2*k):
+                    for j in range(k,2*k):
+                        for t in range(Ts):
+                            P[(2*k*sj*T)+2*k*To+i*Ts+t,
+                              (2*k*sj*T)+2*k*To+j*Ts+t] = bDist[si]*tDist[sj]
+            
+        sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
+        X = sol['x']
+
+        profiles = []
+        for s in range(nT):
+            profiles.append([])
+            for i in range(k):
+                profiles[s].append([0.0]*T)
+                for t in range(Ts):
+                    profiles[s][i][t] = X[(2*k*s*T)+i*Ts+t]
+                for t in range(To):
+                    profiles[s][i][t+Ts] = X[(2*k*T*s)+k*Ts+i*To+t]
+
+            for i in range(k,2*k):
+                profiles[s].append([0.0]*T)
+                for t in range(To):
+                    profiles[s][i][t] = X[(2*T*k*s)+k*Ts+i*To+t]
+                for t in range(Ts):
+                    profiles[s][i][t+To] = X[(2*T*k*s)+i*Ts+t+2*k*To]
+
+        totals = []
+
+        for s in range(nS):
+            totals.append([0.0]*(T+Ts))
+            for i in range(2*k):
+                for t in range(T):
+                    if i < k:
+                        totals[s][t] += profiles[int(s/nB)][i][t]
+                    else:
+                        totals[s][t+Ts] += profiles[int(s/nB)][i][t]
+        base = []
+        for s in range(nB):
+            base.append([])
+        for t in range(T+Ts):
+            for si in range(nB):
+                base[si].append(baseLoads[si][int(t*60/pointsPerHour)])
+                for sj in range(nT):
+                    s = int(sj*nB+si)
+                    totals[s][t] += baseLoads[si][int(t*60/pointsPerHour)]
+                                 
+        ideal = totals
+
+        # now individually apply chosen profiles
+        totals = []
+        for s in range(nS):
+            totals.append([0.0]*(Ts+T))
+        for sj in range(nT):
+            for day in range(2):
+                for i in range(k):
+                    for j in range(len(label[sj][day])):
+                        if label[sj][day][j] != i:
+                            continue
+                        vehicle = v[sj][day][j]
+                        en = self.energy[vehicle][day]
+
+                        if en < thresholds[sj]:
+                            en = en*(int(thresholds[sj]/en)+1)
+                        elif en >= 60:
+                            en = 60
+
+                        en = en*self.sf[self.vehicleRType[vehicle]]
+
+                        [a,d] = data[sj][day][j]
+                        
+                        p = copy.copy(profiles[sj][i+k*day])
+
+                        for t in range(int(a)):
+                            p[t] = 0.0
+                        for t in range(int(d),T):
+                            p[t] = 0.0
+
+                        if sum(p) == 0:
+                            continue
+
+                        sf = en*pointsPerHour/sum(p)
+                        for t in range(T):
+                            p[t] = p[t]*sf
+                            for si in range(nB):
+                                s = int(si*nT+sj)
+                                totals[s][t+Ts*day] += p[t]                            
+
+        for si in range(nB):
+            for sj in range(nT):
+                s = int(si*nT+sj)
+                for t in range(T+Ts):
+                    totals[s][t] += baseLoads[si][int(t*60/pointsPerHour)]
+
+        return [ideal, totals, base]
+        '''
+        return totals
+        '''
+
 
     def testDemandTurnUp(self,pMax,baseLoad,upTime):
 
@@ -1087,6 +1378,23 @@ class NationalEnergyPrediction(EnergyPrediction):
                                                                             pDist,
                                                                             pointsPerHour=pointsPerHour)
         return ideal
+    
+    def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,pointsPerHour=6):
+
+        baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
+                                pointsPerHour=60,returnSingle=False)
+
+        thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
+        tDist = [0.05,0.2,0.5,0.2,0.05]
+        bDist = [0.25,0.5,0.25]
+
+        x = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,
+                                                                       baseLoads,
+                                                                       thresholds,
+                                                                       bDist,
+                                                                       tDist,
+                                                                       pointsPerHour=pointsPerHour)
+        return x
 
     def getApproximateLoadFlattening(self,deadline=16,storeIndividuals=False):
         total = EnergyPrediction.getApproximateLoadFlatteningProfile(self,

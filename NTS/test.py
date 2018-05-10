@@ -4,10 +4,10 @@ from NTSenergyPrediction2 import NationalEnergyPrediction, CornwallEnergyPredict
 from fitDistributions import Inference
 import copy
 
-run = CornwallEnergyPrediction('2','1',solar=True)
+run = NationalEnergyPrediction('2','1')#,solar=True)
 d = run.getDumbCharging(3.5,nHours=16+48)
 
-[op,to,ba] = run.get()
+[op,to,ba] = run.getStochasticOptimalLoadFlatteningProfile()
 
 t = np.linspace(0,len(d),num=len(op[0]))
 

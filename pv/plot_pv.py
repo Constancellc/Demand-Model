@@ -3,17 +3,17 @@ import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 
-day1 = datetime.datetime(2013,01,01)
+day1 = datetime.datetime(2013,1,1)
 data = []
 dataN = []
 
 with open('GBPV_data.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
-    reader.next()
+    next(reader)
     for row in reader:
         date = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),int(row[1][8:10]))
         day = (date-day1).days
-        time = int(row[1][11:13])*2+int(row[1][14:16])/30
+        time = int(int(row[1][11:13])*2+int(row[1][14:16])/30)
         try:
             generation = float(row[2])
             installed = float(row[10])
@@ -31,8 +31,8 @@ for i in range(0,len(data)):
         cmap[data[i][1]][data[i][0]] = data[i][2]
         cmapN[dataN[i][1]][dataN[i][0]] = dataN[i][2]
     except:
-        print data[i]
-        print len(cmap)
+        print(data[i])
+        print(len(cmap))
 
 x = np.linspace(0,1642,num=10)
 x_ticks = ['Jan\n2013','Jul\n2013','Jan\n2014','Jul\n2014','Jan\n2015',

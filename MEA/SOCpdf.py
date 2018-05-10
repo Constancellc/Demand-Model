@@ -52,7 +52,7 @@ i = 0
 lines = []
 text = []
 carry = 0
-for lim in [25,50,25]:
+for lim in [5,20,50,20,5]:
     total = carry
     while total < lim:
         total += pdf[i]
@@ -67,7 +67,7 @@ for lim in [25,50,25]:
 
 text.append(0.5*(lines[-1]+100))
 print(lines)
-s = [25,50,25]   
+s = [5,20,50,20,5]   
 plt.figure(figsize=(5,2))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 8
@@ -90,13 +90,21 @@ plt.show()
 
 av = 0
 for i in range(0,lines[0]):
-    av += pdf[i]*i/25
+    av += pdf[i]*i/5
 print(av)
 av = 0
 for i in range(lines[0],lines[1]):
-    av += pdf[i]*i/50
+    av += pdf[i]*i/20
 print(av)
 av = 0
 for i in range(lines[1],lines[2]):
-    av += pdf[i]*i/25
+    av += pdf[i]*i/50
+print(av)
+av = 0
+for i in range(lines[2],lines[3]):
+    av += pdf[i]*i/20
+print(av)
+av = 0
+for i in range(lines[3],lines[4]):
+    av += pdf[i]*i/5
 print(av)

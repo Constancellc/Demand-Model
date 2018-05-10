@@ -52,6 +52,12 @@ for m in months:
     p7 = []
     p8 = []
     p9 = []
+    p10 = []
+    p11 = []
+    p12 = []
+    p13 = []
+    p14 = []
+    p15 = []
     #pav = []
     tt = 0
 
@@ -76,6 +82,12 @@ for m in months:
             p7.append(float(row[10]))
             p8.append(float(row[11]))
             p9.append(float(row[12]))
+            p10.append(float(row[13]))
+            p11.append(float(row[14]))
+            p12.append(float(row[15]))
+            p13.append(float(row[16]))
+            p14.append(float(row[17]))
+            p15.append(float(row[18]))
             #pav.append(0.05*p1[-1]+0.2*p2[-1]+0.5*p3[-1]+0.2*p4[-1]+0.05*p5[-1])
 
     p1 = scipy.ndimage.filters.gaussian_filter1d(p1,2)
@@ -87,6 +99,12 @@ for m in months:
     p7 = scipy.ndimage.filters.gaussian_filter1d(p7,2)
     p8 = scipy.ndimage.filters.gaussian_filter1d(p8,2)
     p9 = scipy.ndimage.filters.gaussian_filter1d(p9,2)
+    p10 = scipy.ndimage.filters.gaussian_filter1d(p10,2)
+    p11 = scipy.ndimage.filters.gaussian_filter1d(p11,2)
+    p12 = scipy.ndimage.filters.gaussian_filter1d(p12,2)
+    p13 = scipy.ndimage.filters.gaussian_filter1d(p13,2)
+    p14 = scipy.ndimage.filters.gaussian_filter1d(p14,2)
+    p15 = scipy.ndimage.filters.gaussian_filter1d(p15,2)
     
     min1 = []
     max1 = []
@@ -96,7 +114,7 @@ for m in months:
     for i in range(len(base1)):
         lowest = 100
         highest = 0
-        for p in [p1,p2,p3,p4,p5,p6,p7,p8,p9]:
+        for p in [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15]:
             if p[i] < lowest:
                 lowest = p[i]
             if p[i] > highest:
@@ -107,7 +125,7 @@ for m in months:
         
         lowest = 100
         highest = 0
-        for p in [p4,p5,p6]:
+        for p in [p8,p9,p10]:
             if p[i] < lowest:
                 lowest = p[i]
             if p[i] > highest:
@@ -120,7 +138,7 @@ for m in months:
     plt.plot(t,base3,'k',ls=':')
     plt.fill_between(t,d1,d3,color='g',alpha=0.1)
     plt.plot(t,d2,color='g',label='Uncontrolled')
-    plt.plot(t,p5,color='#0d50bc',label='Controlled')
+    plt.plot(t,p8,color='#0d50bc',label='Controlled')
     plt.fill_between(t,min1,max1,color='b',alpha=0.1)
     plt.fill_between(t,min2,max2,color='#7fadff')
 
