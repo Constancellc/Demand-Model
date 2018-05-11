@@ -1405,13 +1405,12 @@ class NationalEnergyPrediction(EnergyPrediction):
     def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,pointsPerHour=6):
 
         baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
-                                pointsPerHour=60,returnSingle=True)
-        baseLoads = [baseLoads,baseLoads,baseLoads]
-        #thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
-        #tDist = [0.05,0.2,0.5,0.2,0.05]
-        thresholds = [0.0]
-        tDist = [1.0]
-        bDist = [0.25,0.5,0.25]#0.25,0.5,0.25]
+                                pointsPerHour=60,returnSingle=False)
+
+        thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
+        tDist = [0.05,0.2,0.5,0.2,0.05]
+        
+        bDist = [0.25,0.5,0.25]
 
         x = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,
                                                                        baseLoads,
