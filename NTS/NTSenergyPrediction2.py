@@ -1,4 +1,4 @@
-# packages
+8# packages
 import csv
 import random
 import copy
@@ -1163,6 +1163,28 @@ class EnergyPrediction:
         A = sparse([A1,A2])
         G = sparse([spdiag([-1]*(T*nV)),spdiag([1]*(T*nV))])
         h = matrix([0.0]*(T*nV)+h)
+        
+        q0 = [0.0]*(2*k*T)
+        for s in range(nB):
+            for i in range(k):
+                for t in range(Ts):
+                    q0[i*Ts+t] += baseLoads[s][int(t*60/pointsPerHour)]*bDist[s]
+                for t in range(To):
+                    q0[k*Ts+i*To+t] += baseLoads[s][\
+                        int((t+Ts)*60/pointsPerHour)]*bDist[s]
+            for i in range(k,2*k):
+                for t in range(To):
+                    q0[k*Ts+i*To+t] += baseLoads[s][\
+                        int((t+Ts)*60/pointsPerHour)]*bDist[s]
+                for t in range(Ts):
+                    q0[i*Ts+2*k*To+t] += baseLoads[s][\
+                        int((t+T)*60/pointsPerHour)]*bDist[s]
+        q = []
+        for s in range(nT):
+            for i in range(len(q0)):
+                q.append(q0[i]*tDist[s])
+
+        '''
 
         q = [] # incorporates base load into the objective function
 
@@ -1186,6 +1208,7 @@ class EnergyPrediction:
                     for t in range(Ts):
                         q[(2*k*T*si)+i*Ts+2*k*To+t] += baseLoads[sj][\
                             int((t+T)*60/pointsPerHour)]*bDist[sj]*tDist[si]
+        '''
 
         q = matrix(q)
         P = matrix(0.0,(nV*T,nV*T))
@@ -1198,20 +1221,20 @@ class EnergyPrediction:
                     for j in range(k):
                         for t in range(Ts):
                             P[(2*k*sj*T)+i*Ts+t,
-                              (2*k*sj*T)+j*Ts+t] = bDist[si]*tDist[sj]
+                              (2*k*sj*T)+j*Ts+t] = tDist[sj]
                 # overlap
                 for i in range(2*k):
                     for j in range(2*k):
                         for t in range(To):
                             P[(2*k*sj*T)+k*Ts+i*To+t,
-                              (2*k*sj*T)+k*Ts+j*To+t] = bDist[si]*tDist[sj]
+                              (2*k*sj*T)+k*Ts+j*To+t] = tDist[sj]
 
                 # day 2 solo
                 for i in range(k,2*k):
                     for j in range(k,2*k):
                         for t in range(Ts):
                             P[(2*k*sj*T)+2*k*To+i*Ts+t,
-                              (2*k*sj*T)+2*k*To+j*Ts+t] = bDist[si]*tDist[sj]
+                              (2*k*sj*T)+2*k*To+j*Ts+t] = tDist[sj]
             
         sol = solvers.qp(P,q,G,h,A,b) # solve quadratic program
         X = sol['x']
@@ -1382,11 +1405,13 @@ class NationalEnergyPrediction(EnergyPrediction):
     def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,pointsPerHour=6):
 
         baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
-                                pointsPerHour=60,returnSingle=False)
-
-        thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
-        tDist = [0.05,0.2,0.5,0.2,0.05]
-        bDist = [0.25,0.5,0.25]
+                                pointsPerHour=60,returnSingle=True)
+        baseLoads = [baseLoads,baseLoads,baseLoads]
+        #thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
+        #tDist = [0.05,0.2,0.5,0.2,0.05]
+        thresholds = [0.0]
+        tDist = [1.0]
+        bDist = [0.25,0.5,0.25]#0.25,0.5,0.25]
 
         x = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,
                                                                        baseLoads,
