@@ -13,6 +13,7 @@ from cvxopt import matrix, spdiag, solvers, sparse
 
 data = []
 threshold = 50
+eff = 0.9
 
 with open('../../Documents/simulation_results/eynsham.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -25,6 +26,7 @@ with open('../../Documents/simulation_results/eynsham.csv','rU') as csvfile:
         e = float(row[2])
         if e > threshold:
             e = float(row[3])
+        e = e/eff
         data.append([a,d,e])
         
 cP = 3.5 # kW
@@ -61,7 +63,20 @@ for t in range(1440):
     up.append(x[int(0.975*len(x))])
     lo.append(x[int(0.025*len(x))])
 
+x_ticks = []
+x = []
+for h in range(4,24,4):
+    if h < 10:
+        x_ticks.append('0'+str(h)+':00')
+    else:
+        x_ticks.append(str(h)+':00')
+    x.append(h*60)
 plt.figure(1)
+plt.ylabel('Power (kW)')
 plt.plot(range(1440),av,c='b')
+plt.xlim(0,1440)
+plt.xticks(x,x_ticks)
 plt.fill_between(range(1440),lo,up,color='b',alpha=0.2)
+plt.ylim(0,1.1*max(up))
+plt.grid()
 plt.show()
