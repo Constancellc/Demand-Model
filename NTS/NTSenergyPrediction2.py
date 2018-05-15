@@ -1407,7 +1407,7 @@ class NationalEnergyPrediction(EnergyPrediction):
         baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
                                 pointsPerHour=60,returnSingle=False)
 
-        thresholds = thresholds = [27.1,23.2,15.7,7.4,3.8]
+        thresholds = thresholds = [54.2,46.4,31.4,14.8,7.6]#[27.1,23.2,15.7,7.4,3.8]
         tDist = [0.05,0.2,0.5,0.2,0.05]
         
         bDist = [0.25,0.5,0.25]
@@ -1438,34 +1438,36 @@ class CornwallEnergyPrediction(EnergyPrediction):
         self.baseLoad = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
                                      pointsPerHour=60,returnSingle=True,
                                      scale=1349.8/116997.9)
-
         if solar == True:
             ms = {'1':'jan','2':'feb','3':'mar','4':'apr','5':'may','6':'jun',
-             '7':'jul','8':'aug','9':'sep','10':'oct','11':'nov','12':'dec'}
+                  '7':'jul','8':'aug','9':'sep','10':'oct','11':'nov','12':'dec'}
             self.allProfiles = [] 
             with open('../../Documents/cornwall-pv-predictions/av-'+ms[month]+
-                      '.csv','rU') as csvfile:
+                      '-net.csv','rU') as csvfile:
                 reader = csv.reader(csvfile)
                 for row in reader:
                     self.allProfiles.append(row)
-            median = self.allProfiles[2]
+                    
             t_int = 30 # data half hourly
-            
-            # repeat profile as necessary
-            median = median*3
 
-            newBase = [0.0]*len(self.baseLoad)
-            # interpolate and remove from base load
-            for i in range(len(self.baseLoad)):
-                p = int(i/t_int)
-                if i % t_int == 0:
-                    newBase[i] = self.baseLoad[i]-float(median[p])
-                else:
-                    f = float(i%t_int)/t_int
-                    newBase[i] = self.baseLoad[i]-(1-f)*float(median[p])-\
-                                 f*float(median[p+1])
+            for j in range(len(self.allProfiles)):
+                profile = self.allProfiles[j]
+                # repeat profile as necessary
+                profile = profile*3
 
-            self.baseLoad = newBase
+                new = [0.0]*len(self.baseLoad)
+                # interpolate and remove from base load
+                for i in range(len(self.baseLoad)):
+                    p = int(i/t_int)
+                    if i % t_int == 0:
+                        new[i] = float(profile[p])
+                    else:
+                        f = float(i%t_int)/t_int
+                        new[i] = (1-f)*float(profile[p])+f*float(profile[p+1])
+
+                self.allProfiles[j] = new
+
+            self.baseLoad = self.allProfiles[2]
                 
 
     def getOptimalLoadFlattening(self,pMax,pointsPerHour=10,deadline=16):
@@ -1528,6 +1530,31 @@ class CornwallEnergyPrediction(EnergyPrediction):
                                                                            deadline=deadline,
                                                                            pointsPerHour=pointsPerHour)
         return ideal
+
+    def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,solar=True,
+                                                  pointsPerHour=6):
+        if self.solar == False:
+            baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
+                                     pointsPerHour=60,returnSingle=False,
+                                     scale=1349.8/116997.9)
+            bDist = [0.25,0.5,0.25]
+            
+            thresholds = [54.2,46.4,31.4,14.8,7.6]
+            tDist = [0.05,0.2,0.5,0.2,0.05]
+        else:
+            baseLoads = self.allProfiles
+            bDist = [0.05,0.2,0.5,0.2,0.05]
+
+            thresholds = [23.9,15.7,6.6]
+            tDist = [0.25,0.5,0.25]
+
+        x = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile(self,
+                                                                       baseLoads,
+                                                                       thresholds,
+                                                                       bDist,
+                                                                       tDist,
+                                                                       pointsPerHour=pointsPerHour)
+        return x
 
     def get(self,deadline=16,pointsPerHour=6):
 

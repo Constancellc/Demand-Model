@@ -125,7 +125,7 @@ for m in months:
         
         lowest = 100
         highest = 0
-        for p in [p8,p9,p10]:
+        for p in [p6,p7,p8,p9,p10]:
             if p[i] < lowest:
                 lowest = p[i]
             if p[i] > highest:
@@ -134,13 +134,51 @@ for m in months:
         min2.append(lowest)
         max2.append(highest)
     #plt.subplot(1,2,1)
-    plt.plot(t,base1,'k',ls=':',label='Base load')
-    plt.plot(t,base3,'k',ls=':')
-    plt.fill_between(t,d1,d3,color='g',alpha=0.1)
-    plt.plot(t,d2,color='g',label='Uncontrolled')
+    plt.plot(t,base1,'k',ls=':',label='Min Base')
+    plt.plot(t,base3,'k',ls=':',label='Max Base')
+    plt.fill_between(t,d1,d3,color='#bfefc6')
+    plt.plot(t,d2,color='#45a853',label='Uncontrolled')
     plt.plot(t,p8,color='#0d50bc',label='Controlled')
-    plt.fill_between(t,min1,max1,color='b',alpha=0.1)
-    plt.fill_between(t,min2,max2,color='#7fadff')
+    plt.fill_between(t,min1,max1,color='#b7d2ff')
+
+    #calculating overlap
+    
+    t1 = []
+    u = []
+    l = []
+    for tt in range(24*6,42*6):
+        if d1[tt] > max1[tt] or d3[tt] < min1[tt]:
+            continue
+        t1.append(tt*10)
+        if d3[tt] > max1[tt]:
+            u.append(max1[tt])
+        else:
+            u.append(d3[tt])
+        if d1[tt] < min1[tt]:
+            l.append(min1[tt])
+        else:
+            l.append(d1[tt])
+        
+    plt.fill_between(t1,l,u,color='#81c6ba')
+    
+    t2 = []
+    u2 = []
+    l2 = []
+    for tt in range(42*6,48*6):
+        if d1[tt] > max1[tt] or d3[tt] < min1[tt]:
+            continue
+        t2.append(tt*10)
+        if d3[tt] > max1[tt]:
+            u2.append(max1[tt])
+        else:
+            u2.append(d3[tt])
+        if d1[tt] < min1[tt]:
+            l2.append(min1[tt])
+        else:
+            l2.append(d1[tt])
+        
+    plt.fill_between(t2,l2,u2,color='#81c6ba')
+    plt.fill_between(t,min2,max2,color='#6199f9')
 
     x = np.linspace(26*60,46*60,num=6)
     x_ticks = ['02:00','08:00','12:00','16:00','18:00','22:00']
@@ -152,9 +190,9 @@ for m in months:
     if n == 2 or n == 4:
         plt.ylabel('Power Demand (GW)')
 
-    if n == 5:
-        plt.legend(loc=8)
+    if n == 4:
+        plt.legend(loc=2)
 
 plt.tight_layout()
-#plt.savefig('../../Dropbox/papers/smart-charging/national.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/papers/smart-charging/national.eps', format='eps', dpi=1000)
 plt.show()
