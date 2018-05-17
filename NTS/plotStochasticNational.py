@@ -178,7 +178,7 @@ for m in months:
             l2.append(d1[tt])
         
     plt.fill_between(t2,l2,u2,color='#81c6ba')
-    plt.fill_between(t,min2,max2,color='#6199f9')
+    plt.fill_between(t,min2,max2,color='#b56bff')#6199f9')
 
     x = np.linspace(26*60,46*60,num=6)
     x_ticks = ['02:00','08:00','12:00','16:00','18:00','22:00']

@@ -88,7 +88,7 @@ for m in months:
     max2 = [0.0]*len(t)
 
     for tt in range(len(p1)):
-        for p in [p7,p8,p9,p10]:
+        for p in [p6,p7,p8,p9,p10]:
             if p[tt] > max1[tt]:
                 max1[tt] = p[tt]
             if p[tt] < min1[tt]:
