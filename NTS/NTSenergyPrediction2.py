@@ -1386,21 +1386,6 @@ class NationalEnergyPrediction(EnergyPrediction):
         
         return [ideal,total]
     
-    def getStochasticOptimalLoadFlatteningProfile4(self,deadline=16,pointsPerHour=6):
-
-        baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
-                                pointsPerHour=60,returnSingle=False)
-
-        thresholds = thresholds = [23.9,15.7,6.6]#[20.2,47.6,77.8]
-        
-        pDist = [[0.0625,0.125,0.0625],[0.125,0.25,0.125],[0.0625,0.125,0.0625]]
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile4(self,
-                                                                            baseLoads,
-                                                                            thresholds,
-                                                                            pDist,
-                                                                            pointsPerHour=pointsPerHour)
-        return ideal
     
     def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,pointsPerHour=6):
 
@@ -1477,60 +1462,6 @@ class CornwallEnergyPrediction(EnergyPrediction):
         
         return [ideal,total]
             
-    def getStochasticOptimalLoadFlatteningProfile2(self,pMax=7.0,deadline=16,
-                                                  pDist=[0.05,0.2,0.5,0.2,0.05],
-                                                  pointsPerHour=6):
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile2(self,self.baseLoad,
-                                                                           pMax=pMax,
-                                                                           deadline=deadline,
-                                                                           pDist=pDist,
-                                                                           pointsPerHour=pointsPerHour)
-        return ideal
-            
-    def getStochasticOptimalLoadFlatteningProfile3(self,pMax=7.0,deadline=16,
-                                                  pointsPerHour=6):
-
-        p1 = self.allProfiles[0]*3
-        p2 = self.allProfiles[1]*3
-        p3 = self.allProfiles[2]*3
-        p4 = self.allProfiles[3]*3
-        p5 = self.allProfiles[4]*3
-
-        p = []
-        bl = []
-        for i in range(5):
-            p.append([])
-            bl.append([0.0]*len(self.baseLoad))
-
-        for t in range(len(self.baseLoad)):
-            if t%30 == 0:
-                p[0].append(float(p1[int(t/30)]))
-                p[1].append(float(p2[int(t/30)]))
-                p[2].append(float(p3[int(t/30)]))
-                p[3].append(float(p4[int(t/30)]))
-                p[4].append(float(p5[int(t/30)]))
-            else:
-                x1 = int(t/30)
-                x2 = x1+1
-                f = float(t%30)/30
-                p[0].append((1-f)*float(p1[x1])+f*float(p1[x2]))
-                p[1].append((1-f)*float(p2[x1])+f*float(p2[x2]))
-                p[2].append((1-f)*float(p3[x1])+f*float(p3[x2]))
-                p[3].append((1-f)*float(p4[x1])+f*float(p4[x2]))
-                p[4].append((1-f)*float(p5[x1])+f*float(p5[x2]))
-
-        for t in range(len(self.baseLoad)):
-            for i in range(5):
-                bl[i][t] += self.baseLoad[t] - p[i][t] + p[2][t]
-
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile3(self,bl,
-                                                                           pMax=pMax,
-                                                                           deadline=deadline,
-                                                                           pointsPerHour=pointsPerHour)
-        return ideal
-
     def getStochasticOptimalLoadFlatteningProfile(self,deadline=16,solar=True,
                                                   pointsPerHour=6):
         if self.solar == False:
@@ -1556,39 +1487,3 @@ class CornwallEnergyPrediction(EnergyPrediction):
                                                                        pointsPerHour=pointsPerHour)
         return x
 
-    def get(self,deadline=16,pointsPerHour=6):
-
-        baseLoads = getBaseLoad2(self.day,self.month,48+deadline,unit='k',
-                                 pointsPerHour=60,returnSingle=False,
-                                 scale=1349.8/116997.9)
-        
-
-        thresholds = thresholds = [23.9,15.7,6.6]#[20.2,47.6,77.8]
-        
-        pDist = [[0.0625,0.125,0.0625],[0.125,0.25,0.125],[0.0625,0.125,0.0625]]
-
-        p1 = self.allProfiles[0]*3
-        p2 = self.allProfiles[1]*3
-        p3 = self.allProfiles[2]*3
-        p4 = self.allProfiles[3]*3
-        p5 = self.allProfiles[4]*3
-
-        for t in range(len(self.baseLoad)):
-            if t%30 == 0:
-                baseLoads[0] -= float(p5[int(t/30)])
-                baseLoads[1] -= float(p3[int(t/30)])
-                baseLoads[2] -= float(p1[int(t/30)])
-            else:
-                x1 = int(t/30)
-                x2 = x1+1
-                f = float(t%30)/30
-                baseLoads[0] -= float(p5[x1])+f*float(p5[x2])
-                baseLoads[1] -= float(p3[x1])+f*float(p3[x2])
-                baseLoads[2] -= float(p1[x1])+f*float(p1[x2])
-
-        ideal = EnergyPrediction.getStochasticOptimalLoadFlatteningProfile4(self,
-                                                                            baseLoads,
-                                                                            thresholds,
-                                                                            pDist,
-                                                                            pointsPerHour=pointsPerHour)
-        return ideal
