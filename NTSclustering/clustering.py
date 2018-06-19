@@ -145,6 +145,19 @@ class Cluster:
 
         return int(totalDist*maxScale/nVehicles)
 
+    def distance_pdf(self,maxScale,scaleMax=200):
+
+        pdf = [0.0]*scaleMax
+        nVehicles = len(self.points)
+
+        for i in self.points:
+            d = int(sum(np.array(self.points[i]))*maxScale)
+            if d >= scaleMax:
+                d = scaleMax-1
+            pdf[d] += 1.0/len(self.points)
+
+        return pdf
+
     def get_sum_of_squares(self):
 
         total = 0.0

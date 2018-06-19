@@ -4,7 +4,7 @@ import random
 import numpy as np
 import copy
 from clustering import Cluster, ClusteringExercise
-
+import scipy.ndimage
 
 
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
@@ -183,8 +183,9 @@ n = 1
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
 locs = {1:[2.5,-0.4],2:[1.3,-0.6],3:[0.1,-0.8],4:[2.5,0.2],5:[1.3,0.0]}
-
+pdfs = {}
 for label in CE.clusters:
+    pdfs[label] = CE.clusters[label].distance_pdf(maxWDist,200)
     plt.subplot(2,3,n)
 
     mean = copy.copy(CE.clusters[label].mean)
@@ -295,5 +296,31 @@ plt.legend()
 plt.grid()
 plt.xlabel('Cluster #')
 plt.ylabel('Probability')
+
+plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '10'
+for label in pdfs:
+    plt.subplot(2,3,int(label)+1)
+
+    pdf = pdfs[label]
+    pdf = scipy.ndimage.filters.gaussian_filter1d(pdf,5)
+    plt.title(str(int(label)+1)+'\n('+str(round(100*sum(pdf[:85]),2))+'%)',y=0.65)
+    plt.bar(np.arange(85),pdf[:85],width=1,color='b',label='< 85')
+    plt.bar(np.arange(85,200),pdf[85:],width=1,color='r',label='> 85')
+    plt.xlim(0,150)
+    plt.ylim(0,0.06)
+    if label in ['3','4']:
+        plt.xlabel('Distance (miles)')
+    if label in ['0','3']:
+        plt.ylabel('Probability (%)')
+        plt.yticks([0.02,0.04,0.06],['2','4','6'])
+    else:
+        plt.yticks([0.02,0.04,0.06],['','',''])
+                   
+    if label == '0':
+        plt.legend(loc=[2.5,-0.7])
+    plt.grid()
+    
 
 plt.show()
