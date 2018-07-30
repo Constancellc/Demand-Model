@@ -99,7 +99,7 @@ for vehicle in usage:
     x = []
     y = []
 
-    for day in range(earliest,latest+1):
+    for day in range(earliest+1,latest):
         try:
             x += usage[vehicle][day]
         except:

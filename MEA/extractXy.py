@@ -57,19 +57,30 @@ for file in obs:
             v.append(float(row[0]))
             c.append(float(row[1]))
 
+    nDays = int(len(v)/48)
+
+    for d in range(nDays-1):
+        if sum(v[d*48:d*48+48]) == 0:
+            continue
+        data.append(v[d*48:d*48+48]+c[d*48+24:d*48+72])
+        '''
+
     for t in range(48,len(v)):
         if sum(v[t-48:t]) == 0:
             continue
         data.append(v[t-48:t]+c[t-48:t])
+        '''
 
 random.shuffle(data)
+print(len(data))
+data = data[:10000] # save yo storage space
 
 with open(stem+'X.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for row in data:
-        writer.writerow(row[:-1])
+        writer.writerow(row[:48])
         
 with open(stem+'y.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for row in data:
-        writer.writerow([row[-1]])
+        writer.writerow(row[48:])
