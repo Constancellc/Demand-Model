@@ -44,7 +44,7 @@ with open('austin-sun.csv','rU') as csvfile:
 
 profiles = {}
           
-with open(stem+'jan18_2.csv','rU') as csvfile:
+with open(stem+'feb18_3.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:

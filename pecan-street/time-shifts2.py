@@ -69,7 +69,7 @@ with open('austin-wind.csv','rU') as csvfile:
 
 profiles = {}
           
-with open(stem+'jan18_2.csv','rU') as csvfile:
+with open(stem+'jan18_1.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
@@ -146,29 +146,37 @@ def cc(x,y,maxShift=60):
     for i in range(len(res)):
         res[i] = res[i]/Sn
 
+    if max(res) < 0.009:
+        return '-'
+
+    else:
+        best = None
+        highest = 0
+        
+        for i in range(len(res)):
+            if res[i] > highest:
+                highest = res[i]
+                best = i
+
+        return str(best-60)+'('+str(round(highest*100,2))+')'
+
     return res
 
-users = []
-for user in profiles[11]:
-    if len(users) < 2:
-        users.append(user)
-
-
-plt.figure()
-n = 1
 for day in profiles:
-    try:
-        x = profiles[day][users[0]]
-        y = profiles[day][users[1]]
-    except:
-        continue
-    plt.subplot(3,3,n)
-    n += 1
+    users = []
+    for user in profiles[day]:
+        users.append(user)
+    corr = []
+    for i in range(len(users)):
+        corr.append([0.0]*len(users))
+    for i in range(len(users)):
+        for j in range(i):
+            d = cc(profiles[day][users[i]],profiles[day][users[j]])
+            corr[i][j] = d
+            corr[j][i] = d
 
-    res = cc(x,y)
-    plt.plot(res)
-    plt.ylim(min(res),0.011)
-    plt.plot([60,60],[0,1],'r',ls='--')
-    plt.title(wind[day][1],y=0.8)
-
-plt.show()
+    with open('shifts/'+str(day0+datetime.timedelta(day))[:10]+'.csv','w') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['']+users)
+        for i in range(len(users)):
+            writer.writerow([users[i]]+corr[i])

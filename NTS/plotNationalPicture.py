@@ -5,7 +5,7 @@ import csv
 
 resultsStem = '../../Documents/simulation_results/NTS/national/wed/'
 
-plotPsuedo = True
+plotPsuedo = False
 plot7 = True
 
 plt.figure(1)
