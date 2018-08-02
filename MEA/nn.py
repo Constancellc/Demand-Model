@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 
 stem = '../../Documents/My_Electric_avenue_Technical_Data/training/'
@@ -13,7 +14,7 @@ with open(stem+'X.csv','rU') as csvfile:
             p.append(float(row[i]))
         X.append(p)
 xPredicted = np.array([X[-1]])
-X = np.array(X[:10])
+X = np.array(X[:20000])
 
 
 y = []
@@ -24,33 +25,22 @@ with open(stem+'y.csv','rU') as csvfile:
         for i in range(len(row)):
             p.append(float(row[i]))
         y.append(p)
-y = np.array(y[:10])
-print(X)
-
-'''
-X = np.array(([2, 9], [1, 5], [3, 6]), dtype=float)
-
-y = np.array(([92], [100], [89]), dtype=float)
-
-xPredicted = np.array(([4, 8]), dtype=float)
-'''
+yTrue = np.array(y[-1])
+y = np.array(y[:20000])
 
 # scale units
-X = normalize(X, axis=0, norm='max')
-'''
-X = X / np.amax(X, axis=0)  # maximum of X array
-print(np.amax(X, axis=1))
-xPredicted = xPredicted / np.amax(
-    xPredicted)#axis=0)  # maximum of xPredicted (our input data for the prediction)
-#y = y / 100  # max test score is 100
-'''
-print(X)
+X = normalize(X, axis=1, norm='max')
+xPredicted = xPredicted / np.amax(xPredicted)
+    
+
+
 class Neural_Network(object):
     def __init__(self):
         #parameters
         self.inputSize = 48
         self.outputSize = 48
-        self.hiddenSize = 3
+        self.hiddenSize = 12
+        
 
         #weights
         self.W1 = np.random.randn(
@@ -109,10 +99,17 @@ class Neural_Network(object):
         print("Predicted data based on trained weights: ")
         print("Input (scaled): \n" + str(xPredicted))
         print("Output: \n" + str(self.forward(xPredicted)))
+        plt.figure()
+        plt.plot(range(48),xPredicted[0])
+        yP = self.forward(xPredicted)[0]
+        yP = yP / np.amax(yP)
+        plt.plot(range(24,72),yP)
+        plt.plot(range(24,72),yTrue)
+        plt.show()
 
 
 NN = Neural_Network()
-for i in range(10000):  # trains the NN 1,000 times
+for i in range(1000):  # trains the NN 100,000 times
     '''
     print(" #" + str(i) + "\n")
     print("Input (scaled): \n" + str(X))

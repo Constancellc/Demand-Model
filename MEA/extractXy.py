@@ -60,7 +60,9 @@ for file in obs:
     nDays = int(len(v)/48)
 
     for d in range(nDays-1):
-        if sum(v[d*48:d*48+48]) == 0:
+        if sum(v[d*48:d*48+48]) == 0: # skip if no driving 
+            continue
+        if sum(c[d*48+24:d*48+72]) == 0: # skip if no charging
             continue
         data.append(v[d*48:d*48+48]+c[d*48+24:d*48+72])
         '''
@@ -73,7 +75,7 @@ for file in obs:
 
 random.shuffle(data)
 print(len(data))
-data = data[:10000] # save yo storage space
+#data = data[:10000] # save yo storage space
 
 with open(stem+'X.csv','w') as csvfile:
     writer = csv.writer(csvfile)
