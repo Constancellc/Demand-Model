@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import numpy.linalg as lin
+from scipy.optimize import minimize
 import random
 
 class K_SE():
@@ -55,6 +56,7 @@ class K_mult_SE():
         #self.y1 = y1
         #self.y2 = y2
         self.K = self.calculate(X,X)
+        print(self.K)
 
     def calculate(self,a,b):
         self.K0 = K_SE(self.X,None,1,self.l).calculate(a,b)
@@ -65,11 +67,11 @@ class K_mult_SE():
             axis=1)),axis=0)
         return K
 
-    def updateHypers(self,x):
-        self.h1 = x[0]
-        self.h2 = x[1]
-        self.alpha = x[2]
-        self.l = x[4]
+    def updateHypers(self,theta):
+        self.h1 = theta[0]
+        self.h2 = theta[1]
+        self.alpha = theta[2]
+        self.l = theta[3]
         self.K = self.calculate(self.X,self.X)
 
     def lInv(self,A,b):
@@ -83,12 +85,40 @@ class K_mult_SE():
         K = self.K0*self.h2*self.h2
         return np.matmul(K_,self.lInv(K,y1))
 
-n = 4
+    def f(self,theta):
+        self.updateHypers(theta)
+        f = np.log(lin.det(self.K))
+        for pt in self.y:
+            d = pt
+            f += np.matmul(d.T,self.lInv(self.K,d))
+
+        return f
+
+    def g(self,theta):
+        g = [0.0]*len(theta)
+
+    def learnHypers(self,y):
+        # it is assumed that X is the same for all training examples so y is
+        # a list of arrays containing the training data points
+        self.y = y
+        theta = minimize(self.f,[0.5]*4,bounds=[[0,None],[0,None],[0,None],
+                                                [-1,1]])
+        print(theta)
+        self.updateHypers(theta['x'])        
+
+n = 2
 x = np.array(range(n))
-y = np.zeros((n,1))
+Y = []
+for j in range(3):
+    p = np.zeros((2*n,1))
+    for i in range(n*2):
+        p[i] = random.random()
+    Y.append(p)
+test = K_mult_SE(x,1,2,1,0.3)
+test.learnHypers(Y)
+y = np.zeros(n)
 for i in range(n):
     y[i] = random.random()
 print(y)
-test = K_mult_SE(x,1,2,1,0.3)
 print(test.predict1given2(y))
     
