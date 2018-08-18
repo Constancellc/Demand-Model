@@ -118,8 +118,8 @@ for vehicle in weProfiles:
 
     
 data = []
-for vehicle in wProfiles:
-    data.append(wProfiles[vehicle])
+for vehicle in weProfiles:
+    data.append(weProfiles[vehicle])
 
 random.shuffle(data)
 
@@ -151,7 +151,7 @@ for k in range(2,11):
     plt.subplot(3,4,k-1)
 
     CE.k_means(k)
-    css.append(CE.get_dist_closest_centroids())
+    css.append(CE.get_sum_of_squares())
     #'''
     for label in CE.clusters:
         plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
