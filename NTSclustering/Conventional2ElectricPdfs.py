@@ -82,6 +82,13 @@ with open('clusterPdf.csv','w') as csvfile:
     for i in range(5):
         writer.writerow([i+1,MEAtotal[i],NTStotal[i]])
 
+
+with open('clusterPdfWE.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Cluster','MEA','NTS'])
+    for i in range(5):
+        writer.writerow([i+1,MEAtotal2[i],NTStotal2[i]])
+
 # now we need to get the individual cluster start of charging pdfs
 chargingPdf = []
 chargingPdfWE = []
@@ -103,7 +110,7 @@ with open(data2,'rU') as csvfile:
             cls = MEA2
         
         start = int(int(row[2])/30)
-        if start > 47:
+        if start >= 48:
             start -= 48
 
         try:
@@ -161,7 +168,7 @@ for i in range(5):
         plt.xticks(x,x_ticks)
     n += 1
 plt.tight_layout()
-#plt.show()
+plt.show()
 
 # now let's store the individual pdf
 with open('chargePdfW.csv','w') as csvfile:

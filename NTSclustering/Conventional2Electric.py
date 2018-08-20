@@ -7,178 +7,237 @@ from clustering import Cluster, ClusteringExercise
 
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
-data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
-
+#data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
 NTS = {}
-MEA = {}
-
-NTStotal = [0]*5
-MEAtotal = [0]*5
-# get the labels for both data types
+NTS_ = {0:[],1:[],2:[],3:[],4:[]}
+# get the labels for the conventional data
 with open('NTSlabels.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
+        NTS_[int(row[1])].append(row[0])
         NTS[row[0]] = int(row[1])
-        NTStotal[int(row[1])] += 1
-        
-with open('MEAlabels.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        MEA[row[0]] = int(row[1])
-        MEAtotal[int(row[1])] += 1
 
-for i in range(5):
-    MEAtotal[i] = MEAtotal[i]*100/len(MEA)
-    NTStotal[i] = NTStotal[i]*100/len(NTS)
-
-plt.figure(figsize=(5,3))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-plt.subplot(2,1,1)
-plt.bar(np.arange(1,6)-0.2,NTStotal,width=0.4,label='NTS')
-plt.bar(np.arange(1,6)+0.2,MEAtotal,width=0.4,label='MEA')
-plt.legend()
-plt.title('Weekday',y=0.7)
-plt.ylabel('Probability')
-plt.ylim(0,100)
-plt.grid()
-NTS2= {}
-MEA2 = {}
-
-NTStotal2 = [0]*5
-MEAtotal2 = [0]*5
-# get the labels for both data types
-with open('NTSlabelsWE.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        NTS2[row[0]] = int(row[1])
-        NTStotal2[int(row[1])] += 1
-        
-with open('MEAlabelsWE.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        MEA2[row[0]] = int(row[1])
-        MEAtotal2[int(row[1])] += 1
-
-for i in range(5):
-    MEAtotal2[i] = MEAtotal2[i]*100/len(MEA2)
-    NTStotal2[i] = NTStotal2[i]*100/len(NTS2)
-
-plt.subplot(2,1,2)
-plt.bar(np.arange(1,6)-0.2,NTStotal2,width=0.4)
-plt.bar(np.arange(1,6)+0.2,MEAtotal2,width=0.4)
-plt.grid()
-plt.title('Weekend',y=0.7)
-plt.ylabel('Probability')
-plt.ylim(0,100)
-plt.tight_layout()
-#plt.show()
-
-# first let's store the individual pdf
-with open('clusterPdf.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['Cluster','MEA','NTS'])
-    for i in range(5):
-        writer.writerow([i+1,MEAtotal[i],NTStotal[i]])
-
-# now we need to get the individual cluster start of charging pdfs
+# get all of the pdfs
+clusterPdf = []
 chargingPdf = []
-chargingPdfWE = []
+clusterPdf2 = [] # for weekend
+chargingPdf2 = []
 for i in range(5):
-    chargingPdf.append([0]*48)
-    chargingPdfWE.append([0]*48)
+    chargingPdf.append([])
+    chargingPdf2.append([])
 
-# now get the MEA data
-with open(data2,'rU') as csvfile:
+with open('clusterPdf.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        vehicle = row[0]+str(int(int(row[1])/7))
-        if row[-1] == '0':
-            pdf = chargingPdf
-            cls = MEA
-        else:
-            pdf = chargingPdfWE
-            cls = MEA2
-        
-        start = int(int(row[2])/30)
-        if start > 47:
-            start -= 48
+        clusterPdf.append(float(row[1])/100)
+
+with open('clusterPdfWE.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        clusterPdf2.append(float(row[1])/100)
+
+with open('chargePdfW.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        for i in range(5):
+            for t in range(30):
+                chargingPdf[i].append(float(row[i+1])/3000)
+            
+with open('chargePdfWE.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        for i in range(5):
+            for t in range(30):
+                chargingPdf2[i].append(float(row[i+1])/3000)
+    
+nV = 500
+cluster_n = [0]*5
+
+clPdf = clusterPdf
+chPdf = chargingPdf
+days = [1,2,3,4,5]
+'''
+clPdf = clusterPdf2
+chPdf = chargingPdf2
+days = [6,7]
+'''
+for v in range(nV):
+    ran = random.random()
+    i = 0
+    while sum(clPdf[:i]) < ran:
+        i += 1
+    cluster_n[i-1] += 1
+
+chosen = []
+for i in range(5):
+    if cluster_n[i] == 0:
+        continue
+    shortlist = NTS_[i]
+    np.random.shuffle(shortlist)
+    for v in range(cluster_n[i]):
+        chosen.append(shortlist[v])
+
+journeyLogs = {}
+locations = {}
+for v in chosen:
+    journeyLogs[v] = []
+    for d in range(5):
+        locations[v+str(d+1)] = ['-1']*1440
+        journeyLogs[v].append([])
+    
+# get conventional vehicles' usage
+with open(data,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        vehicle = row[2]
+        if vehicle not in chosen:
+            continue
+        day = int(row[6])
+        if day not in days:
+            continue
 
         try:
-            pdf[cls[vehicle]][start] += 1
+            start = int(30*int(int(row[9])/30)+30*random.random())
+            end = int(30*int(int(row[10])/30)+30*random.random())
+            distance = float(row[11]) # miles
         except:
             continue
-        
 
-for i in range(5):
-    for t in range(48):
-        chargingPdf[i][t] = chargingPdf[i][t]*100/sum(chargingPdf[i])
-        chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/sum(chargingPdfWE[i])
-
-plt.figure(figsize=(5,4))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-x = [8,24,40]
-x_ticks = ['04:00','12:00','20:00']
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-n = 1
-for i in range(5):
-    plt.subplot(4,3,n)
-    plt.plot(chargingPdf[i],c=clrs[str(i)])
-    plt.xlim(0,47)
-    plt.ylim(0,45)
-    plt.grid()
-    if n == 2:
-        plt.title('(a)')
-    if n in [2,3,5]:
-        plt.yticks([20,40],['',''])
-    else:
-        plt.yticks([0,20,40],['0%','20%','40%'])
-    if n in []:#1,2,3,4,5]:
-        plt.xticks([8,24,40],['',''])
-    else:
-        plt.xticks(x,x_ticks)
-    n += 1
+        purposeTo = row[-2]
+        for t in range(start,end):
+            if t < 1440:
+                locations[vehicle+str(day)][t] = '0'
+            else:
+                try:
+                    locations[vehicle+str(day+1)][t-1440] = '0'
+                except:
+                    continue
+        if end < 1440:
+            locations[vehicle+str(day)][end] = purposeTo
+        else:
+            try:
+                locations[vehicle+str(day+1)][end-1440] = purposeTo
+            except:
+                continue
         
-n += 1
-for i in range(5):
-    plt.subplot(4,3,n)
-    plt.plot(chargingPdfWE[i],c=clrs[str(i)],label=str(i))
-    plt.xlim(0,47)
-    plt.ylim(0,45)
-    plt.grid()
-    if n == 8:
-        plt.title('(b)')
-    if n in [8,9,11]:
-        plt.yticks([20,40],['',''])
-    else:
-        plt.yticks([0,20,40],['0%','20%','40%'])
-    if n in []:#7,8,9]:
-        plt.xticks([8,24,40],['',''])
-    else:
-        plt.xticks(x,x_ticks)
-    n += 1
-plt.tight_layout()
-#plt.show()
+        kWh = distance*0.3 # basic bitch approx
 
-# now let's store the individual pdf
-with open('chargePdfW.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2','3','4'])
-    for t in range(48):
-        row = [t]
-        for i in range(5):
-            row += [chargingPdf[i][t]]
-        writer.writerow(row)
-        
-# now let's store the individual pdf
-with open('chargePdfWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2','3','4'])
-    for t in range(48):
-        row = [t]
-        for i in range(5):
-            row += [chargingPdfWE[i][t]]
-        writer.writerow(row)       
+        journeyLogs[vehicle][day-1].append([start,end,kWh,purposeTo])
+
+# post processing the locations
+for d in locations:
+    t = 0
+    while locations[d][t] == '-1' and t < 1438:
+        locations[d][t] = '23'
+        t += 1
+    while t < 1439:
+        while locations[d][t] == '0' and t < 1438:
+            t += 1
+        new = locations[d][t]
+        t += 1
+        while locations[d][t] == '-1' and t < 1438:
+            locations[d][t] = new
+            t += 1
+
+chargeLog = {}
+for v in chosen:
+    chargeLog[v] = []
+    later = 0
+    
+    pdf = []
+    p = copy.deepcopy(chPdf[NTS[v]])
+    for d in range(5):
+        pdf += p
+
+        for t in range(1440):
+            if locations[v+str(d+1)][t] != '23':
+                pdf[d*1440+t] = 0
+                
+    # for each day generate a pdf from the first journey today to first tomorrow
+    for d in range(5):
+
+        if journeyLogs[v][d] == []:
+            continue
+
+        t0 = journeyLogs[v][d][0][0]+1440*d
+
+        try:
+            t1 = journeyLogs[v][d+1][0][0]+1440*(d+1)
+        except:
+            t1 = 1440*(d+2)
+
+        p2 = copy.deepcopy(pdf[t0:t1])
+
+        # normalise
+        S = sum(p2)
+        for t in range(len(p2)):
+            p2[t] = p2[t]/S
+
+        # randomly sample for first charge time
+        ran = random.random()
+        t = 0
+        while sum(p2[:t]) < ran:
+            t += 1
+
+        t_charge = t0+t
+
+        now = later
+        later = 0
+
+        for j in journeyLogs[v][d]:
+            if j[1] < t_charge:
+                now += j[2]
+            else:
+                later += j[2]
+
+        charge_length = int(60*(now/3.5))
+
+        if t_charge+charge_length < t1:
+            chargeLog[v].append([t_charge,t_charge+charge_length])
+            now = 0
+        else:
+            chargeLog[v].append([t_charge,t1])
+            now -= 3.5*(t1-t_charge)/60
+
+        if later > 0 and now == 0:
+            p3 = copy.deepcopy(pdf[journeyLogs[v][d][-1][1]:t1])
+
+            if len(p3) < 60:
+                continue
+            
+            else:
+                S = sum(p3)
+                for t in range(len(p3)):
+                    p3[t] = p3[t]/S
+
+                ran = random.random()
+                t = 0
+                while sum(p3[:t]) < ran:
+                    t += 1
+
+                t_charge = journeyLogs[v][d][-1][1]+t+1440*d
+
+                charge_length = 0
+
+                while t_charge+charge_length < t1 and later > 0:
+                    later -= 3.5/60
+                    charge_length += 1
+
+                chargeLog[v].append([t_charge,t_charge+charge_length])
+
+        later += now
+            
+charging = [0]*(1440*6)
+
+for v in chargeLog:
+    for c in chargeLog[v]:
+        for t in range(c[0],c[1]):
+            charging[t] += 3.5
+
+plt.figure()
+plt.plot(charging)
+plt.xlim(1440,4*1440)
+plt.show()
