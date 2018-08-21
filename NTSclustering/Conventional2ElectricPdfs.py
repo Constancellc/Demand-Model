@@ -7,7 +7,7 @@ from clustering import Cluster, ClusteringExercise
 
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
-data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
+data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charges.csv'
 
 
 NTS = {}
@@ -117,12 +117,14 @@ with open(data2,'rU') as csvfile:
             pdf[cls[vehicle]][start] += 1
         except:
             continue
-        
+
 
 for i in range(5):
+    s1 = sum(chargingPdf[i])
+    s2 = sum(chargingPdfWE[i])
     for t in range(48):
-        chargingPdf[i][t] = chargingPdf[i][t]*100/sum(chargingPdf[i])
-        chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/sum(chargingPdfWE[i])
+        chargingPdf[i][t] = chargingPdf[i][t]*100/s1
+        chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/s2
 
 plt.figure(figsize=(5,4))
 plt.rcParams["font.family"] = 'serif'
@@ -135,16 +137,16 @@ for i in range(5):
     plt.subplot(4,3,n)
     plt.plot(chargingPdf[i],c=clrs[str(i)])
     plt.xlim(0,47)
-    plt.ylim(0,45)
+    plt.ylim(0,10)
     plt.grid()
     if n == 2:
         plt.title('(a)')
     if n in [2,3,5]:
-        plt.yticks([20,40],['',''])
+        plt.yticks([4,8],['',''])
     else:
-        plt.yticks([0,20,40],['0%','20%','40%'])
-    if n in []:#1,2,3,4,5]:
-        plt.xticks([8,24,40],['',''])
+        plt.yticks([0,4,8],['0%','4%','8%'])
+    if n in []:#7,8,9]:
+        plt.xticks([0,4,8],['',''])
     else:
         plt.xticks(x,x_ticks)
     n += 1
@@ -154,16 +156,16 @@ for i in range(5):
     plt.subplot(4,3,n)
     plt.plot(chargingPdfWE[i],c=clrs[str(i)],label=str(i))
     plt.xlim(0,47)
-    plt.ylim(0,45)
+    plt.ylim(0,10)
     plt.grid()
     if n == 8:
         plt.title('(b)')
     if n in [8,9,11]:
-        plt.yticks([20,40],['',''])
+        plt.yticks([4,8],['',''])
     else:
-        plt.yticks([0,20,40],['0%','20%','40%'])
+        plt.yticks([0,4,8],['0%','4%','8%'])
     if n in []:#7,8,9]:
-        plt.xticks([8,24,40],['',''])
+        plt.xticks([0,4,8],['',''])
     else:
         plt.xticks(x,x_ticks)
     n += 1
