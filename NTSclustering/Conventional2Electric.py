@@ -21,11 +21,17 @@ with open('NTSlabels.csv','rU') as csvfile:
 # get all of the pdfs
 clusterPdf = []
 chargingPdf = []
-clusterPdf2 = [] # for weekend
 chargingPdf2 = []
+clusterPdf2 = [] 
+chargingPdfWE = []
+chargingPdfWE2 = []
+pInt = []
+pIntWE = []
 for i in range(5):
     chargingPdf.append([])
     chargingPdf2.append([])
+    chargingPdfWE.append([])
+    chargingPdfWE2.append([])
 
 with open('clusterPdf.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -51,15 +57,36 @@ with open('chargePdfWE.csv','rU') as csvfile:
     for row in reader:
         for i in range(5):
             for t in range(30):
+                chargingPdfWE[i].append(float(row[i+1])/3000)
+
+with open('chargePdfW2.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        for i in range(5):
+            for t in range(30):
                 chargingPdf2[i].append(float(row[i+1])/3000)
+            
+with open('chargePdfWE2.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        for i in range(5):
+            for t in range(30):
+                chargingPdfWE2[i].append(float(row[i+1])/3000)
 
-
+with open('nCharges.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        pInt.append(float(row[1]))
+        pIntWE.append(float(row[2]))
+        
 nV = 50
-nSim = 20
+nSim = 1
 cluster_n = [0]*5
 
 clPdf = clusterPdf
 chPdf = chargingPdf
+chPdf2 = chargingPdf2
 days = [1,2,3,4,5]
 '''
 clPdf = clusterPdf2
@@ -90,9 +117,7 @@ for sim in range(nSim):
     locations = {}
     for v in chosen:
         journeyLogs[v] = []
-        for d in range(5):
-            locations[v+str(d+1)] = ['-1']*1440
-            journeyLogs[v].append([])
+        locations[v] =['-1']*8640
         
     # get conventional vehicles' usage
     with open(data,'rU') as csvfile:
@@ -115,35 +140,46 @@ for sim in range(nSim):
             purposeTo = row[-2]
             for t in range(start,end):
                 if t < 1440:
-                    locations[vehicle+str(day)][t] = '0'
+                    locations[vehicle][day*1440+t] = '0'
                 else:
-                    try:
-                        locations[vehicle+str(day+1)][t-1440] = '0'
-                    except:
-                        continue
+                    locations[vehicle][day*1440+t-1440] = '0'
+                    
             if end < 1440:
-                locations[vehicle+str(day)][end] = purposeTo
+                locations[vehicle][day*1440+end] = purposeTo
             else:
-                try:
-                    locations[vehicle+str(day+1)][end-1440] = purposeTo
-                except:
-                    continue
+                locations[vehicle][day*1440+end-1440] = purposeTo
             
             kWh = distance*0.3 # basic bitch approx
 
-            journeyLogs[vehicle][day-1].append([start,end,kWh,purposeTo])
+            start += 1440*(day-1)
+            end += 1440*(day-1)
+
+            journeyLogs[vehicle].append([start,end,kWh])
+
+            #journeyLogs[vehicle][day-1].append([start,end,kWh,purposeTo])
 
     # find charging using the dumb assumption
     charging = [0.0]*1440*6
     for v in journeyLogs:
+        nJ = len(journeyLogs[v])
+        if nJ == 0:
+            continue
+        j0 = 0
+        j1 = 0
         for d in range(5):
-            if len(journeyLogs[v][d]) == 0:
-                continue
             kWh = 0
-            for i in range(len(journeyLogs[v][d])):
-                kWh += journeyLogs[v][d][i][2]
+            t1 = 1440*d
+            while journeyLogs[v][j1][0] < t1+1440 and j1 < nJ-1:
+                j1 += 1
+            c_start = journeyLogs[v][j1-1][1]
+            
+            for j in range(j0,j1):
+                kWh += journeyLogs[v][j][2]
+                
+            if kWh == 0:
+                continue
+            
             c_length = int(60*kWh/3.5)
-            c_start = journeyLogs[v][d][-1][1]+1440*d
 
             for t in range(c_start,c_start+c_length):
                 try:
@@ -153,114 +189,119 @@ for sim in range(nSim):
     sim_control.append(charging)
     
     # post processing the locations
-    for d in locations:
+    for v in locations:
         t = 0
-        while locations[d][t] == '-1' and t < 1438:
-            locations[d][t] = '23'
+        while locations[v][t] == '-1' and t < 8600:
+            locations[v][t] = '23'
             t += 1
-        while t < 1439:
-            while locations[d][t] == '0' and t < 1438:
+        while t < 8600:
+            while locations[v][t] == '0' and t < 8600:
                 t += 1
-            new = locations[d][t]
+            new = locations[v][t]
             t += 1
-            while locations[d][t] == '-1' and t < 1438:
-                locations[d][t] = new
+            while locations[v][t] == '-1' and t < 8600:
+                locations[v][t] = new
                 t += 1
 
     chargeLog = {}
     for v in chosen:
         chargeLog[v] = []
         later = 0
+
+        # need two pdfs - first and second charge
         
         pdf = []
+        pdf2 = []
         p = copy.deepcopy(chPdf[NTS[v]])
+        p_ = copy.deepcopy(chPdf2[NTS[v]])
         for d in range(5):
             pdf += p
+            pdf2 += p_
 
-            for t in range(1440):
-                if locations[v+str(d+1)][t] != '23':
-                    pdf[d*1440+t] = 0
+        for t in range(len(pdf)):
+            if locations[v][t] != '23':#'23':
+                pdf[t] = 0
+                pdf2[t] = 0
+            
                     
         # for each day generate a pdf from the first journey today to first tomorrow
         for d in range(5):
 
-            if journeyLogs[v][d] == []:
-                continue
+            # here I need to decide the number of charges
+            nC = np.random.poisson(pInt[NTS[v]])
 
-            t0 = journeyLogs[v][d][0][0]+1440*d
+            t0 = 1440*d
+            t1 = 1440*(d+1)
 
-            try:
-                t1 = journeyLogs[v][d+1][0][0]+1440*(d+1)
-            except:
-                t1 = 1440*(d+2)
-
+            # first charge
             p2 = copy.deepcopy(pdf[t0:t1])
-
+            
             # normalise
             S = sum(p2)
 
-            if sum(p2) == 0:# BUG SOMETHING ELSE WOULD BE BETTER
-                continue
-            
-            for t in range(len(p2)):
-                p2[t] = p2[t]/S
+            if S > 0: 
+                for t in range(len(p2)):
+                    p2[t] = p2[t]/S
 
-            # randomly sample for first charge time
-            ran = random.random()
-            t = 0
-            while sum(p2[:t]) < ran:
-                t += 1
+                # randomly sample for first charge time
+                ran = random.random()
+                t = 0
+                while sum(p2[:t]) < ran:
+                    t += 1
 
-            t_charge = t0+t
+                t_charge = t0+t
 
-            now = later
+            else:
+                t_charge = t0
+
+            now = later # left over from yesterday
             later = 0
 
-            for j in journeyLogs[v][d]:
-                if j[1] < t_charge:
+            for j in journeyLogs[v]:
+                if j[0] > t0 and j[1] < t_charge:
                     now += j[2]
-                else:
+                elif j[0] > t0 and j[0] < t1:
                     later += j[2]
 
-            charge_length = int(60*(now/3.5))
+            if nC == 0 or now == 0:
+                later += now
+                continue
 
-            if t_charge+charge_length < t1:
-                chargeLog[v].append([t_charge,t_charge+charge_length])
-                now = 0
-            else:
-                chargeLog[v].append([t_charge,t1])
-                now -= 3.5*(t1-t_charge)/60
-            '''
-            if later > 0 and now == 0:
-                p3 = copy.deepcopy(pdf[journeyLogs[v][d][-1][1]:t1])
+            charge_length = 0
+            while (locations[v][t_charge+charge_length] == '23') and now > 0:
+                charge_length += 1
+                now -= 3.5/60
 
-                if len(p3) < 60:
-                    continue
-                
-                else:
-                    S = sum(p3)
-                    for t in range(len(p3)):
-                        p3[t] = p3[t]/S
+            chargeLog[v].append([t_charge,t_charge+charge_length])
+            later += now
+
+            # second charge
+            if nC > 1 and later > 0:
+                t0 = t_charge+charge_length
+                p2 = copy.deepcopy(pdf2[t0:t1])
+
+                S = sum(p2)
+
+                if S > 0:
+                    for t in range(len(p2)):
+                        p2[t] = p2[t]/S
 
                     ran = random.random()
                     t = 0
-                    while sum(p3[:t]) < ran:
+
+                    while sum(p2[:t]) < ran:
                         t += 1
 
-                    t_charge = journeyLogs[v][d][-1][1]+t+1440*d
-
-                    print(t_charge)
-
+                    t_charge = t0+t
                     charge_length = 0
-
-                    while t_charge+charge_length < t1 and later > 0:
-                        later -= 3.5/60
+                    
+                    while (locations[v][t_charge+charge_length] =='23') and \
+                          later > 0:
                         charge_length += 1
+                        later -= 3.5/60
 
                     chargeLog[v].append([t_charge,t_charge+charge_length])
-            '''
-            later += now
-                
+
     charging = [0]*(1440*6)
 
     for v in chargeLog:

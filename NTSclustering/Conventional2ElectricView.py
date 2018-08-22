@@ -40,7 +40,7 @@ for ii in range(2):
 
     plt.fill_between(range(1440*4),l,u,alpha=0.2)
     plt.plot(range(1440*4),m,label=labels[ii])
-plt.xlim(1440,1440*2)
+plt.xlim(1440,1440*4)
 plt.xticks([2*60+1440,6*60+1440,10*60+1440,14*60+1440,18*60+1440,22*60+1440],
            ['02:00','06:00','10:00','14:00','18:00','22:00'])
 plt.grid()
