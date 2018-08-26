@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
     
-plt.figure()
+plt.figure(figsize=(5,2))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '8'
 files = ['50evs.csv','50evsCtrl.csv']
-labels = ['clustered','uniform']
+labels = ['Clustering Method','Basic Assumptions']
 for ii in range(2):
     file = files[ii]
     m = [0.0]*(1440*4)
@@ -40,12 +42,14 @@ for ii in range(2):
 
     plt.fill_between(range(1440*4),l,u,alpha=0.2)
     plt.plot(range(1440*4),m,label=labels[ii])
-plt.xlim(1440,1440*4)
-plt.xticks([2*60+1440,6*60+1440,10*60+1440,14*60+1440,18*60+1440,22*60+1440],
+    print(sum(m))
+plt.xlim(1440*2,1440*3)
+plt.xticks([2*60+1440*2,6*60+1440*2,10*60+1440*2,14*60+1440*2,18*60+1440*2,
+            22*60+1440*2],
            ['02:00','06:00','10:00','14:00','18:00','22:00'])
 plt.grid()
 plt.ylabel('Power Demand (kW)')
-plt.ylim(0,60)
+#plt.ylim(0,60)
 plt.legend()
 plt.tight_layout()
 plt.show()

@@ -80,8 +80,8 @@ with open('nCharges.csv','rU') as csvfile:
         pInt.append(float(row[1]))
         pIntWE.append(float(row[2]))
         
-nV = 1
-nSim = 1
+nV = 50
+nSim = 10
 cluster_n = [0]*5
 
 clPdf = clusterPdf
@@ -164,36 +164,28 @@ for sim in range(nSim):
         nJ = len(journeyLogs[v])
         if nJ == 0:
             continue
-
-        kWh = 0
+        j0 = 0
+        j1 = 0
         for d in range(5):
+            kWh = 0
             t1 = 1440*d
-            deadline = 0
-            c_start = 0
-            for j in range(nJ):
-                if journeyLogs[v][j][1] < t1+1440 and journeyLogs[v][j][1] > t1:
-                    kWh += journeyLogs[v][j][2]
-                    if journeyLogs[v][j][1] > c_start:
-                        c_start = journeyLogs[v][j][1]
-                    try:
-                        if journeyLogs[v][j+1][0] > deadline:
-                            deadline = journeyLogs[v][j+1][0]
-                    except:
-                        continue
+            while journeyLogs[v][j1][0] < t1+1440 and j1 < nJ-1:
+                j1 += 1
+            c_start = journeyLogs[v][j1-1][1]
+            
+            for j in range(j0,j1):
+                kWh += journeyLogs[v][j][2]
                 
             if kWh == 0:
                 continue
             
-            c_length = int(60*kWh/3.5)+1
-
-            if deadline == 0:
-                deadline += 1440*6
+            c_length = int(60*kWh/3.5)
 
             for t in range(c_start,c_start+c_length):
-                if t < 1440*6:#deadline:
+                try:
                     charging[t] += 3.5
-                    kWh -= 3.5/60
-                    
+                except:
+                    continue
     sim_control.append(charging)
     
     # post processing the locations
@@ -215,21 +207,25 @@ for sim in range(nSim):
     for v in chosen:
         chargeLog[v] = []
         later = 0
-        now = 0
+
+        # need two pdfs - first and second charge
         
         pdf = []
+        pdf2 = []
         p = copy.deepcopy(chPdf[NTS[v]])
+        p_ = copy.deepcopy(chPdf2[NTS[v]])
         for d in range(5):
             pdf += p
+            pdf2 += p_
 
-        # first set all times when vehicle not at home equal to zero
         for t in range(len(pdf)):
-            if locations[v][t] != '23':
+            if locations[v][t] == '0':#!= '23':
                 pdf[t] = 0
-                
+                pdf2[t] = 0
+            
+                    
         # for each day generate a pdf from the first journey today to first tomorrow
         for d in range(5):
-            kWh = 0
             # here I need to decide the number of charges
             #nC = np.random.poisson(pInt[NTS[v]])
 
@@ -238,73 +234,46 @@ for sim in range(nSim):
 
             # first charge
             p2 = copy.deepcopy(pdf[t0:t1])
-
-            # need to find the journey end times - key suspects
-            endTimes = []
-
-            for j in journeyLogs[v]:
-                if j[1] > t0 and j[1] < t1:
-                    endTimes.append(j[1]+1)
-
-            s1 = 0
-            s2 = 0
-
-            for t in range(t0,t1):
-                if t in endTimes:
-                    s1 += p2[t-t0]
-                else:
-                    s2 += p2[t-t0]
-
-            for t in range(t0,t1):
-                if t in endTimes:
-                    if s1 > 0:
-                        p2[t-t0] = 0.7*p2[t-t0]/s1
-                else:
-                    if s2 > 0:
-                        p2[t-t0] = 0.3*p2[t-t0]/s2
-                        
-            S = sum(p2)
-            # this is both to account for errors and in the case
-            # there are no valid end times
-
             
-            if S == 0:
-                continue
-            for t in range(len(p2)):
-                p2[t] = p2[t]/S
-            ran = random.random()
-            t = 0
+            # normalise
+            S = sum(p2)
 
-            while sum(p2[:t]) < ran:
-                t += 1
-            t_charge = t0+t
+            if S > 0: 
+                for t in range(len(p2)):
+                    p2[t] = p2[t]/S
 
-            if later > 0:
-                now = later # left over from yesterday
+                # randomly sample for first charge time
+                ran = random.random()
+                t = 0
+                while sum(p2[:t]) < ran:
+                    t += 1
+
+                t_charge = t0+t
+
+            else:
+                t_charge = t0
+
+            now = later # left over from yesterday
             later = 0
 
-            deadline = 1440*6 # pretty sure deadline is obsolete
+            deadline = 1440*6
 
             for j in journeyLogs[v]:
-                if j[1] > t0 and j[1] < t_charge:
+                if j[0] > t0 and j[1] < t_charge:
                     now += j[2]
-                    kWh += j[2]
-                elif j[1] > t0 and j[1] < t1:
+                elif j[0] > t0 and j[0] < t1:
                     later += j[2]
-                    kWh += j[2]
                 if j[0] > t1 and j[0] < deadline:
                     deadline = j[0]
-
-            # we need to factor in the possibility of no charge
-            # overrride no charge if SOC too low
-            nC = np.random.poisson(pInt[NTS[v]])
-
-            if nC == 0 and now < 10:
+            '''
+            if (nC == 0 and now<10) or now == 0:
                 later += now
                 continue
+                '''
 
             charge_length = 0
-            while (locations[v][t_charge+charge_length] == '23') and now > 0:
+            #while (locations[v][t_charge+charge_length] == '23') and now > 0:
+            while (locations[v][t_charge+charge_length] != '0') and now > 0:
                 charge_length += 1
                 now -= 3.5/60
 
@@ -312,28 +281,31 @@ for sim in range(nSim):
             later += now
 
             # second charge
-            if later > 0 and t_charge+charge_length < t1:
-                ran = random.random()
+            #if nC > 1 and later > 0:
+            if later > 0:
+                t0 = t_charge+charge_length
+                p2 = copy.deepcopy(pdf2[t0:t1])
 
-                t = 0
-                t_charge2 = None
-                s = 0
-                for t in range(t_charge+charge_length,t1):
-                    s += p2[t-t0]
-                    if s > ran and t_charge2 == None:
-                        t_charge2 = t
-            else:
-                t_charge2 = None
+                S = sum(p2)
 
-            if t_charge2 != None:
+                if S > 0:
+                    for t in range(len(p2)):
+                        p2[t] = p2[t]/S
 
-                charge_length = 0
-                while (locations[v][t_charge2+charge_length] == '23')\
-                      and later > 0:
-                    charge_length += 1
-                    later -= 3.5/60
+                    ran = random.random()
+                    t = 0
 
-                chargeLog[v].append([t_charge2,t_charge2+charge_length])
+                    while sum(p2[:t]) < ran:
+                        t += 1
+
+                    t_charge = t0+t
+                    charge_length = 0
+                    
+                    while t_charge+charge_length < deadline and later > 0:
+                        charge_length += 1
+                        later -= 3.5/60
+
+                    chargeLog[v].append([t_charge,t_charge+charge_length])
 
     charging = [0]*(1440*6)
 

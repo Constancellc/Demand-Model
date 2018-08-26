@@ -128,20 +128,23 @@ with open(data2,'rU') as csvfile:
             
         if vehicle not in nc:
             nc[vehicle] = {0:0,1:0,2:0,3:0,4:0,5:0,6:0} # we would expect either 2 or 5 of these to be 0
+
+        try:
+            pdf[cls[vehicle]][start] += 1
+        except:
+            continue
             
         if nc[vehicle][day] == 0:
             nc[vehicle][day] = 1
-            try:
-                pdf[cls[vehicle]][start] += 1
-            except:
-                continue
             
         else:
             nc[vehicle][day] += 1
+            '''
             try:
                 pdf2[cls[vehicle]][start] += 1
             except:
                 continue
+            '''
               
 
 # now get pdfs
@@ -196,8 +199,8 @@ for i in range(5):
     for t in range(48):
         chargingPdf[i][t] = chargingPdf[i][t]*100/s1
         chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/s2
-        chargingPdf2[i][t] = chargingPdf2[i][t]*100/s3
-        chargingPdfWE2[i][t] = chargingPdfWE2[i][t]*100/s4
+        #chargingPdf2[i][t] = chargingPdf2[i][t]*100/s3
+        #chargingPdfWE2[i][t] = chargingPdfWE2[i][t]*100/s4
 
 plt.figure(figsize=(5,4))
 plt.rcParams["font.family"] = 'serif'
@@ -213,7 +216,7 @@ for i in range(5):
     plt.ylim(0,10)
     plt.grid()
     if n == 2:
-        plt.title('First Charge')
+        plt.title('Weekday')
     if n in [2,3,5]:
         plt.yticks([4,8],['',''])
     else:
@@ -227,12 +230,12 @@ for i in range(5):
 n += 1
 for i in range(5):
     plt.subplot(4,3,n)
-    plt.plot(chargingPdf2[i],c=clrs[str(i)],label=str(i))
+    plt.plot(chargingPdfWE[i],c=clrs[str(i)],label=str(i))
     plt.xlim(0,47)
     plt.ylim(0,10)
     plt.grid()
     if n == 8:
-        plt.title('Additional Charge')
+        plt.title('Weekend')
     if n in [8,9,11]:
         plt.yticks([4,8],['',''])
     else:
@@ -244,7 +247,7 @@ for i in range(5):
     n += 1
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/chargePdfs.eps', format='eps', dpi=1000)
-
+'''
 plt.figure(figsize=(5,4))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '8'
@@ -290,7 +293,7 @@ for i in range(5):
     n += 1
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/chargePdfsWE.eps', format='eps', dpi=1000)
-
+'''
 
 plt.figure(figsize=(5,2))
 plt.rcParams["font.family"] = 'serif'
