@@ -264,8 +264,8 @@ x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 
 locs = {'0':[2.68,-0.5],'1':[1.39,-0.7],'2':[0.1,-0.9],'3':[2.68,0.2],'4':[1.39,0.0]}
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-clrs2 = {'2':'#CCFFCC','3':'#FFFFCC','1':'#CCCCFF','0':'#FFCCCC','4':'#CCFFFF'}
+clrs = {'0':'y','1':'m','2':'c'}
+clrs2 = {'0':'#FFFFCC','1':'#FFCCFF','2':'#CCFFFF'}
 
 for label in CE.clusters:
     plt.subplot(1,3,int(label)+1)

@@ -11,8 +11,6 @@ data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
-data3 = '../../Documents/NHTS/constance/trips_useful.csv'
-
 stem = '../../Documents/simulation_results/NTS/clustering/labels/'
 
 
@@ -101,52 +99,6 @@ with open(data2,'rU') as csvfile:
             else:
                 profiles[vehicle][int((t-1440)/30)] += distPerMin
 
-wProfiles3 = {}
-weProfiles3 = {}
-
-# first get all of the data points 
-with open(data,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        vehicle = row[0]
-        
-        if vehicle == '':
-            continue
-        elif vehicle == ' ':
-            continue
-
-        weekday = int(row[7])
-
-        if weekday < 6:
-            profiles = wProfiles
-        else:
-            profiles = weProfiles
-            
-        try:
-            start = int(row[5])
-            end = int(row[16])
-        except:
-            continue
-
-        distance = float(row[10])
-        
-        if vehicle not in profiles:
-            profiles[vehicle] = [0]*48
-
-        if start < end:
-            l = end-start
-        else:
-            l = end+24*60-start
-
-        distPerMin = distance/l
-        
-        for t in range(start,end):
-            if t < 1440:
-                profiles[vehicle][int(t/30)] += distPerMin
-            else:
-                profiles[vehicle][int((t-1440)/30)] += distPerMin
-
 
 # first scale all of the distances:
 maxWDist = 0.0
@@ -162,26 +114,31 @@ for vehicle in weProfiles:
             maxWeDist = weProfiles[vehicle][i]
        
 # normalise
+toRemove = []
+toRemoveWE = []
 for vehicle in wProfiles:
+    if sum(wProfiles[vehicle]) > 300:
+        toRemove.append(vehicle)
     for i in range(0,48):
         wProfiles[vehicle][i] = float(wProfiles[vehicle][i])/maxWDist
 for vehicle in weProfiles:
+    if sum(weProfiles[vehicle]) > 300:
+        toRemoveWE.append(vehicle)
     for i in range(0,48):
         weProfiles[vehicle][i] = float(weProfiles[vehicle][i])/maxWeDist
-        
+
+# remove outliers
+for vehicle in toRemove:
+    del wProfiles[vehicle]
+for vehicle in toRemoveWE:
+    del weProfiles[vehicle]
+
 for vehicle in wProfiles2:
     for i in range(0,48):
         wProfiles2[vehicle][i] = float(wProfiles2[vehicle][i])/maxWDist
 for vehicle in weProfiles2:
     for i in range(0,48):
         weProfiles2[vehicle][i] = float(weProfiles2[vehicle][i])/maxWeDist
-
-for vehicle in wProfiles3:
-    for i in range(0,48):
-        wProfiles3[vehicle][i] = float(wProfiles3[vehicle][i])/maxWDist
-for vehicle in weProfiles3:
-    for i in range(0,48):
-        weProfiles3[vehicle][i] = float(weProfiles3[vehicle][i])/maxWeDist
 
 
 # first cluster the wProfiles
@@ -277,17 +234,6 @@ with open(stem+'MEAlabels.csv','w') as csvfile:
     for vehicle in labels:
         writer.writerow([vehicle,labels[vehicle]])
 
-# then do the same for the US data
-labels = {}
-for vehicle in wProfiles3:
-    clst = CE.find_nearest(wProfiles3[vehicle])
-    labels[vehicle] = clst
-
-with open(stem+'USlabels.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    for vehicle in labels:
-        writer.writerow([vehicle,labels[vehicle]])
-
 # next repeat for weekends
 data = []
 for vehicle in weProfiles:
@@ -315,8 +261,8 @@ x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 
 locs = {'0':[2.68,-0.5],'1':[1.39,-0.7],'2':[0.1,-0.9],'3':[2.68,0.2],'4':[1.39,0.0]}
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-clrs2 = {'2':'#CCFFCC','3':'#FFFFCC','1':'#CCCCFF','0':'#FFCCCC','4':'#CCFFFF'}
+clrs = {'0':'y','1':'m','2':'c'}
+clrs2 = {'0':'#FFFFCC','1':'#FFCCFF','2':'#CCFFFF'}
 
 for label in CE.clusters:
     plt.subplot(1,3,int(label)+1)
@@ -376,16 +322,6 @@ with open(stem+'MEAlabelsWE.csv','w') as csvfile:
     for vehicle in labels:
         writer.writerow([vehicle,labels[vehicle]])
         
-# then do the same for the US data
-labels = {}
-for vehicle in weProfiles3:
-    clst = CE.find_nearest(weProfiles3[vehicle])
-    labels[vehicle] = clst
-
-with open(stem+'USlabelsWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    for vehicle in labels:
-        writer.writerow([vehicle,labels[vehicle]])
         
 plt.show()
 # this is the only clustering we will need to do, from now on it will
