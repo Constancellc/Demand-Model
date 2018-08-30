@@ -108,35 +108,24 @@ x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 
 css = []
-plt.figure(1)
+plt.figure(figsize=(5,2.2))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '8'
+plt.subplot(1,2,1)
 
 for k in range(1,11):
-    plt.subplot(3,4,k)
 
     CE.k_means(k)
     css.append(CE.get_sum_of_squares())
-    #'''
-    for label in CE.clusters:
-        plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
-    '''
-    medians = CE.get_cluster_median()
-    for label in medians:
-        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
-
-    '''
-    plt.legend()
 
     CE.reset_clusters()
-    plt.title('k='+str(k),y=0.8)
-    plt.xlim(0,48)
-    plt.xticks(x,x_ticks)
-    plt.ylim(0,0.35)
-    plt.grid()
-
-plt.figure()
-plt.plot(css)
+    
+plt.plot(range(1,11),css)
+plt.grid()
+plt.xlim(0.5,10)
+plt.xlabel('# Clusters')
+plt.ylabel('Sum of Squares')
+plt.title('Weekdays')
 
 
       
@@ -147,8 +136,6 @@ for vehicle in weProfiles:
     data.append([vehicle]+weProfiles[vehicle])
 
 random.shuffle(data)
-
-sampleN = 10000
 
 data2 = []
 chosen = []
@@ -164,34 +151,19 @@ x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 
 css = []
-plt.figure()
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
 
 for k in range(1,11):
-    plt.subplot(3,4,k)
-
     CE.k_means(k)
     css.append(CE.get_sum_of_squares())
-    #'''
-    for label in CE.clusters:
-        plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
-    '''
-    medians = CE.get_cluster_median()
-    for label in medians:
-        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
 
-    '''
-    plt.legend()
 
-    CE.reset_clusters()
-    plt.title('k='+str(k),y=0.8)
-    plt.xlim(0,48)
-    plt.xticks(x,x_ticks)
-    plt.ylim(0,0.35)
-    plt.grid()
-
-plt.figure()
-plt.plot(css)
+plt.subplot(1,2,2)
+plt.plot(range(1,11),css)
+plt.grid()
+plt.xlim(0.5,10)
+plt.xlabel('# Clusters')
+plt.title('Weekends')
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/clustering/img/choosing_k.eps', format='eps', dpi=1000)
 plt.show()
 

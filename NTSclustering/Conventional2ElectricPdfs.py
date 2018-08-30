@@ -103,61 +103,71 @@ with open(stem+'clusterPdfWE.csv','w') as csvfile:
 # now we need to get the individual cluster start of charging pdfs
 chargingPdf = []
 chargingPdfWE = []
-chargingPdf2 = []
-chargingPdfWE2 = []
 nCharges = {}
 nChargesWE = {}
 for i in range(3):
     chargingPdf.append([0]*48)
     chargingPdfWE.append([0]*48)
-    chargingPdf2.append([0]*48)
-    chargingPdfWE2.append([0]*48)
 
+lowest = {}
+highest = {}
 # now get the MEA data
 with open(data2,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        vehicle = row[0]+str(int(int(row[1])/7))
-        day = int(row[1])%7
+        vehicle = row[0]+row[1]
+        if vehicle not in lowest:
+            lowest[vehicle] = 1000
+            highest[vehicle] = 0
+            
+        day = int(row[1])
+
+        if day > highest[vehicle]:
+            highest[vehicle] = day
+        if day < lowest[vehicle]:
+            lowest[vehicle] = day
         
         if row[-1] == '0':
             pdf = chargingPdf
-            pdf2 = chargingPdf2
             cls = MEA
             nc = nCharges
         else:
             pdf = chargingPdfWE
-            pdf2 = chargingPdfWE2
             cls = MEA2
             nc = nChargesWE
         
         start = int(int(row[2])/30)
         if start >= 48:
             start -= 48
-            
-        if vehicle not in nc:
-            nc[vehicle] = {0:0,1:0,2:0,3:0,4:0,5:0,6:0} # we would expect either 2 or 5 of these to be 0
 
+        if vehicle not in nc:
+            nc[vehicle] = 1
+        else:
+            nc[vehicle] += 1
+
+            
         try:
             pdf[cls[vehicle]][start] += 1
         except:
             continue
+
+        
+            '''
             
         if nc[vehicle][day] == 0:
             nc[vehicle][day] = 1
             
         else:
             nc[vehicle][day] += 1
-            '''
             try:
                 pdf2[cls[vehicle]][start] += 1
             except:
                 continue
             '''
-              
 
 # now get pdfs
+'''
 nChargesPdf = []
 nChargesPdfWE = []
 for i in range(3):
@@ -200,24 +210,21 @@ for i in range(3):
 
 print(pInt)
 print(pIntWE)
-
+'''
 for i in range(3):
     s1 = sum(chargingPdf[i])
     s2 = sum(chargingPdfWE[i])
-    s3 = sum(chargingPdf2[i])
-    s4 = sum(chargingPdfWE2[i])
     for t in range(48):
         chargingPdf[i][t] = chargingPdf[i][t]*100/s1
         chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/s2
-        #chargingPdf2[i][t] = chargingPdf2[i][t]*100/s3
-        #chargingPdfWE2[i][t] = chargingPdfWE2[i][t]*100/s4
 
-plt.figure(figsize=(5,4))
+plt.figure(figsize=(5,2.5))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '8'
 x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
+clrs2 = {'0':'y','1':'m','2':'c'}
 n = 1
 for i in range(3):
     plt.subplot(2,3,n)
@@ -239,7 +246,7 @@ for i in range(3):
     
 for i in range(3):
     plt.subplot(2,3,n)
-    plt.plot(chargingPdfWE[i],c=clrs[str(i)],label=str(i))
+    plt.plot(chargingPdfWE[i],c=clrs2[str(i)],label=str(i))
     plt.xlim(0,47)
     plt.ylim(0,10)
     plt.grid()
@@ -302,7 +309,7 @@ for i in range(5):
     n += 1
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/chargePdfsWE.eps', format='eps', dpi=1000)
-'''
+
 
 plt.figure(figsize=(5,2))
 plt.rcParams["font.family"] = 'serif'
@@ -317,7 +324,7 @@ plt.ylim(0,1.5)
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/ncharges.eps', format='eps', dpi=1000)
 
-
+'''
 # now let's store the individual pdf
 with open(stem+'chargePdfW.csv','w') as csvfile:
     writer = csv.writer(csvfile)
@@ -338,31 +345,12 @@ with open(stem+'chargePdfWE.csv','w') as csvfile:
             row += [chargingPdfWE[i][t]]
         writer.writerow(row)
         
-# now let's store the individual pdf
-with open(stem+'chargePdfW2.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2','3','4'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdf2[i][t]]
-        writer.writerow(row)
-        
-# now let's store the individual pdf
-with open(stem+'chargePdfWE2.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2','3','4'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdfWE2[i][t]]
-        writer.writerow(row)
-
+'''
 with open(stem+'nCharges.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['cluster','w','we'])
     for i in range(3):
         writer.writerow([i,pInt[i],pIntWE[i]])
-
+'''
 
 plt.show()
