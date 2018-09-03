@@ -9,8 +9,9 @@ data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charges.csv'
 
-stem = '../../Documents/simulation_results/NTS/clustering/labels/'
+data3 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
+stem = '../../Documents/simulation_results/NTS/clustering/labels/'
 
 NTS = {}
 
@@ -20,7 +21,7 @@ with open(stem+'NTSlabels.csv','rU') as csvfile:
     for row in reader:
         NTS[row[0]] = int(row[1])
         
-NTS2= {}
+NTS2 = {}
 
 # get the labels for both data types
 with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
