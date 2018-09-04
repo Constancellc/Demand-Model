@@ -148,7 +148,7 @@ for vehicle in wProfiles:
 
 random.shuffle(data)
 
-sampleN = 10000
+sampleN = 30000
 
 data2 = []
 chosen = []
@@ -321,8 +321,7 @@ with open(stem+'MEAlabelsWE.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for vehicle in labels:
         writer.writerow([vehicle,labels[vehicle]])
-        
-        
+       
 plt.show()
 # this is the only clustering we will need to do, from now on it will
 # just be analysis

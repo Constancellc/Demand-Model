@@ -218,7 +218,7 @@ for i in range(3):
     pInt.append(exp)
     exp = 0
     for t in range(len(nChargesPdfWE[i])):
-        nChargesPdfWE[i][t] = nChargesPdfWE[i][t]/S
+        nChargesPdfWE[i][t] = nChargesPdfWE[i][t]/S2
         exp += nChargesPdfWE[i][t]*t
     pIntWE.append(exp)
 

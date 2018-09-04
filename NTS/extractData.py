@@ -89,7 +89,7 @@ with open(outfile,'w') as csvfile:
         row += [line[12]] # person number in household
         row += [rType[line[4]]] # region type
         row += [region[line[4]]] # region
-        dayNo = int(line[13]) + startDay[line[4]]
+        dayNo = int(line[13]) + startDay[line[4]]-1
         if dayNo > 7:
             dayNo -= 7
         row += [str(dayNo)] # week day
