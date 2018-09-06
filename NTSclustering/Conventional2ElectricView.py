@@ -43,13 +43,13 @@ for ii in range(2):
     plt.fill_between(range(1440*4),l,u,alpha=0.2)
     plt.plot(range(1440*4),m,label=labels[ii])
     print(sum(m))
-#plt.xlim(1440*2,1440*3)
+plt.xlim(1440*2,1440*3)
 plt.xticks([2*60+1440*2,6*60+1440*2,10*60+1440*2,14*60+1440*2,18*60+1440*2,
             22*60+1440*2],
            ['02:00','06:00','10:00','14:00','18:00','22:00'])
 plt.grid()
 plt.ylabel('Power Demand (kW)')
-plt.ylim(0,60)
+plt.ylim(0,70)
 plt.legend()
 plt.tight_layout()
 plt.show()

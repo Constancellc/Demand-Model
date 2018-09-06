@@ -8,7 +8,7 @@ from clustering import Cluster, ClusteringExercise
 
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
-stem = '../../Documents/simulation_results/NTS/clustering/labels/'
+stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
 assumed_capacity = 30 # kWh
 assumed_charge_power = 3.5 # kW
@@ -201,7 +201,7 @@ nV = 50
 print(len(allVehicles))
 sim_results = []
 sim_control = []
-for mc in range(20):
+for mc in range(40):
     charging = [0]*8440
     dumb_charging = [0]*8440
     # randomly choose vehicles

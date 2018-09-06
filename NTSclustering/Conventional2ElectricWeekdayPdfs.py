@@ -11,7 +11,7 @@ data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charges.csv
 
 data3 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
-stem = '../../Documents/simulation_results/NTS/clustering/labels/'
+stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
 NTS = {}
 
