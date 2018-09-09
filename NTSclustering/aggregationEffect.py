@@ -209,10 +209,12 @@ with open(data,'rU') as csvfile:
                         
 # then for each simulation
 results = {}
+results30 = {}
 nMC = 20
 nVs = [10,20,30,40,50]
 for nV in nVs:
     results[nV] = []
+    results30[nV] = []
     for mc in range(nMC):
         charging = [0]*10080
         # randomly choose vehicles
@@ -288,12 +290,18 @@ for nV in nVs:
                             kWh -= assumed_charge_power/60
 
                 del pdf2
-                try:
-                    t = endTimes[day][-1]+1440*day
-                except:
-                    t = 1440*day
+                del chargeTimes
+                
+            del endTimes
+            del home
 
         results[nV].append(max(charging)/nV)
+
+        charging30 = [0]*(48*7)
+        for t in range(10080):
+            charging30[int(t/30)] += charging[t]/30
+
+        results30[nV].append(max(charging30)/nV)
 
 
 with open(outstem+'aggregation.csv','w') as csvfile:
@@ -303,4 +311,13 @@ with open(outstem+'aggregation.csv','w') as csvfile:
         row = [i]
         for nV in nVs:
             row.append(results[nV][i])
+        writer.writerow(row)
+        
+with open(outstem+'aggregation30.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['n']+nVs)
+    for i in range(nMC):
+        row = [i]
+        for nV in nVs:
+            row.append(results30[nV][i])
         writer.writerow(row)
