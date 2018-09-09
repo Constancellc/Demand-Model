@@ -20,6 +20,8 @@ weProfiles = {} #weekend analysis would be a good extension
 nDays = {}
 nDaysWE = {}
 
+allV = {}
+
 seen = {}
 
 # first get all of the data points 
@@ -49,6 +51,9 @@ with open(data,'rU') as csvfile:
                 n[vehicle] = 1
             else:
                 n[vehicle] += 1
+
+        if vehicle not in allV:
+            allV[vehicle] = 0
             
         try:
             start = int(row[9])
@@ -77,6 +82,17 @@ with open(data,'rU') as csvfile:
                 profiles[vehicle][int((t-1440)/30)] += distPerMin
 
 del seen
+
+with open(stem+'allVehicles.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    for vehicle in allV:
+        writer.writerow([vehicle])
+        if vehicle not in nDays:
+            nDays[vehicle] = 0
+        elif vehicle not in nDaysWE:
+            nDays[vehicle] = 0
+        
+del allV
 
 wProfiles2 = {}
 weProfiles2 = {}
@@ -242,7 +258,7 @@ for vehicle in wProfiles:
 nTotal = len(data)
 random.shuffle(data)
 
-sampleN = 25000
+sampleN = 10000
 
 data2 = []
 chosen = []

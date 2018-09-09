@@ -42,20 +42,20 @@ plt.rcParams["font.size"] = '8'
 
 ax1 = fig.add_subplot(3,1,1)
 ax1.set_title('(a)',y=0.65)
-ax1.plot(t,pdf)
+ax1.plot(t,pdf,label='Charge PDF')
 ax1.set_ylim(0,0.004)
 plt.xticks(x,x_ticks)
 ax1.set_yticks([0,0.001,0.002,0.003,0.004])#,['0%','0.1%','0.2%','0.3%'])
-
+plt.legend()
 plt.grid()
+plt.ylabel('Probability')
+
 ax2 = ax1.twinx()
-ax2.plot(t,use,c='#808080',ls=':')
+ax2.plot(t,use,label='Vehicle Use',c='#808080',ls=':')
 ax2.set_yticks([0,1])
 ax2.set_ylim([0,1.333])
 ax2.set_xlim(0,48)
-
-
-
+plt.legend()
 for u in usage:
     for ti in range(u[0],u[1]):
         pdf[ti] = 0
@@ -68,6 +68,7 @@ ax1.plot(t,pdf)
 ax1.set_ylim(0,0.004)
 plt.xticks(x,x_ticks)
 ax1.set_yticks([0,0.001,0.002,0.003,0.004])
+plt.ylabel('Probability')
 
 plt.grid()
 ax2 = ax1.twinx()
@@ -107,6 +108,8 @@ ax1.set_ylim(0,0.08)
 plt.xticks(x,x_ticks)
 ax1.set_yticks([0,0.025,0.05,0.075])
 
+plt.ylabel('Probability')
+
 plt.grid()
 ax2 = ax1.twinx()
 ax2.plot(t,use,c='#808080',ls=':')
@@ -114,4 +117,8 @@ ax2.set_yticks([0,1])
 ax2.set_ylim([0,1.06666])
 ax2.set_xlim(0,48)
 plt.tight_layout()
+
+plt.savefig('../../Dropbox/papers/clustering/img/diagram.eps', format='eps', dpi=1000)
+
+
 plt.show()

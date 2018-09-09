@@ -12,13 +12,7 @@ stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
-'''
-required change - I want to sample all of the vehicles at once and then run
-the whole week (incl. weekend) as one simulation.
 
-First though I need to fix the utilisation thing in the clusterig
-
-'''
 assumed_capacity = 30 # kWh
 assumed_charge_power = 3.5 # kW
 assumed_kwh_limit = 25
@@ -214,119 +208,99 @@ with open(data,'rU') as csvfile:
         journeyLogs[vehicle].append([start,end,kWh,purpose])
                         
 # then for each simulation
-nV = 50
+results = {}
+nMC = 20
+nVs = [10,20,30,40,50]
+for nV in nVs:
+    results[nV] = []
+    for mc in range(nMC):
+        charging = [0]*10080
+        # randomly choose vehicles
+        chosen = []
+        while len(chosen) < nV:
+            ran = int(random.random()*len(allVehicles))
+            v = allVehicles[ran]
+            if (v not in chosen) and (v in journeyLogs):
+               if len(journeyLogs[v]) > 0:
+                   chosen.append(allVehicles[ran])
 
-sim_results = []
-sim_control = []
-for mc in range(20):
-    charging = [0]*10080
-    dumb_charging = [0]*10080
-    # randomly choose vehicles
-    chosen = []
-    while len(chosen) < nV:
-        ran = int(random.random()*len(allVehicles))
-        v = allVehicles[ran]
-        if (v not in chosen) and (v in joureyLogs):
-           if len(journeyLogs[v]) > 0:
-               chosen.append(allVehicles[ran])
+        for vehicle in chosen:
+            home = [1]*10080
+            endTimes = [[],[],[],[],[],[],[]]
+            kWh = 0
 
-    for vehicle in chosen:
-        home = [1]*10080
-        endTimes = [[],[],[],[],[],[],[]]
-        kWh = 0
+            for i in range(len(journeyLogs[vehicle])):
+                j = journeyLogs[vehicle][i]
+                start = j[0]
+                end = j[1]
 
-        for i in range(len(journeyLogs[vehicle])):
-            j = journeyLogs[vehicle][i]
-            start = j[0]
-            end = j[1]
+                day = int(end/1440)
+                if day >= 7:
+                    day -= 7
+                endTimes[day].append(end%1440)
 
-            day = int(end/1440)
-            if day >= 7:
-                day -= 7
-            endTimes[day].append(end%1440)
-
-            for t in range(start,end):
-                try:
-                    home[t] = 0
-                except:
-                    continue
-
-            if j[3] != '23' and i <len(journeyLogs[vehicle])-1:
-                for t in range(end,journeyLogs[vehicle][i+1][0]):
+                for t in range(start,end):
                     try:
                         home[t] = 0
                     except:
                         continue
-            
-        for day in range(7):
-            if kWh > assumed_kwh_limit: # hack but potentially justified 
-                kWh = assumed_kwh_limit
-            try:
-                clst = labels[vehicle+str(day+1)]
-            except:
-                continue
-            home2 = home[1440*day:1440*(day+1)]
 
-            kWh0 = copy.deepcopy(kWh)
-            
-            if day < 5:
-                pdf2 = get_charge_pdf(clst,'W',home2,endTimes[day])
-                chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'W',
-                                               journeyLogs[vehicle])
-            else:
-                pdf2 = get_charge_pdf(clst,'WE',home2,endTimes[day])
-                chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'WE',
-                                               journeyLogs[vehicle])
+                if j[3] != '23' and i <len(journeyLogs[vehicle])-1:
+                    for t in range(end,journeyLogs[vehicle][i+1][0]):
+                        try:
+                            home[t] = 0
+                        except:
+                            continue
                 
-            kWh2 = 0 # for the dumb charging
-            # add days journeys to kWh
-            for j in journeyLogs[vehicle]:
-                if j[1] > 1440*day and t < 1440*(day+1):
-                    kWh += j[2]
-                    kWh2 += j[2]
-            if kWh2 > assumed_kwh_limit:
-                kWh2 = assumed_kwh_limit
+            for day in range(7):
+                if kWh > assumed_kwh_limit: # hack but potentially justified 
+                    kWh = assumed_kwh_limit
+                try:
+                    clst = labels[vehicle+str(day+1)]
+                except:
+                    continue
+                home2 = home[1440*day:1440*(day+1)]
+
+                kWh0 = copy.deepcopy(kWh)
+                
+                if day < 5:
+                    pdf2 = get_charge_pdf(clst,'W',home2,endTimes[day])
+                    chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'W',
+                                                   journeyLogs[vehicle])
+                else:
+                    pdf2 = get_charge_pdf(clst,'WE',home2,endTimes[day])
+                    chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'WE',
+                                                   journeyLogs[vehicle])
                     
-            # implement charges
-            for charge in chargeTimes:
-                for t in range(charge[0],charge[1]):
-                    if t+day*1440 < 10080:
-                        charging[t+day*1440] += assumed_charge_power
-                        kWh -= assumed_charge_power/60
-                    else:
-                        charging[t+day*1440-10080] += assumed_charge_power
-                        kWh -= assumed_charge_power/60
+                # add days journeys to kWh
+                for j in journeyLogs[vehicle]:
+                    if j[1] > 1440*day and t < 1440*(day+1):
+                        kWh += j[2]
+                        
+                # implement charges
+                for charge in chargeTimes:
+                    for t in range(charge[0],charge[1]):
+                        if t+day*1440 < 10080:
+                            charging[t+day*1440] += assumed_charge_power
+                            kWh -= assumed_charge_power/60
+                        else:
+                            charging[t+day*1440-10080] += assumed_charge_power
+                            kWh -= assumed_charge_power/60
 
-            del pdf2
-            try:
-                t = endTimes[day][-1]+1440*day
-            except:
-                t = 1440*day
-                
-            while kWh2 > 0 and t < 10080:
-                kWh2 -= assumed_charge_power/60
-                dumb_charging[t] += assumed_charge_power
-                t += 1
+                del pdf2
+                try:
+                    t = endTimes[day][-1]+1440*day
+                except:
+                    t = 1440*day
 
-    sim_results.append(charging)
-    sim_control.append(dumb_charging)
+        results[nV].append(max(charging)/nV)
 
 
-with open(outstem+'50evs.csv','w') as csvfile:
+with open(outstem+'aggregation.csv','w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['t']+list(range(len(sim_results))))
-    for t in range(1440*7):
-        row = [t]
-        for i in range(len(sim_results)):
-            row.append(sim_results[i][t])
-        writer.writerow(row)
-
-
-with open(outstem+'50evsCtrl.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t']+list(range(len(sim_results))))
-    for t in range(1440*7):
-        row = [t]
-        for i in range(len(sim_control)):
-            row.append(sim_control[i][t])
+    writer.writerow(['n']+nVs)
+    for i in range(nMC):
+        row = [i]
+        for nV in nVs:
+            row.append(results[nV][i])
         writer.writerow(row)
