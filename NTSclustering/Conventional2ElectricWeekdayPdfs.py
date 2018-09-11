@@ -29,56 +29,60 @@ with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
     for row in reader:
         NTS2[row[0]] = int(row[1])
 
-
+n = 0
 c1 = [0]*7
 c2 = [0]*7
 c3 = [0]*7
-    
-with open(data,'rU') as csvfile:
+c4 = [0]*7
+
+with open(stem+'allVehicles.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
-    next(reader)
     for row in reader:
-        vehicle = row[2]
-        
-        if vehicle == '':
-            continue
-        elif vehicle == ' ':
-            continue
+        vehicle = row[0]
+        n += 1
 
-        vehicle += row[6]
-
-        weekday = int(row[6])
-
-        if weekday < 6:
+        for day in range(5):
             try:
-                c = NTS[vehicle]
+                c = NTS[vehicle+str(day+1)]
             except:
-                continue
-        else:
-            try:
-                c = NTS2[vehicle]
-            except:
+                c4[day] += 1
                 continue
 
-        if c == 0:
-            c1[weekday-1] += 1
-        elif c == 1:
-            c2[weekday-1] += 1
-        elif c == 2:
-            c3[weekday-1] += 1
+            if c == 0:
+                c1[day] += 1
+            elif c == 1:
+                c2[day] += 1
+            elif c == 2:
+                c3[day] += 1
+
+        for day in range(5,7):
+            try:
+                c = NTS2[vehicle+str(day+1)]
+            except:
+                c4[day] += 1
+                continue
+
+            if c == 0:
+                c1[day] += 1
+            elif c == 1:
+                c2[day] += 1
+            elif c == 2:
+                c3[day] += 1
+
 
 for i in range(7):
-    s = c1[i]+c2[i]+c3[i]
-    c2[i] = 100*(c2[i]+c3[i])/s
-    c3[i] = 100*c3[i]/s
+    c1[i] = 100*(c1[i]+c2[i]+c3[i])/n                  
+    c2[i] = 100*(c2[i]+c3[i])/n
+    c3[i] = 100*c3[i]/n
     
 plt.figure(figsize=(5,2))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '8'
-plt.bar(range(5),[100]*5,color='#FFBBBB')
+plt.bar(range(7),[100]*7,color='#C0C0C0')
+plt.bar(range(5),c1[:5],color='#FFBBBB')
 plt.bar(range(5),c2[:5],color='#BBBBFF')
 plt.bar(range(5),c3[:5],color='#BBFFBB')
-plt.bar(range(5,7),[100]*2,color='#FFFFBB')
+plt.bar(range(5,7),c1[5:],color='#FFFFBB')
 plt.bar(range(5,7),c2[5:],color='#FFBBFF')
 plt.bar(range(5,7),c3[5:],color='#BBFFFF')
 plt.xticks(range(7),['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])

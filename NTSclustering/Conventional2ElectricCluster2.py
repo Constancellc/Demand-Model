@@ -90,7 +90,7 @@ with open(stem+'allVehicles.csv','w') as csvfile:
         if vehicle not in nDays:
             nDays[vehicle] = 0
         elif vehicle not in nDaysWE:
-            nDays[vehicle] = 0
+            nDaysWE[vehicle] = 0
         
 del allV
 
@@ -151,6 +151,9 @@ for vehicle in nDaysWE:
 percentage_used.append(100*y/(y+n))
 
 print(percentage_used)
+
+del nDays
+del nDaysWE
 
 # normalise
 NTS_scales = {}
@@ -249,7 +252,6 @@ plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/choosing_k.eps', format='eps', dpi=1000)
 
 plt.show()
-
 '''
 # first cluster the wProfiles
 data = []
@@ -258,7 +260,7 @@ for vehicle in wProfiles:
 nTotal = len(data)
 random.shuffle(data)
 
-sampleN = 10000
+sampleN = 25000
 
 data2 = []
 chosen = []
@@ -349,6 +351,9 @@ for c in range(3):
     plt.tight_layout()
     plt.savefig('../../Dropbox/papers/clustering/img/weekday_clusters2.eps', format='eps', dpi=1000)
 
+del wProfiles
+del data
+del data2
 del pts
 del mean
 del upper
@@ -371,6 +376,10 @@ with open(stem+'MEAlabels.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for vehicle in labels:
         writer.writerow([vehicle,labels[vehicle]])
+
+del wProfiles2
+del CE
+del labels
 
 # next repeat for weekends
 data = []
