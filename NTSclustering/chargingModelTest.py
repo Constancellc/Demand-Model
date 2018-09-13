@@ -12,10 +12,12 @@ data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charges.csv
 
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
+stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
+
 
 assumed_capacity = 30 # kWh
 assumed_charge_power = 3.5 # kW
-assumed_kwh_limit = 25
+assumed_kwh_limit = 35
 def normalise(pdf):
     s = sum(pdf)
     for i in range(len(pdf)):
@@ -24,6 +26,7 @@ def normalise(pdf):
 def sample(pdf):
     if sum(pdf) == 0:
         return int(random.random()*len(pdf))
+    normalise(pdf)
     x = 0
     ran = random.random()
     while sum(pdf[:x]) <= ran:
@@ -38,12 +41,11 @@ with open(stem+'MEAlabels.csv','rU') as csvfile:
     for row in reader:
         # reminder that row[0] contains the vehicle id + the day of week
         labels[row[0]] = int(row[1])
- 
-labelsWE = {}       
+      
 with open(stem+'MEAlabelsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        labelsWE[row[0]] = int(row[1])
+        labels[row[0]] = int(row[1])
 
 # get all charging pdfs
 chargePdf = {0:[],1:[],2:[]}
@@ -120,7 +122,7 @@ def get_charge_pdf(clst,typ,home,endTimes):
 
     return pdf2
 
-def get_charge_times(pdf2,kWh0,day,clst,typ,log):
+def get_charge_times(pdf2,kWh0,clst,typ,log):
     cTimes = []
     # sample a charge start time pdf
 
@@ -134,15 +136,15 @@ def get_charge_times(pdf2,kWh0,day,clst,typ,log):
             kWh -= c
             
         cT = sample(pdf2)
-        nextUsed = 1440*(day+1)
+        nextUse = 1440+log[0][0]
 
         # work out the kWh consumed by that point
         for j in log:
-            if j[1] > day*1440 and j[1] < cT+day*1440:
+            if j[1] < cT:
                 kWh += j[2]
-                
-            elif j[0] > cT+day*1440 and j[0] < nextUsed:
-                nextUsed = j[0]
+            else:
+                if j[0] < nextUse:
+                    nextUse = j[0]
                 
         SOC = 100-(100*kWh/assumed_capacity)
         if SOC < 0:
@@ -157,7 +159,7 @@ def get_charge_times(pdf2,kWh0,day,clst,typ,log):
             # start charging
             t = cT
             c = 0
-            while kWh > 0 and t < nextUsed:
+            while kWh > 0 and t < nextUse:
                 c += assumed_charge_power/60
                 kWh -= assumed_charge_power/60
                 t += 1
@@ -168,9 +170,28 @@ def get_charge_times(pdf2,kWh0,day,clst,typ,log):
 
     return cTimes
 
+def predict(log,typ,clst,kWh0):
+    home = [1]*1440
+    endTimes = []
+    for j in log:
+        endTimes.append(j[1])
+        for t in range(j[0],j[1]):
+            if t < 1440:
+                home[t] = 0
+            
+    pdf2 = get_charge_pdf(clst,typ,home,endTimes)
+
+    return get_charge_times(pdf2,kWh0,clst,typ,log)
+
+def s_e(a,b):
+    s = 0
+    for t in range(len(a)):
+        s += np.power(a[t]-b[t],2)
+    return s
+
 lowest = {}
 highest = {}
-wEnds = {}
+typs = {}
 # first get all vehicle usage and locations
 journeyLogs = {}
 with open(data,'rU') as csvfile:
@@ -179,16 +200,16 @@ with open(data,'rU') as csvfile:
     for row in reader:
 
         vehicle = row[0]
-
-        if vehicle not in wEnds:
-            wEnds[vehicle] = {}
-
-        wEnds[vehicle][int(row[1])] = row[-1]
-
-        if row[-1] != '0': # only weekday for noow
-            continue
         
         vehicle += row[1]
+
+        if row[-1] != '0': # only weekday for noow
+            typs[vehicle] = 'W'
+        else:
+            typs[vehicle] = 'WE'
+        
+        if vehicle not in journeyLogs:
+            journeyLogs[vehicle] = []
         
         start = int(row[2])
         end = int(row[3])
@@ -203,9 +224,6 @@ with open(data,'rU') as csvfile:
 
         if end < start:
             end += 1440
-
-        start += 1440*(day-1)
-        end += 1440*(day-1)
 
         journeyLogs[vehicle].append([start,end,kWh])
 
@@ -233,143 +251,138 @@ with open(data2,'rU') as csvfile:
             chargeLogs[vehicle] = []
 
         start = int(row[2])
-        end = int(row[2])
+        end = int(row[3])
 
         if end < start:
             end += 1440
 
         chargeLogs[vehicle].append([start,end])
 
+avT = [0]*1440
+av1 = [0]*1440
+av2 = [0]*1440
+
+avTwe = [0]*1440
+av1we = [0]*1440
+av2we = [0]*1440
+n = 0
+s1 = 0
+s2 = 0
 for vehicle in lowest:
-    s1 = 0
-    s2 = 0
+    kWh0 = 0
     for d in range(lowest[vehicle],highest[vehicle]):
+        if kWh0 > assumed_kwh_limit:
+            kWh0 = assumed_kwh_limit
+            
+        chargingT = [0]*1440
+        charging1 = [0]*1440
+        charging2 = [0]*1440
         # okay, I should make a function to predict a single day
-
-        # then predict the dumb charging
-
-        # then get the actual charging
-
+        v = vehicle+str(d)
+        if v not in journeyLogs:
+            continue
+        if v not in labels:
+            continue
+        '''
+        if v not in chargeLogs:
+            continue
+        '''
+        cT = predict(journeyLogs[v],typs[v],labels[v],kWh0)
         
-# could be good to plot the average charging profile across all days and
-# vehicles...?
+        for c in cT:
+            for t in range(c[0],c[1]):
+                if t < 1440:
+                    charging1[t] = 1
+                else:
+                    charging1[t-1440] = 1
 
-# then I need to predict the charging using dumb and my method and record error
-'''
-# then for each simulation
-nV = 50
+        kWh0 -= assumed_charge_power*sum(charging1)/60
+        
+        kWh2 = 0
+        start = 0
+        for j in journeyLogs[v]:
+            kWh0 += j[2]
+            kWh2 += j[2]
+            t = j[1]
 
-sim_results = []
-sim_control = []
-for mc in range(20):
-    charging = [0]*10080
-    dumb_charging = [0]*10080
-    # randomly choose vehicles
-    chosen = []
-    while len(chosen) < nV:
-        ran = int(random.random()*len(allVehicles))
-        v = allVehicles[ran]
-        if (v not in chosen) and (v in joureyLogs):
-           if len(journeyLogs[v]) > 0:
-               chosen.append(allVehicles[ran])
-
-    for vehicle in chosen:
-        home = [1]*10080
-        endTimes = [[],[],[],[],[],[],[]]
-        kWh = 0
-
-        for i in range(len(journeyLogs[vehicle])):
-            j = journeyLogs[vehicle][i]
-            start = j[0]
-            end = j[1]
-
-            day = int(end/1440)
-            if day >= 7:
-                day -= 7
-            endTimes[day].append(end%1440)
-
-            for t in range(start,end):
-                try:
-                    home[t] = 0
-                except:
-                    continue
-
-            if j[3] != '23' and i <len(journeyLogs[vehicle])-1:
-                for t in range(end,journeyLogs[vehicle][i+1][0]):
-                    try:
-                        home[t] = 0
-                    except:
-                        continue
+        if kWh2 > assumed_capacity:
+            kWh2 = assumed_capacity
             
-        for day in range(7):
-            if kWh > assumed_kwh_limit: # hack but potentially justified 
-                kWh = assumed_kwh_limit
-            try:
-                clst = labels[vehicle+str(day+1)]
-            except:
-                continue
-            home2 = home[1440*day:1440*(day+1)]
-
-            kWh0 = copy.deepcopy(kWh)
-            
-            if day < 5:
-                pdf2 = get_charge_pdf(clst,'W',home2,endTimes[day])
-                chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'W',
-                                               journeyLogs[vehicle])
+        # then predict the dumb charging
+        while kWh2 > 0:
+            if t < 1440:
+                charging2[t] = 1
             else:
-                pdf2 = get_charge_pdf(clst,'WE',home2,endTimes[day])
-                chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'WE',
-                                               journeyLogs[vehicle])
-                
-            kWh2 = 0 # for the dumb charging
-            # add days journeys to kWh
-            for j in journeyLogs[vehicle]:
-                if j[1] > 1440*day and t < 1440*(day+1):
-                    kWh += j[2]
-                    kWh2 += j[2]
-            if kWh2 > assumed_kwh_limit:
-                kWh2 = assumed_kwh_limit
-                    
-            # implement charges
-            for charge in chargeTimes:
-                for t in range(charge[0],charge[1]):
-                    if t+day*1440 < 10080:
-                        charging[t+day*1440] += assumed_charge_power
-                        kWh -= assumed_charge_power/60
+                charging2[t-1440] = 1
+            kWh2 -= assumed_charge_power/60
+            t += 1
+            
+        # then get the actual charging
+        if v in chargeLogs:
+            for c in chargeLogs[v]:
+                for t in range(c[0],c[1]):
+                    if t < 1440:
+                        chargingT[t] = 1
                     else:
-                        charging[t+day*1440-10080] += assumed_charge_power
-                        kWh -= assumed_charge_power/60
+                        chargingT[t-1440] = 1
+        if typs[v] == 'W':
+            for t in range(1440):
+                avT[t] += chargingT[t]
+                av1[t] += charging1[t]
+                av2[t] += charging2[t]
+        else:
+            for t in range(1440):
+                avTwe[t] += chargingT[t]
+                av1we[t] += charging1[t]
+                av2we[t] += charging2[t]
 
-            del pdf2
-            try:
-                t = endTimes[day][-1]+1440*day
-            except:
-                t = 1440*day
-                
-            while kWh2 > 0 and t < 10080:
-                kWh2 -= assumed_charge_power/60
-                dumb_charging[t] += assumed_charge_power
-                t += 1
+for av in [avT,av1,av2,avTwe,av1we,av2we]:
+    normalise(av)
+    for t in range(len(av)):
+        av[t] = av[t]*100
 
-    sim_results.append(charging)
-    sim_control.append(dumb_charging)
+s1 = s_e(av1,avT)
+s2 = s_e(av2,avT)
+print(s1)
+print(s2)
+s1 = s_e(av1we,avTwe)
+s2 = s_e(av2we,avTwe)
+print(s1)
+print(s2)
 
-
-with open(outstem+'50evs.csv','w') as csvfile:
+with open(outstem+'error1.csv','w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['t']+list(range(len(sim_results))))
-    for t in range(1440*7):
-        row = [t]
-        for i in range(len(sim_results)):
-            row.append(sim_results[i][t])
-        writer.writerow(row)
+    writer.writerow(['t','dumb','smart','true','dumbWe','smartWe','trueWe'])
+    for t in range(1440):
+        writer.writerow([t,av2[t],av1[t],avT[t],av2we[t],av1we[t],avTwe[t]])
 
+plt.figure(figsize=(5,4))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '8'
+x = [2*60,6*60,10*60,14*60,18*60,22*60]
+x_ticks = ['02:00','06:00','10:00','14:00','18:00','22:00']
+plt.subplot(2,1,1)
+plt.plot(avT,label='True')
+plt.plot(av1,label='(a)')
+plt.plot(av2,label='(b)')
+plt.xlim(0,1439)
+plt.xticks(x,x_ticks)
+plt.ylabel('Probability (%)')
+plt.ylim(0,0.2)
+plt.grid()
+plt.title('Weekdays')
+plt.legend()
 
-with open(outstem+'50evsCtrl.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t']+list(range(len(sim_results))))
-    for t in range(1440*7):
-        row = [t]
-        for i in range(len(sim_control)):
-            row.append(sim_control[i][t])
-        writer.writerow(row)
+plt.subplot(2,1,2)
+plt.plot(avTwe,label='True')
+plt.plot(av1we,label='(a)')
+plt.plot(av2we,label='(b)')
+plt.xlim(0,1439)
+plt.xticks(x,x_ticks)
+plt.title('Weekends')
+plt.ylabel('Probability (%)')
+plt.ylim(0,0.2)
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/clustering/img/error.eps', format='eps', dpi=1000)
+
+plt.show()
