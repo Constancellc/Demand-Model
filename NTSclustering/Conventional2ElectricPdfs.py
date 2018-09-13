@@ -146,7 +146,6 @@ with open(data2,'rU') as csvfile:
 
         soc = int(100*float(row[4])+random.random()*16.666-8.333)
                   
-
         if vehicle not in nc:
             nc[vehicle] = 1
         else:
