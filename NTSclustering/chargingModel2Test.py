@@ -50,6 +50,8 @@ with open(stem+'MEAlabelsWE.csv','rU') as csvfile:
 # get all charging pdfs
 chargePdf = {0:[],1:[],2:[]}
 chargePdfWE = {0:[],1:[],2:[]}
+chargePdf2 = {0:[],1:[],2:[]}
+chargePdfWE2 = {0:[],1:[],2:[]}
 socPdf = {0:[],1:[],2:[]}
 socPdfWE = {0:[],1:[],2:[]}
 
@@ -68,6 +70,22 @@ with open(stem+'chargePdfWE.csv','rU') as csvfile:
         for i in range(3):
             for t in range(30):
                 chargePdfWE[i].append(float(row[i+1]))
+                
+with open(stem+'chargePdfW2.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            for t in range(30):
+                chargePdf2[i].append(float(row[i+1]))
+            
+with open(stem+'chargePdfWE2.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            for t in range(30):
+                chargePdfWE2[i].append(float(row[i+1]))
 
 with open(stem+'socPdfW.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -83,7 +101,7 @@ with open(stem+'socPdfWE.csv','rU') as csvfile:
         for i in range(3):
             socPdfWE[i].append(float(row[i+1]))
 
-for pdf in [chargePdf,chargePdfWE,socPdf,socPdfWE]:
+for pdf in [chargePdf,chargePdfWE,chargePdf2,chargePdfWE2,socPdf,socPdfWE]:
     for i in range(3):
         normalise(pdf[i])
 
@@ -91,36 +109,53 @@ for pdf in [chargePdf,chargePdfWE,socPdf,socPdfWE]:
 def get_charge_pdf(clst,typ,home,endTimes):
     if typ == 'W':
         pdf2 = copy.deepcopy(chargePdf[clst])
+        pdf3 = copy.deepcopy(chargePdf2[clst])
+        p_aft = 0.704
+        
     elif typ == 'WE':
         pdf2 = copy.deepcopy(chargePdfWE[clst])
-
+        pdf3 = copy.deepcopy(chargePdfWE2[clst])
+        p_aft = 0.666
+        
     # first set all times not at home to 0
     for t in range(len(pdf2)):
         if home[t] == 0:
             pdf2[t] = 0
+            pdf3[t] = 0
 
     # then scale all of the endTimes to be 0.7 and the others to be 0.3
-    s1 = 0
-    s2 = 0
-    for t in range(len(pdf2)):
-        if t in endTimes:
-            s1 += pdf2[t]
-        else:
-            s2 += pdf2[t]
-            
-    if s1 == 0 and s2 == 0:
-        return pdf2
-    elif s1 == 0 or s2 == 0:
-        normalise(pdf2)
+    if len(endTimes) == 0:
+        return pdf3
+
     else:
+        s2 = 0
+        s3 = 0
+        pdf_ = [0]*len(pdf2)
         for t in range(len(pdf2)):
             if t in endTimes:
-                pdf2[t] = pdf2[t]*0.7/s1
+                pdf_[t] = pdf2[t]
+                s2 += pdf2[t]
             else:
-                pdf2[t] = pdf2[t]*0.3/s2
-        normalise(pdf2)
+                pdf_[t] = pdf3[t]
+                s3 += pdf3[t]
 
-    return pdf2
+        if s2 == 0 and s3 == 0:
+            pdf_ = [1]*len(pdf2)
+
+        elif s2 == 0:
+            pdf_ = pdf3
+
+        elif s3 == 0:
+            pdf_ = pdf2
+
+        else:
+            for t in range(len(pdf2)):
+                if t in endTimes:
+                    pdf_[t] = pdf_[t]*p_aft/s2
+                else:
+                    pdf_[t] = pdf_[t]*(1-p_aft)/s3
+    normalise(pdf_)
+    return pdf_
 
 def get_charge_times(pdf2,kWh0,clst,typ,log):
     cTimes = []
@@ -219,8 +254,8 @@ with open(data,'rU') as csvfile:
         elif end < start:
             end += 1440
 
-        distance = float(row[4])/1609 # m -> miles
-        kWh = distance*0.3
+        #distance = float(row[4])/1609 # m -> miles
+        kWh = float(row[5])/900 # Wh - kWh and taking into account efficiency
 
         if end < start:
             end += 1440
@@ -265,6 +300,7 @@ av2 = [0]*1440
 avTwe = [0]*1440
 av1we = [0]*1440
 av2we = [0]*1440
+
 n = 0
 s1 = 0
 s2 = 0
@@ -283,6 +319,7 @@ for vehicle in lowest:
             continue
         if v not in labels:
             continue
+        n += 1
         '''
         if v not in chargeLogs:
             continue
@@ -340,7 +377,10 @@ for av in [avT,av1,av2,avTwe,av1we,av2we]:
     normalise(av)
     for t in range(len(av)):
         av[t] = av[t]*100
-
+        
+for e in [e1,e2,e1we,e2we]:
+    e = e/n
+    
 s1 = s_e(av1,avT)
 s2 = s_e(av2,avT)
 print(s1)
@@ -350,7 +390,7 @@ s2 = s_e(av2we,avTwe)
 print(s1)
 print(s2)
 
-with open(outstem+'error3.csv','w') as csvfile:
+with open(outstem+'error2.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['t','dumb','smart','true','dumbWe','smartWe','trueWe'])
     for t in range(1440):

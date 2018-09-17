@@ -2,9 +2,9 @@ import csv
 import random
 
 
-ind = '../../Documents/UKDA-7533-tab/tab/individualspecial2016_protect.tab'
-households = '../../Documents/UKDA-7533-tab/tab/householdspecial2016_protect.tab'
-outfile = '../../Documents/UKDA-7533-tab/constance/hh-loc.csv'
+ind = '../../Documents/UKDA-7553-tab/tab/individualspecial2016_protect.tab'
+households = '../../Documents/UKDA-7553-tab/tab/householdspecial2016_protect.tab'
+outfile = '../../Documents/UKDA-7553-tab/constance/hh-loc.csv'
 
 
 country = {} 

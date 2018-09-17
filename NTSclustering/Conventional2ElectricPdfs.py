@@ -95,19 +95,52 @@ with open(stem+'clusterPdfWE.csv','w') as csvfile:
     for i in range(3):
         writer.writerow([i+1,MEAtotal2[i],NTStotal2[i]])
 
+def get_nearest(p,lst):
+    d = 30
+    for x in lst:
+        if abs(x-p) < d:
+            d = abs(x-p)
+
+    return d
+            
 # now we need to get the individual cluster start of charging pdfs
 chargingPdf = []
+chargingPdf2 = []
 socPdf = []
 chargingPdfWE = []
+chargingPdfWE2 = []
 socPdfWE = []
 nCharges = {}
 nChargesWE = {}
 for i in range(3):
     chargingPdf.append([0]*48)
+    chargingPdf2.append([0]*48)
     chargingPdfWE.append([0]*48)
+    chargingPdfWE2.append([0]*48)
     socPdf.append([0]*101)
     socPdfWE.append([0]*101)
 
+tripEnds = {}
+
+# now get the MEA data
+with open(data3,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        vehicle = row[0]
+        dayNo = int(row[1])
+        end = int(row[3])
+
+        if end > 1440:
+            end -= 1440
+            dayNo -= 1
+
+        vehicle += str(dayNo)
+        if vehicle not in tripEnds:
+            tripEnds[vehicle] = []
+            
+        tripEnds[vehicle].append(end)
+            
 lowest = {}
 highest = {}
 # now get the MEA data
@@ -131,16 +164,31 @@ with open(data2,'rU') as csvfile:
         
         if row[-1] == '0':
             pdf = chargingPdf
+            pdf2 = chargingPdf2
             sPdf = socPdf
             cls = MEA
             nc = nCharges
         else:
             pdf = chargingPdfWE
+            pdf2 = chargingPdfWE2
             sPdf = socPdfWE
             cls = MEA2
             nc = nChargesWE
         
-        start = int(int(row[2])/30)
+        start = int(row[2])
+        try:
+            ends = tripEnds[vehicle]
+        except:
+            ends = []
+
+        d = get_nearest(start,ends)
+        if d < 5:
+            pdf_ = pdf
+        else:
+            pdf_ = pdf2
+
+        start = int(start/30)
+        
         if start >= 48:
             start -= 48
 
@@ -153,7 +201,7 @@ with open(data2,'rU') as csvfile:
 
             
         try:
-            pdf[cls[vehicle]][start] += 1
+            pdf_[cls[vehicle]][start] += 1
         except:
             continue
             
@@ -228,9 +276,13 @@ halfWE = [0,0,0]
 for i in range(3):
     s1 = sum(chargingPdf[i])
     s2 = sum(chargingPdfWE[i])
+    s3 = sum(chargingPdf2[i])
+    s4 = sum(chargingPdfWE2[i])
     for t in range(48):
         chargingPdf[i][t] = chargingPdf[i][t]*100/s1
         chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/s2
+        chargingPdf2[i][t] = chargingPdf2[i][t]*100/s3
+        chargingPdfWE2[i][t] = chargingPdfWE2[i][t]*100/s4
 
 for i in range(3):
     s1 = sum(socPdf[i])
@@ -262,15 +314,16 @@ n = 1
 for i in range(3):
     plt.subplot(2,3,n)
     plt.plot(chargingPdf[i],c=clrs[str(i)])
+    plt.plot(chargingPdf2[i],c=clrs[str(i)],ls=':')
     plt.xlim(0,47)
-    plt.ylim(0,10)
+    plt.ylim(0,12)
     plt.grid()
     if n == 2:
         plt.title('Weekday')
     if n in [2,3,5]:
-        plt.yticks([4,8],['',''])
+        plt.yticks([5,10],['',''])
     else:
-        plt.yticks([0,4,8],['0%','4%','8%'])
+        plt.yticks([0,5,10],['0%','5%','10%'])
     if n in []:#7,8,9]:
         plt.xticks([0,4,8],['',''])
     else:
@@ -280,15 +333,16 @@ for i in range(3):
 for i in range(3):
     plt.subplot(2,3,n)
     plt.plot(chargingPdfWE[i],c=clrs2[str(i)],label=str(i))
+    plt.plot(chargingPdfWE2[i],c=clrs2[str(i)],ls=':',label=str(i))
     plt.xlim(0,47)
-    plt.ylim(0,10)
+    plt.ylim(0,12)
     plt.grid()
     if n == 5:
         plt.title('Weekend')
     if n in [5,6]:
-        plt.yticks([4,8],['',''])
+        plt.yticks([5,10],['',''])
     else:
-        plt.yticks([0,4,8],['0%','4%','8%'])
+        plt.yticks([0,5,10],['0%','5%','10%'])
     plt.xticks(x,x_ticks)
     n += 1
 plt.tight_layout()
@@ -365,6 +419,24 @@ with open(stem+'chargePdfWE.csv','w') as csvfile:
         row = [t]
         for i in range(3):
             row += [chargingPdfWE[i][t]]
+        writer.writerow(row)
+
+with open(stem+'chargePdfW2.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(48):
+        row = [t]
+        for i in range(3):
+            row += [chargingPdf2[i][t]]
+        writer.writerow(row)
+        
+with open(stem+'chargePdfWE2.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(48):
+        row = [t]
+        for i in range(3):
+            row += [chargingPdfWE2[i][t]]
         writer.writerow(row)
 
 with open(stem+'socPdfW.csv','w') as csvfile:

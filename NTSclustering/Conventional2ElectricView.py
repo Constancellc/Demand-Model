@@ -40,11 +40,17 @@ for ii in range(2):
     for i in range(len(m)):
         u.append(m[i]+np.sqrt(v[i]))
         l.append(m[i]-np.sqrt(v[i]))
-
+        
+    for y in [u,l,m]:
+        for t in range(len(y)):
+            y[t] = y[t]/50
     plt.fill_between(range(1440*7),l,u,alpha=0.2)
     plt.plot(range(1440*7),m,label=labels[ii])
     print(sum(m))
-    
+
+    print(sum(m[1440*3:1440*4]))
+
+
 plt.xlim(1440*3,1440*4)
 plt.xticks([2*60+1440*3,6*60+1440*3,10*60+1440*3,14*60+1440*3,18*60+1440*3,
             22*60+1440*3],
@@ -52,7 +58,7 @@ plt.xticks([2*60+1440*3,6*60+1440*3,10*60+1440*3,14*60+1440*3,18*60+1440*3,
 
 plt.grid()
 plt.ylabel('Power Demand (kW)')
-plt.ylim(0,70)
+plt.ylim(0,1.8)
 plt.legend()
 plt.tight_layout()
 plt.show()

@@ -81,6 +81,12 @@ n = 0
 y2 = 0
 n2 = 0
 
+yWe = 0
+nWe = 0
+
+yWe2 = 0
+nWe2 = 0
+
 pdf = [0]*200
 with open(charge,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -103,15 +109,27 @@ with open(charge,'rU') as csvfile:
         except:
             continue
 
-        if best == endTimes[vehicle][day][-1]:
-            y2 += 1
-        else:
-            n2 += 1
+        if row[-1] == '0':
+            if best == endTimes[vehicle][day][-1]:
+                y2 += 1
+            else:
+                n2 += 1
 
-        if dist > 2:
-            n += 1
+            if dist > 2:
+                n += 1
+            else:
+                y += 1
+
         else:
-            y += 1
+            if best == endTimes[vehicle][day][-1]:
+                yWe2 += 1
+            else:
+                nWe2 += 1
+
+            if dist > 2:
+                nWe += 1
+            else:
+                yWe += 1
 
 
             
@@ -122,22 +140,34 @@ print(p)
 print(p2)
 print(p3)
 
+print('')
+
 print(100*y/(n+y))
 
 print(100*y2/(n2+y2))
 
+print('')
+print(100*yWe/(nWe+yWe))
+
+print(100*yWe2/(nWe2+yWe2))
+
 x = range(max(distances))
 x2 = range(max(distances2))
 x3 = range(max(distances3))
+
 y = []
 y2 = []
 y3 = []
+
+
 for i in range(len(x)):
     y.append(p[0]*x[i]+p[1])
 for i in range(len(x2)):
     y2.append(p2[0]*x2[i]+p2[1])
 for i in range(len(x3)):
     y3.append(p3[0]*x3[i]+p3[1])
+
+
 plt.figure()
 plt.scatter(distances,energys)
 plt.scatter(distances2,energys2)
