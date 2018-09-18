@@ -7,7 +7,7 @@ from chargingModel import MC_Sim
 
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
-outstem = '../../Documents/simulation_results/NTS/clustering/power/'
+outstem = '../../Documents/simulation_results/NTS/clustering/power/locations/'
 
 nV = 50
 nMC = 40
@@ -22,14 +22,7 @@ with open('../../Documents/UKDA-7553-tab/constance/hh-loc.csv','rU') as csvfile:
         if row[lType] not in locs:
             locs.append(row[lType])
 
-
-# each locaiton should point to a list of vehicle
-
-# get all the vehicle profiles, cluster number etc?
-
-
-
 # for each location
-
-sim = MC_Sim(nV,'73',4)
-sim.run(nMC,'../../Documents/simulation_results/NTS/clustering/power/test.csv')
+for l in locs:
+    sim = MC_Sim(nV,l,4)
+    sim.run(nMC,outstem+l+'.csv')
