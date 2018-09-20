@@ -74,26 +74,44 @@ def find_nearest(p1):
     return best
 
 # make these smaller to increase the resolution
-x = np.arange(-7,3,0.1)
-y = np.arange(49,59,0.1)
+x = np.arange(-7,3,0.05)
+y = np.arange(49,59,0.05)
 
 Z = np.zeros((len(x),len(y)))
-
+X = np.zeros((len(x),len(y)))
+Y = np.zeros((len(x),len(y)))
+m.drawcoastlines()
 for i in range(len(x)):
     for j in range(len(y)):
-        p = [x[0],y[j]]
+        p = [x[i],y[j]]
         best = find_nearest(p)
-        Z[i,j] = z[best]
+        xpt,ypt = m(x[i],y[j])
+        X[i,j] = xpt
+        Y[i,j] = ypt
+        if m.is_land(xpt,ypt) == True:
+            if xpt < 200000 and ypt < 970000:
+                continue
+            if xpt > 950000 and ypt < 235000:
+                continue
+            if xpt > 766000 and ypt < 104000:
+                continue
+            Z[i,j] = z[best]
+        else:
+            continue
 
 '''
 dx, dy = 0.1, 0.1
 y, x = np.mgrid[slice(49, 59 + dy, dy),
                 slice(-7, 3 + dx, dx)]
 '''
-m.pcolormesh(x,y,Z,latlon=True)
-m.drawcoastlines()
+
+m.pcolor(X,Y,Z)
+#m.pcolormesh(x,y,Z,latlon=True)
+#m.drawmapboundary(fill_color='#99ffff')
+#m.drawlsmask(land_color='coral',ocean_color='aqua')
 # draw parallels
 #m.drawparallels(np.arange(10,90,20),labels=[1,1,0,1])
 # draw meridians
 #m.drawmeridians(np.arange(-180,180,30),labels=[1,1,0,1])
+plt.colorbar()
 plt.show()

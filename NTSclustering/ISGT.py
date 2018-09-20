@@ -11,6 +11,7 @@ data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
+figStem = '../../Dropbox/papers/ISGT/poster/figures/'
 rTypes = {}
 
       
@@ -33,6 +34,7 @@ with open(data,'rU') as csvfile:
         weekday = int(row[6])
 
         if weekday > 5:
+            continue
             profiles = weProfiles
         else:
             profiles = wProfiles
@@ -48,12 +50,16 @@ with open(data,'rU') as csvfile:
         if vehicle not in profiles:
             profiles[vehicle] = [0]*48
 
-        if start < end:
-            l = end-start
-        else:
-            l = end+24*60-start
+        if end == start:
+            end += int(random.random()*30)
+        if end < start:
+            end += 1440
 
-        distPerMin = distance/l
+        l = end-start
+        try:
+            distPerMin = distance/l
+        except:
+            continue
         
         for t in range(start,end):
             if t < 1440:
@@ -118,8 +124,8 @@ for vehicle in weProfiles:
 
     
 data = []
-for vehicle in weProfiles:
-    data.append(weProfiles[vehicle])
+for vehicle in wProfiles:
+    data.append(wProfiles[vehicle])
 
 random.shuffle(data)
 
@@ -128,7 +134,7 @@ x_ticks = ['04:00','12:00','20:00']
 
 plt.figure(5)
 plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
+plt.rcParams["font.size"] = '10'
 for i in range(9):
     plt.subplot(3,3,i+1)
     plt.ylim(0,0.2)
@@ -136,13 +142,14 @@ for i in range(9):
     plt.xlim(0,48)
     plt.xticks(x,x_ticks)
     plt.grid()
+    plt.savefig(figStem+'feature_vectors.png', transparent=True)
     
-sampleN = 30000
+sampleN = 20000
 CE = ClusteringExercise(data[:sampleN])
 
 x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
-
+'''
 css = []
 plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
@@ -152,15 +159,10 @@ for k in range(2,11):
 
     CE.k_means(k)
     css.append(CE.get_sum_of_squares())
-    #'''
+
     for label in CE.clusters:
         plt.plot(CE.clusters[label].mean,label=str(int(CE.clusters[label].nPoints*100/sampleN))+'%')
-    '''
-    medians = CE.get_cluster_median()
-    for label in medians:
-        plt.plot(medians[label],label=str(CE.clusters[label].nPoints))
 
-    '''
     plt.legend()
 
     CE.reset_clusters()
@@ -169,24 +171,29 @@ for k in range(2,11):
     plt.xticks(x,x_ticks)
     plt.ylim(0,0.35)
     plt.grid()
+    plt.savefig(figStem+'sum_of_squares.png', transparent=True)
 
 plt.figure(3)
 plt.plot(range(2,11),css)
 plt.xlabel('Number of clusters')
 plt.ylabel('Distance between two closest centroids')
 plt.grid()
-
+plt.savefig(figStem+'closet_centr.png', transparent=True)
+'''
 fig = plt.figure(2)
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '10'
 CE.k_means(5)
 n = 1
 
 clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
 
-locs = {1:[2.5,-0.4],2:[1.3,-0.6],3:[0.1,-0.8],4:[2.5,0.2],5:[1.3,0.0]}
+locs = {1:[2.7,-0.4],2:[1.4,-0.6],3:[0.1,-0.8],4:[2.7,0.2],5:[1.4,0.0]}
 pdfs = {}
 for label in CE.clusters:
     pdfs[label] = CE.clusters[label].distance_pdf(maxWDist,200)
-    plt.subplot(2,3,n)
+    ax = plt.subplot(2,3,n)
+    ax.set_facecolor('#d3d3d3')
 
     mean = copy.copy(CE.clusters[label].mean)
     upper, lower = CE.clusters[label].get_cluster_bounds(0.9)
@@ -212,7 +219,9 @@ for label in CE.clusters:
     plt.xticks(x,x_ticks)
     plt.grid()
     plt.legend(loc=locs[n],frameon=False)
-
+    plt.tight_layout()
+    
+    plt.savefig(figStem+'clusters.png', transparent=True)
 
     n += 1
 
@@ -296,6 +305,8 @@ plt.legend()
 plt.grid()
 plt.xlabel('Cluster #')
 plt.ylabel('Probability')
+plt.tight_layout()
+plt.savefig(figStem+'mea_nts.png', transparent=True)
 
 plt.figure()
 plt.rcParams["font.family"] = 'serif'
@@ -321,6 +332,8 @@ for label in pdfs:
     if label == '0':
         plt.legend(loc=[2.5,-0.7])
     plt.grid()
+    plt.tight_layout()
+    plt.savefig(figStem+'dist_pdf.png', transparent=True)
     
 
 plt.show()
