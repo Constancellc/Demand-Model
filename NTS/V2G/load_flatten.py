@@ -9,9 +9,10 @@ from cvxopt import matrix, spdiag, sparse, solvers
 simulationDay = 3
 nMC = 100
 nH = 50
+c_eff = 0.9
 capacity = 30 # kWh
 pMax = 3.5 # kW
-pMin = -3.5 # kW
+pMax_ = 3.5 # kW for V2G
 
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
@@ -160,8 +161,6 @@ for pen in np.arange(0.1,1.1,0.1):
             for t in range(1440):
                 A[v,1440*v+t] = 1.0/60
                 A[v+n,1440*v+t] = a_[v][t]
-
-        del a_
         
         G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
         h = matrix([0.0]*(n*1440)+[pMax]*(n*1440))
@@ -180,8 +179,32 @@ for pen in np.arange(0.1,1.1,0.1):
             for v in range(n):
                 total1[t] += x[1440*v+t]
                 through1 += abs(x[1440*v+t]/60)
+                
+        # I think I actually need to reformulate for V2G,
+        # defining seperate variables for charigng and discharging
+        
+        A = matrix(0.0,(2*n,2*n*1440))
 
-        h = matrix([-1*pMin]*(n*1440)+[pMax]*(n*1440))
+        for v in range(n):
+            for t in range(1440):
+                A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
+                A[v,1440*(n+v)+t] = -1*c_eff*c_eff/60
+                
+                A[v+n,1440*v+t] = a_[v][t]
+                A[v+n,1440*(n+v)+t] = a_[v][t]
+        
+        G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440)),
+                    spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
+        h = matrix([0.0]*(n*1440)+[pMax]*(n*1440)+[0.0]*(n*1440)+\
+                   [pMax_]*(n*1440))
+
+        
+        #P = sparse([[spdiag([1]*1440)]*n]*n)
+
+        #h = matrix([-1*pMin]*(n*1440)+[pMax]*(n*1440))
+                
+        # I actually want to constrain all to e positive otherwise the
+        # avaliability thing doesn't work
         try:
             sol=solvers.qp(P,q,G,h,A,b)
         except:

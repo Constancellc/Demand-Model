@@ -107,9 +107,12 @@ def get_nearest(p,lst):
 chargingPdf = []
 chargingPdf2 = []
 socPdf = []
+socPdfWE = []
 chargingPdfWE = []
 chargingPdfWE2 = []
-socPdfWE = []
+availPdf = []
+availPdfWE = []
+
 nCharges = {}
 nChargesWE = {}
 for i in range(3):
@@ -119,9 +122,13 @@ for i in range(3):
     chargingPdfWE2.append([0]*48)
     socPdf.append([0]*101)
     socPdfWE.append([0]*101)
+    availPdf.append([0]*1440)
+    availPdfWE.append([0]*1440)
 
 tripEnds = {}
-
+seen = {}
+nW = [0]*3
+nWE = [0]*3
 # now get the MEA data
 with open(data3,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -129,6 +136,7 @@ with open(data3,'rU') as csvfile:
     for row in reader:
         vehicle = row[0]
         dayNo = int(row[1])
+        start = int(row[2])
         end = int(row[3])
 
         if end > 1440:
@@ -138,11 +146,50 @@ with open(data3,'rU') as csvfile:
         vehicle += str(dayNo)
         if vehicle not in tripEnds:
             tripEnds[vehicle] = []
+            seen[vehicle] = 0
+            try:
+                if row[-1] == '0':
+                    nW[MEA[vehicle]] += 1
+                else:
+                    nWE[MEA2[vehicle]] += 1
+            except:
+                continue
             
         tripEnds[vehicle].append(end)
-            
+        try:
+            if row[-1] == '0':
+                if start < end:
+                    for t in range(start,end):
+                        availPdf[MEA[vehicle]][t] += 1
+                else:
+                    for t in range(start,1440):
+                        availPdf[MEA[vehicle]][t] += 1
+                    for t in range(end):
+                        availPdf[MEA[vehicle]][t] += 1
+            else:
+                if start < end:
+                    for t in range(start,end):
+                        availPdfWE[MEA2[vehicle]][t] += 1
+                else:
+                    for t in range(start,1440):
+                        availPdfWE[MEA2[vehicle]][t] += 1
+                    for t in range(end):
+                        availPdfWE[MEA2[vehicle]][t] += 1
+        except:
+            continue
+
+plt.figure()
+for i in range(3):
+    plt.subplot(3,1,i+1)
+    for t in range(1440):
+        availPdf[i][t] = (nW[i]-availPdf[i][t])/nW[i]
+        availPdfWE[i][t] = (nWE[i]-availPdfWE[i][t])/nWE[i]
+    plt.plot(availPdf[i])
+    plt.plot(availPdfWE[i])
+
 lowest = {}
 highest = {}
+
 # now get the MEA data
 with open(data2,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -419,6 +466,24 @@ with open(stem+'chargePdfWE.csv','w') as csvfile:
         row = [t]
         for i in range(3):
             row += [chargingPdfWE[i][t]]
+        writer.writerow(row)
+
+with open(stem+'meaAvail.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(1440):
+        row = [t]
+        for i in range(3):
+            row += [availPdf[i][t]]
+        writer.writerow(row)
+        
+with open(stem+'meaAvailWE.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(1440):
+        row = [t]
+        for i in range(3):
+            row += [availPdfWE[i][t]]
         writer.writerow(row)
 
 with open(stem+'chargePdfW2.csv','w') as csvfile:

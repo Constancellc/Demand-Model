@@ -52,6 +52,8 @@ chargePdf = {0:[],1:[],2:[]}
 chargePdfWE = {0:[],1:[],2:[]}
 chargePdf2 = {0:[],1:[],2:[]}
 chargePdfWE2 = {0:[],1:[],2:[]}
+availPdf = {0:[],1:[],2:[]}
+availPdfWE = {0:[],1:[],2:[]}
 socPdf = {0:[],1:[],2:[]}
 socPdfWE = {0:[],1:[],2:[]}
 
@@ -100,21 +102,52 @@ with open(stem+'socPdfWE.csv','rU') as csvfile:
     for row in reader:
         for i in range(3):
             socPdfWE[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvail.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdf[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvailWE.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdfWE[i].append(float(row[i+1]))
+
+for pdf in [chargePdf,chargePdf2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdf[i][t]
+
+for pdf in [chargePdfWE,chargePdfWE2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdfWE[i][t]
+
+# do not normalise avaliability as it is a likelihood not a probability
 
 for pdf in [chargePdf,chargePdfWE,chargePdf2,chargePdfWE2,socPdf,socPdfWE]:
     for i in range(3):
         normalise(pdf[i])
+
+del availPdf
+del availPdfWE
 
 # function defs go here
 def get_charge_pdf(clst,typ,home,endTimes):
     if typ == 'W':
         pdf2 = copy.deepcopy(chargePdf[clst])
         pdf3 = copy.deepcopy(chargePdf2[clst])
+        #aPdf = availPdf[clst]
         p_aft = 0.704
         
     elif typ == 'WE':
         pdf2 = copy.deepcopy(chargePdfWE[clst])
         pdf3 = copy.deepcopy(chargePdfWE2[clst])
+        #aPdf = availPdfWE[clst]
         p_aft = 0.666
         
     # first set all times not at home to 0
@@ -122,10 +155,14 @@ def get_charge_pdf(clst,typ,home,endTimes):
         if home[t] == 0:
             pdf2[t] = 0
             pdf3[t] = 0
+        '''
+        else:
+            pdf3[t] = pdf3[t]*(sum(aPdf)/1440)/aPdf[t] # fudge
+        '''
 
     # then scale all of the endTimes to be 0.7 and the others to be 0.3
     if len(endTimes) == 0:
-        return pdf3
+        pdf_ = pdf3
 
     else:
         s2 = 0
@@ -378,9 +415,7 @@ for av in [avT,av1,av2,avTwe,av1we,av2we]:
     for t in range(len(av)):
         av[t] = av[t]*100
         
-for e in [e1,e2,e1we,e2we]:
-    e = e/n
-    
+
 s1 = s_e(av1,avT)
 s2 = s_e(av2,avT)
 print(s1)
