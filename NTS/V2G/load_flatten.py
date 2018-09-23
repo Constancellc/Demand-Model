@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 100
+nMC = 1
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
@@ -88,7 +88,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in np.arange(0.1,1.1,0.1):
+for pen in [1.0]:#np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
@@ -143,11 +143,11 @@ for pen in np.arange(0.1,1.1,0.1):
             a_.append(a)
 
             possible_charge = pMax*(1440-sum(a))/60
-                    
-            if kWh > possible_charge:
-                kWh = possible_charge
+            
             if kWh > capacity:
                 kWh = capacity
+            if kWh >= possible_charge:
+                kWh = possible_charge*0.99
 
             b.append(kWh)
 
@@ -180,6 +180,12 @@ for pen in np.arange(0.1,1.1,0.1):
                 total1[t] += x[1440*v+t]
                 through1 += abs(x[1440*v+t]/60)
                 
+        del A
+        del G
+        del h
+        del P
+        del q
+                
         # I think I actually need to reformulate for V2G,
         # defining seperate variables for charigng and discharging
         
@@ -188,15 +194,39 @@ for pen in np.arange(0.1,1.1,0.1):
         for v in range(n):
             for t in range(1440):
                 A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
-                A[v,1440*(n+v)+t] = -1*c_eff*c_eff/60
+                A[v,1440*(n+v)+t] = -1/(60*c_eff)
                 
                 A[v+n,1440*v+t] = a_[v][t]
                 A[v+n,1440*(n+v)+t] = a_[v][t]
         
-        G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440)),
-                    spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
-        h = matrix([0.0]*(n*1440)+[pMax]*(n*1440)+[0.0]*(n*1440)+\
-                   [pMax_]*(n*1440))
+        G = sparse([spdiag([-1.0]*(2*n*1440)),spdiag([1.0]*(2*n*1440))])
+        h = matrix([0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
+        
+        totalH_ = []
+        for i in range(len(totalH)):
+            totalH_.append(-1*totalH[i]) # epsilon... I need to check this
+
+        q = matrix(totalH*n+totalH_*n)
+        '''
+        # I need to work out what P should look like
+        P = matrix(0.0,(2*n*1440,2*n*1440))
+
+        # I need to get P into sparse form in order for this to run I think...
+
+        for t in range(1440):
+            # I need to find all vechicles at the same time
+            for v in range(n):
+                P[1440*v+t,1440*v+t] = 1.0
+                P[1440*(v+n)+t,1440*(v+n)+t] = 1.0
+                P[1440*v+t,1440*(v+n)+t] = -1.0
+                P[1440*(v+n)+t,1440*v+t] = -1.0 # I think... but this might be really slow
+                
+        P = sparse(P)'''
+
+        P1 = sparse([[spdiag([1]*1440)]*n]*n)
+        P2 = sparse([[spdiag([-1]*1440)]*n]*n)
+
+        P = sparse([[P1,P2],[P2,P1]])
 
         
         #P = sparse([[spdiag([1]*1440)]*n]*n)
@@ -205,10 +235,8 @@ for pen in np.arange(0.1,1.1,0.1):
                 
         # I actually want to constrain all to e positive otherwise the
         # avaliability thing doesn't work
-        try:
-            sol=solvers.qp(P,q,G,h,A,b)
-        except:
-            continue
+        sol=solvers.qp(P,q,G,h,A,b)
+
         x = sol['x'] # with V2G
 
         # work out totol power demand
@@ -218,10 +246,27 @@ for pen in np.arange(0.1,1.1,0.1):
             total2[t] += totalH[t]
             for v in range(n):
                 total2[t] += x[1440*v+t]
-                through2 += abs(x[1440*v+t]/60)
+                total2[t] -= x[1440*(v+n)+t]
+                through2 += x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60)
+
+        plt.figure()
+        plt.plot(total1)
+        plt.plot(total2)
+        print(through1)
+        print(through2)
+        print(sum(total1))
+        print(sum(total2))
+        plt.show()
                 
         g2v.append([max(total1),through1])
         v2g.append([max(total2),through2])
+
+        del A
+        del b
+        del G
+        del h
+        del P
+        del q
 
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
               str(int(100*pen))+'.csv',
