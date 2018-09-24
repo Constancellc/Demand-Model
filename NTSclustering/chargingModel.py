@@ -13,10 +13,7 @@ stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
 '''
-Ok, I might want to change this into a function which takes a list of vehicles?
 
-
-Alternatively, could go full Obj Or then I can do all the simulation there
 
 '''
 assumed_capacity = 30 # kWh
@@ -51,23 +48,37 @@ with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
     for row in reader:
         labels[row[0]] = int(row[1])
 
+hh_v = {}
+with open('../../Documents/UKDA-7553-tab/constance/hh-veh.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        if len(row) == 1:
+            hh_v[row[0]] = []
+        else:
+            hh_v[row[0]] = row[1:]
+
 # get all charging pdfs
 chargePdf = {0:[],1:[],2:[]}
 chargePdfWE = {0:[],1:[],2:[]}
 chargePdf2 = {0:[],1:[],2:[]}
 chargePdfWE2 = {0:[],1:[],2:[]}
+availPdf = {0:[],1:[],2:[]}
+availPdfWE = {0:[],1:[],2:[]}
 socPdf = {0:[],1:[],2:[]}
 socPdfWE = {0:[],1:[],2:[]}
 
-with open(stem+'chargePdfW.csv','rU') as csvfile:
+#with open(stem+'chargePdfW.csv','rU') as csvfile:
+with open(stem+'meaEnds.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
         for i in range(3):
             for t in range(30):
                 chargePdf[i].append(float(row[i+1]))
-            
-with open(stem+'chargePdfWE.csv','rU') as csvfile:
+        
+#with open(stem+'chargePdfWE.csv','rU') as csvfile:
+with open(stem+'meaEndsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
@@ -104,12 +115,38 @@ with open(stem+'socPdfWE.csv','rU') as csvfile:
     for row in reader:
         for i in range(3):
             socPdfWE[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvail.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdf[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvailWE.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdfWE[i].append(float(row[i+1]))
 
+for pdf in [chargePdf,chargePdf2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdf[i][t]
+
+for pdf in [chargePdfWE,chargePdfWE2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdfWE[i][t]
+
+# do not normalise avaliability as it is a likelihood not a probability
 for pdf in [chargePdf,chargePdfWE,chargePdf2,chargePdfWE2,socPdf,socPdfWE]:
     for i in range(3):
         normalise(pdf[i])
 
-
+del availPdf
+del availPdfWE
 
 # function defs go here
 def get_charge_pdf(clst,typ,home,endTimes):
@@ -131,7 +168,7 @@ def get_charge_pdf(clst,typ,home,endTimes):
 
     # then scale all of the endTimes to be 0.7 and the others to be 0.3
     if len(endTimes) == 0:
-        return pdf3
+        pdf_ = pdf3
 
     else:
         s2 = 0
@@ -221,17 +258,22 @@ class MC_Run:
         self.dumb_charging = [0]*10080
         self.get_charging(vehicles,nV,journeyLogs)
 
-    def get_charging(self,vehicles,nV,journeyLogs):
+    def get_charging(self,households,nV,journeyLogs):
+        
         chosen = []
-        if len(vehicles) < nV:
+        chosenV = []
+        if len(households) < nV:
             print('not enough vehicle data')
             
         while len(chosen) < nV:
-            ran = int(random.random()*len(vehicles))
-            if vehicles[ran] not in chosen and vehicles[ran] in journeyLogs:
-                chosen.append(vehicles[ran])
+            ran = int(random.random()*len(households))
+            if households[ran] not in chosen:
+                chosen.append(households[ran])
+                for v in hh_v[households[ran]]:
+                    if v in journeyLogs:
+                        chosenV.append(v)
 
-        for vehicle in chosen:
+        for vehicle in chosenV:
             home = [1]*10080
             endTimes = [[],[],[],[],[],[],[]]
             kWh = 0
@@ -316,23 +358,24 @@ class MC_Sim:
         self.r1 = {}
         self.r2 = {}
         self.nV =  nV
-        self.vehicles = []
+        self.households = []
 
         if loc == None:
-            with open(stem+'allVehicles.csv','rU') as csvfile:
+            with open('../../Documents/UKDA-7553-tab/constance/hh-loc.csv',
+                      'rU') as csvfile:
                 reader = csv.reader(csvfile)
+                next(reader)
                 for row in reader:
-                    self.vehicles.append(row[0])
+                    self.households.append(row[0])
 
         else:
-            self.vehicles = []
             with open('../../Documents/UKDA-7553-tab/constance/hh-loc.csv',
                       'rU') as csvfile:
                 reader = csv.reader(csvfile)
                 next(reader)
                 for row in reader:
                     if row[lType] == loc:
-                        self.vehicles.append(row[0])
+                        self.households.append(row[0])
 
         # now get the journey logs only for the chosen vehicles
         self.journeyLogs = {}
@@ -341,11 +384,12 @@ class MC_Sim:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
+                if row[1] not in self.households:
+                    continue
                 if row[2]+row[6] not in labels:
                     continue
+                
                 vehicle = row[2]
-                if vehicle not in self.vehicles:
-                    continue
                 day = int(row[6])
                 
                 if vehicle not in self.journeyLogs:
@@ -375,9 +419,9 @@ class MC_Sim:
             self.r2[t] = []
 
     def run(self,nRuns,outputFile):
-        print(len(self.vehicles))
+        print(len(self.households))
         for r in range(nRuns):
-            run = MC_Run(self.vehicles,self.nV,self.journeyLogs)
+            run = MC_Run(self.households,self.nV,self.journeyLogs)
             for t in range(1440*3,1440*7):
                 self.r1[t].append(run.charging[t])
                 self.r2[t].append(run.dumb_charging[t])
@@ -389,6 +433,7 @@ class MC_Sim:
         v1 = []
         m2 = []
         v2 = []
+        
         for t in range(1440*3,1440*7):
             m1_ = sum(self.r1[t])/len(self.r1[t])
             m2_ = sum(self.r2[t])/len(self.r2[t])

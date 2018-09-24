@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 1
+nMC = 40
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
@@ -248,15 +248,6 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
                 total2[t] += x[1440*v+t]
                 total2[t] -= x[1440*(v+n)+t]
                 through2 += x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60)
-
-        plt.figure()
-        plt.plot(total1)
-        plt.plot(total2)
-        print(through1)
-        print(through2)
-        print(sum(total1))
-        print(sum(total2))
-        plt.show()
                 
         g2v.append([max(total1),through1])
         v2g.append([max(total2),through2])

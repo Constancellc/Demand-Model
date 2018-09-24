@@ -22,22 +22,14 @@ with open(households, 'rU') as csvfile:
         LA[row[1]] = row[139]
         ward[row[1]] = row[137]
         
-hh = {}
-with open(ind,'rU') as csvfile:
-    reader = csv.reader(csvfile,delimiter='\t')
-    next(reader)
-    for row in reader:
-        if row[4] in hh:
-            continue
-        hh[row[4]] = row[2]
+
         
 with open(outfile,'w') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['VehicleID','Ward','Local Authority','UA','County',
+    writer.writerow(['HouseholdID','Ward','Local Authority','UA','County',
                      'Country'])
-    for v in hh:
+    for hh in country:
         try:
-            writer.writerow([v,ward[hh[v]],LA[hh[v]],UA[hh[v]],county[hh[v]],
-                             country[hh[v]]])
+            writer.writerow([hh,ward[hh],LA[hh],UA[hh],county[hh],country[hh]])
         except:
             continue

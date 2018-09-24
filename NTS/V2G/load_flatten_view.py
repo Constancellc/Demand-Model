@@ -4,7 +4,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
-pen = 20
+pen = 100
 
 l1 = []
 t1 = []
@@ -27,14 +27,14 @@ plt.subplot(2,1,1)
 plt.ylabel('Peak Demand\nPer Household (kW)')
 plt.boxplot([l1,l2],sym='')
 plt.xticks([1,2],['Uni-directional','Bi-directional'])
-plt.ylim(0,0.65)
+plt.ylim(0,0.6)
 plt.grid()
 plt.subplot(2,1,2)
 plt.boxplot([t1,t2],sym='')
 plt.xticks([1,2],['Uni-directional','Bi-directional'])
 plt.ylabel('Average Throughput\nPer EV Battery (kWh)')
 plt.grid()
-plt.ylim(0,11)
+plt.ylim(0,6)
 plt.tight_layout()
 plt.show()
         

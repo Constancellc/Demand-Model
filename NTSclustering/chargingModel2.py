@@ -13,10 +13,8 @@ stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
 '''
-Ok, I might want to change this into a function which takes a list of vehicles?
 
-
-Alternatively, could go full Obj Or then I can do all the simulation there
+-
 
 '''
 assumed_capacity = 30 # kWh
@@ -36,13 +34,18 @@ def sample(pdf):
         x += 1
     return x
 
-# get all Vehicles
-allVehicles = []
-with open(stem+'allVehicles.csv','rU') as csvfile:
+# get hh
+allHouseholds = []
+hhVeh = {}
+with open('../../Documents/UKDA-7553-tab/constance/hh-veh.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
+    next(reader)
     for row in reader:
-        allVehicles.append(row[0])
-np.random.shuffle(allVehicles)
+        allHouseholds.append(row[0])
+        if len(row) == 1:
+            hhVeh[row[0]] = []
+        else:
+            hhVeh[row[0]] = row[1:]
 
 # get cluster labels
 labels = {}
@@ -63,6 +66,8 @@ chargePdf = {0:[],1:[],2:[]}
 chargePdfWE = {0:[],1:[],2:[]}
 chargePdf2 = {0:[],1:[],2:[]}
 chargePdfWE2 = {0:[],1:[],2:[]}
+availPdf = {0:[],1:[],2:[]}
+availPdfWE = {0:[],1:[],2:[]}
 socPdf = {0:[],1:[],2:[]}
 socPdfWE = {0:[],1:[],2:[]}
 
@@ -111,6 +116,30 @@ with open(stem+'socPdfWE.csv','rU') as csvfile:
     for row in reader:
         for i in range(3):
             socPdfWE[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvail.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdf[i].append(float(row[i+1]))
+            
+with open(stem+'meaAvailWE.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        for i in range(3):
+            availPdfWE[i].append(float(row[i+1]))
+
+for pdf in [chargePdf,chargePdf2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdf[i][t]
+
+for pdf in [chargePdfWE,chargePdfWE2]:
+    for i in range(3):
+        for t in range(1440):
+            pdf[i][t] = pdf[i][t]/availPdfWE[i][t]
 
 for pdf in [chargePdf,chargePdfWE,chargePdf2,chargePdfWE2,socPdf,socPdfWE]:
     for i in range(3):
@@ -133,10 +162,10 @@ def get_charge_pdf(clst,typ,home,endTimes):
         if home[t] == 0:
             pdf2[t] = 0
             pdf3[t] = 0
-
+            
     # then scale all of the endTimes to be 0.7 and the others to be 0.3
     if len(endTimes) == 0:
-        return pdf3
+        pdf_ = pdf3
 
     else:
         s2 = 0

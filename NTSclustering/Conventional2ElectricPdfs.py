@@ -112,6 +112,8 @@ chargingPdfWE = []
 chargingPdfWE2 = []
 availPdf = []
 availPdfWE = []
+endPdf= {'y':[],'n':[]}
+endPdfWE = {'y':[],'n':[]}
 
 nCharges = {}
 nChargesWE = {}
@@ -124,6 +126,10 @@ for i in range(3):
     socPdfWE.append([0]*101)
     availPdf.append([0]*1440)
     availPdfWE.append([0]*1440)
+    endPdf['y'].append([0]*48)
+    endPdfWE['y'].append([0]*48)
+    endPdf['n'].append([0]*48)
+    endPdfWE['n'].append([0]*48)
 
 tripEnds = {}
 seen = {}
@@ -158,6 +164,7 @@ with open(data3,'rU') as csvfile:
         tripEnds[vehicle].append(end)
         try:
             if row[-1] == '0':
+                #endPdf[MEA[vehicle]][end] += 1
                 if start < end:
                     for t in range(start,end):
                         availPdf[MEA[vehicle]][t] += 1
@@ -167,6 +174,7 @@ with open(data3,'rU') as csvfile:
                     for t in range(end):
                         availPdf[MEA[vehicle]][t] += 1
             else:
+                #endPdfWE[MEA2[vehicle]][end] += 1
                 if start < end:
                     for t in range(start,end):
                         availPdfWE[MEA2[vehicle]][t] += 1
@@ -180,13 +188,20 @@ with open(data3,'rU') as csvfile:
 
 plt.figure()
 for i in range(3):
-    plt.subplot(3,1,i+1)
+    plt.subplot(3,2,2*i+1)
+    #s1 = sum(endPdf[i])
+    #s2 = sum(endPdfWE[i])
     for t in range(1440):
         availPdf[i][t] = (nW[i]-availPdf[i][t])/nW[i]
         availPdfWE[i][t] = (nWE[i]-availPdfWE[i][t])/nWE[i]
+        #endPdf[i][t] = endPdf[i][t]/s1
+        #endPdfWE[i][t] = endPdfWE[i][t]/s2
     plt.plot(availPdf[i])
     plt.plot(availPdfWE[i])
-
+    #plt.subplot(3,2,2*i+2)
+    #plt.plot(endPdf[i])
+    #plt.plot(endPdfWE[i])
+#plt.show()
 lowest = {}
 highest = {}
 
@@ -212,12 +227,14 @@ with open(data2,'rU') as csvfile:
         if row[-1] == '0':
             pdf = chargingPdf
             pdf2 = chargingPdf2
+            pdf3 = endPdf
             sPdf = socPdf
             cls = MEA
             nc = nCharges
         else:
             pdf = chargingPdfWE
             pdf2 = chargingPdfWE2
+            pdf3 = endPdfWE
             sPdf = socPdfWE
             cls = MEA2
             nc = nChargesWE
@@ -229,12 +246,20 @@ with open(data2,'rU') as csvfile:
             ends = []
 
         d = get_nearest(start,ends)
-        if d < 5:
-            pdf_ = pdf
-        else:
-            pdf_ = pdf2
 
         start = int(start/30)
+        if d < 5:
+            pdf_ = pdf
+            try:
+                pdf3['y'][cls[vehicle]][start] += 1
+            except:
+                continue
+        else:
+            pdf_ = pdf2
+            try:
+                pdf3['n'][cls[vehicle]][start] += 1
+            except:
+                continue
         
         if start >= 48:
             start -= 48
@@ -257,6 +282,12 @@ with open(data2,'rU') as csvfile:
         except:
             continue
 
+plt.figure()
+for i in range(3):
+    plt.subplot(3,1,i+1)
+    plt.plot(endPdf['y'][i])
+    plt.plot(endPdf['n'][i])
+plt.show()
 
 # now get the MEA data
 with open(data3,'rU') as csvfile:
@@ -484,6 +515,24 @@ with open(stem+'meaAvailWE.csv','w') as csvfile:
         row = [t]
         for i in range(3):
             row += [availPdfWE[i][t]]
+        writer.writerow(row)
+
+with open(stem+'meaEnds.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(48):
+        row = [t]
+        for i in range(3):
+            row += [endPdf['y'][i][t]/(endPdf['n'][i][t]+endPdf['y'][i][t])]
+        writer.writerow(row)
+        
+with open(stem+'meaEndsWE.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['t','0','1','2'])
+    for t in range(48):
+        row = [t]
+        for i in range(3):
+            row += [endPdfWE['y'][i][t]/(endPdfWE['n'][i][t]+endPdfWE['y'][i][t])]
         writer.writerow(row)
 
 with open(stem+'chargePdfW2.csv','w') as csvfile:

@@ -54,18 +54,22 @@ chargePdf2 = {0:[],1:[],2:[]}
 chargePdfWE2 = {0:[],1:[],2:[]}
 availPdf = {0:[],1:[],2:[]}
 availPdfWE = {0:[],1:[],2:[]}
+#endPdf = {0:[],1:[],2:[]}
+#endPdfWE = {0:[],1:[],2:[]}
 socPdf = {0:[],1:[],2:[]}
 socPdfWE = {0:[],1:[],2:[]}
 
-with open(stem+'chargePdfW.csv','rU') as csvfile:
+#with open(stem+'chargePdfW.csv','rU') as csvfile:
+with open(stem+'meaEnds.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
         for i in range(3):
             for t in range(30):
                 chargePdf[i].append(float(row[i+1]))
-            
-with open(stem+'chargePdfWE.csv','rU') as csvfile:
+        
+#with open(stem+'chargePdfWE.csv','rU') as csvfile:
+with open(stem+'meaEndsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
@@ -117,22 +121,17 @@ with open(stem+'meaAvailWE.csv','rU') as csvfile:
         for i in range(3):
             availPdfWE[i].append(float(row[i+1]))
 
-for pdf in [chargePdf,chargePdf2]:
-    for i in range(3):
-        for t in range(1440):
-            pdf[i][t] = pdf[i][t]/availPdf[i][t]
-
-for pdf in [chargePdfWE,chargePdfWE2]:
-    for i in range(3):
-        for t in range(1440):
-            pdf[i][t] = pdf[i][t]/availPdfWE[i][t]
+for i in range(3):
+    for t in range(1440):
+        chargePdf2[i][t] = chargePdf[i][t]/availPdf[i][t]
+        chargePdfWE2[i][t] = chargePdf[i][t]/availPdfWE[i][t]
 
 # do not normalise avaliability as it is a likelihood not a probability
 
 for pdf in [chargePdf,chargePdfWE,chargePdf2,chargePdfWE2,socPdf,socPdfWE]:
     for i in range(3):
         normalise(pdf[i])
-
+    
 del availPdf
 del availPdfWE
 
@@ -155,10 +154,6 @@ def get_charge_pdf(clst,typ,home,endTimes):
         if home[t] == 0:
             pdf2[t] = 0
             pdf3[t] = 0
-        '''
-        else:
-            pdf3[t] = pdf3[t]*(sum(aPdf)/1440)/aPdf[t] # fudge
-        '''
 
     # then scale all of the endTimes to be 0.7 and the others to be 0.3
     if len(endTimes) == 0:
