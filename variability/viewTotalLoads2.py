@@ -9,7 +9,7 @@ stem = '../../Documents/simulation_results/LV/total_load/'
 
 # first get data
 results = {1:[],2:[],3:[],4:[],5:[]}
-for mc in range(100):
+for mc in range(63):
     with open(stem+str(mc+1)+'.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
@@ -57,6 +57,6 @@ for typ in [1,2,4,5]:
     if n in [2,4]:
         plt.ylabel('Power (kW)')
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/losses/total_load.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/papers/losses/img/total_load.eps', format='eps', dpi=1000)
 plt.show()
             

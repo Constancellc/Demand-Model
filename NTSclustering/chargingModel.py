@@ -22,8 +22,9 @@ assumed_kwh_limit = 30
 
 def normalise(pdf):
     s = sum(pdf)
-    for i in range(len(pdf)):
-        pdf[i] = pdf[i]/s
+    if s != 0:
+        for i in range(len(pdf)):
+            pdf[i] = pdf[i]/s
 
 def sample(pdf):
     if sum(pdf) == 0:

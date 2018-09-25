@@ -26,3 +26,4 @@ with open('../../Documents/UKDA-7553-tab/constance/hh-loc.csv','rU') as csvfile:
 for l in locs:
     sim = MC_Sim(nV,l,4)
     sim.run(nMC,outstem+l+'.csv')
+
