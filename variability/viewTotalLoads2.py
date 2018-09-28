@@ -9,7 +9,7 @@ stem = '../../Documents/simulation_results/LV/total_load/'
 
 # first get data
 results = {1:[],2:[],3:[],4:[],5:[]}
-for mc in range(63):
+for mc in range(118getMSOA):
     with open(stem+str(mc+1)+'.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
