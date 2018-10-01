@@ -211,21 +211,7 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
             totalH_.append(-1*totalH[i]+0.001) # epsilon... I need to check this
 
         q = matrix(totalH*n+totalH_*n)
-        '''
-        # I need to work out what P should look like
-        P = matrix(0.0,(2*n*1440,2*n*1440))
-
-        # I need to get P into sparse form in order for this to run I think...
-
-        for t in range(1440):
-            # I need to find all vechicles at the same time
-            for v in range(n):
-                P[1440*v+t,1440*v+t] = 1.0
-                P[1440*(v+n)+t,1440*(v+n)+t] = 1.0
-                P[1440*v+t,1440*(v+n)+t] = -1.0
-                P[1440*(v+n)+t,1440*v+t] = -1.0 # I think... but this might be really slow
-                
-        P = sparse(P)'''
+        
 
         P1 = sparse([[spdiag([1]*1440)]*n]*n)
         P2 = sparse([[spdiag([-1]*1440)]*n]*n)
