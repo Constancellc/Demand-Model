@@ -254,11 +254,16 @@ def get_charge_times(pdf2,kWh0,day,clst,typ,log):
 # then for each simulation
 class MC_Run:
 
-    def __init__(self,vehicles,nV,journeyLogs):
-        self.charging = [0]*10080
-        self.dumb_charging = [0]*10080
-        self.get_charging(vehicles,nV,journeyLogs)
-        
+    def __init__(self,vehicles,nV,journeyLogs,typ='charge'):
+
+        if typ == 'charge':
+            self.charging = [0]*10080
+            self.dumb_charging = [0]*10080
+            self.get_charging(vehicles,nV,journeyLogs)
+            
+        elif typ == 'available':
+            self.n = [0]*10080
+            self.get_availability(vehicles,nV,journeyLogs)
 
     def get_charging(self,households,nV,journeyLogs):
         
@@ -352,15 +357,124 @@ class MC_Run:
                     kWh2 -= assumed_charge_power/60
                     self.dumb_charging[t] += assumed_charge_power
                     t += 1
+
+    def get_availability(self,households,nV,journeyLogs):
+        
+        chosen = []
+        chosenV = []
+        if len(households) < nV:
+            print('not enough vehicle data')
+            
+        while len(chosen) < nV:
+            ran = int(random.random()*len(households))
+            if households[ran] not in chosen:
+                chosen.append(households[ran])
+                for v in hh_v[households[ran]]:
+                    if v in journeyLogs:
+                        chosenV.append(v)
+
+        for vehicle in chosenV:
+            home = [1]*10080
+            endTimes = [[],[],[],[],[],[],[]]
+            startTimes = [[],[],[],[],[],[],[]]
+            kWh = 0
+
+            for i in range(len(journeyLogs[vehicle])):
+                j = journeyLogs[vehicle][i]
+                start = j[0]
+                end = j[1]
+
+                day = int(end/1440)
+                if day >= 7:
+                    day -= 7
+                endTimes[day].append(end%1440)
+
+                for t in range(start,end):
+                    try:
+                        home[t] = 0
+                    except:
+                        continue
+
+                if j[3] != '23' and i <len(journeyLogs[vehicle])-1:
+                    for t in range(end,journeyLogs[vehicle][i+1][0]):
+                        try:
+                            home[t] = 0
+                        except:
+                            continue
+                
+            for day in range(7):
+                if kWh > assumed_kwh_limit: # hack but potentially justified 
+                    kWh = assumed_kwh_limit
+                try:
+                    clst = labels[vehicle+str(day+1)]
+                except:
+                    continue
+                home2 = home[1440*day:1440*(day+1)]
+
+                kWh0 = copy.deepcopy(kWh)
+                
+                if day < 5:
+                    pdf2 = get_charge_pdf(clst,'W',home2,endTimes[day])
+                    chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'W',
+                                                   journeyLogs[vehicle])
+                else:
+                    pdf2 = get_charge_pdf(clst,'WE',home2,endTimes[day])
+                    chargeTimes = get_charge_times(pdf2,kWh0,day,clst,'WE',
+                                                   journeyLogs[vehicle])
+                    
+                kWh2 = 0 # for the dumb charging
+                # add days journeys to kWh
+                for j in journeyLogs[vehicle]:
+                    if j[1] > 1440*day and t < 1440*(day+1):
+                        kWh += j[2]
+                        
+                # implement charges
+                for charge in chargeTimes:
+                    s = charge[0]
+                    try:
+                        e = min(startTimes[day+1])+1440*day
+                    except:
+                        e = 1440*(day+1)
+                    for t in range(s,e):
+                        if t < 10080:
+                            self.n[t] += 1
+                            
+                    for t in range(charge[0],charge[1]):
+                        if t+day*1440 < 10080:
+                            kWh -= assumed_charge_power/60
+                        else:
+                            kWh -= assumed_charge_power/60
+
+                del pdf2
+                
+                try:
+                    s = endTimes[day][-1]+1440*day
+                except:
+                    continue
+                
+                try:
+                    e = min(startTimes[day+1])+1440*day
+                except:
+                    e = 1440*(day+1)
+
+                for t in range(s,e):
+                    self.dumb_n[t] += 1
+    
+                    
+                while kWh2 > 0 and t < 10080:
+                    kWh2 -= assumed_charge_power/60
+                    self.dumb_charging[t] += assumed_charge_power
+                    t += 1
      
 class MC_Sim:
 
-    def __init__(self,nV,loc=None,lType=None):
+    def __init__(self,nV,loc=None,lType=None,typ='charge'):
         # lType 1-ward, 2-la, 3-ua, 4-county, 5-country
         self.r1 = {}
         self.r2 = {}
         self.nV =  nV
         self.households = []
+        self.typ = typ
 
         if loc == None:
             with open('../../Documents/UKDA-7553-tab/constance/hh-loc.csv',
@@ -423,12 +537,16 @@ class MC_Sim:
     def run(self,nRuns,outputFile):
         print(len(self.households))
         for r in range(nRuns):
-            run = MC_Run(self.households,self.nV,self.journeyLogs)
+            run = MC_Run(self.households,self.nV,self.journeyLogs,self.typ)
             if sum(run.charging) == 0:
                 return ''
             for t in range(1440*3,1440*7):
-                self.r1[t].append(run.charging[t])
-                self.r2[t].append(run.dumb_charging[t])
+                if self.typ == 'charge':
+                    self.r1[t].append(run.charging[t])
+                    self.r2[t].append(run.dumb_charging[t])
+                elif self.typ == 'available':
+                    self.r1[t].append(run.n[t])
+                    self.r2[t].append(run.dumb_n[t])
 
             del run
 

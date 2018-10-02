@@ -5,12 +5,12 @@ import numpy as np
 import copy
 from chargingModel import MC_Sim
 
-data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
+#data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 outstem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
 
 nV = 50
-nMC = 1
+nMC = 40
 
 locs = []
 # get the locations of all vehicles

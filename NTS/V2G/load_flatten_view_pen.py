@@ -3,6 +3,7 @@ import random
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.ndimage.filters as filt
 
 bnft = []
 cost = []
@@ -11,7 +12,7 @@ cost_u = []
 bnft_l = []
 cost_l = []
 
-conf = 0.95
+conf = 0.75
 for pen in range(20,110,10):
     a = []
     b = []
@@ -25,28 +26,36 @@ for pen in range(20,110,10):
             
     bnft.append(sum(a)/len(a))
     cost.append(sum(b)/len(b))
+    '''
     a = sorted(a)
     b = sorted(b)
     bnft_u.append(a[int(conf*len(a))])
     cost_u.append(b[int(conf*len(b))])
     bnft_l.append(a[int((1-conf)*len(a))])
     cost_l.append(b[int((1-conf)*len(b))])
+    bnft.append(a[int(0.5*len(a))])
+    cost.append(b[int(0.5*len(b))])
+    '''
     
+bnft = filt.gaussian_filter1d(bnft,1)
+cost = filt.gaussian_filter1d(cost,1)
 
 plt.figure()
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '10'
 plt.subplot(2,1,1)
 plt.plot(range(20,110,10),bnft)
-plt.fill_between(range(20,110,10),bnft_l,bnft_u,alpha=0.2)
-plt.ylabel('% Reduction in Peak Demand')
+#plt.fill_between(range(20,110,10),bnft_l,bnft_u,alpha=0.2)
+plt.ylabel('% Reduction in\nPeak Demand')
 plt.grid()
 plt.subplot(2,1,2)
 plt.plot(range(20,110,10),cost)
-plt.fill_between(range(20,110,10),cost_l,cost_u,alpha=0.2)
-plt.ylabel('% Increase in Battery Throughput')
+#plt.fill_between(range(20,110,10),cost_l,cost_u,alpha=0.2)
+plt.ylabel('% Increase in\nBattery Throughput')
 plt.grid()
+plt.xlabel('% EV Penetration')
 plt.tight_layout()
+
 plt.show()
         
 '''

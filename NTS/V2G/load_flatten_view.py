@@ -4,7 +4,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
-pen = 100
+pen = 50
 
 l1 = []
 t1 = []
@@ -16,9 +16,9 @@ with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
     next(reader)
     for row in reader:
         l1.append(float(row[1])/50)
-        t1.append(float(row[2])/50)
+        t1.append(float(row[2])/(0.5*pen))
         l2.append(float(row[3])/50)
-        t2.append(float(row[4])/50)
+        t2.append(float(row[4])/(0.5*pen))
 
 plt.figure()
 plt.rcParams["font.family"] = 'serif'
@@ -27,14 +27,14 @@ plt.subplot(2,1,1)
 plt.ylabel('Peak Demand\nPer Household (kW)')
 plt.boxplot([l1,l2],sym='')
 plt.xticks([1,2],['Uni-directional','Bi-directional'])
-plt.ylim(0,0.6)
+plt.ylim(0,0.8)
 plt.grid()
 plt.subplot(2,1,2)
 plt.boxplot([t1,t2],sym='')
 plt.xticks([1,2],['Uni-directional','Bi-directional'])
 plt.ylabel('Average Throughput\nPer EV Battery (kWh)')
 plt.grid()
-plt.ylim(0,6)
+plt.ylim(0,10)
 plt.tight_layout()
 plt.show()
         

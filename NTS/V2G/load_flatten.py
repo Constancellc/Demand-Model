@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 80
+nMC = 100
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
@@ -88,7 +88,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in [1.0]:#np.arange(0.1,1.1,0.1):
+for pen in np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
