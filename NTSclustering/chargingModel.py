@@ -258,6 +258,7 @@ class MC_Run:
         self.charging = [0]*10080
         self.dumb_charging = [0]*10080
         self.get_charging(vehicles,nV,journeyLogs)
+        
 
     def get_charging(self,households,nV,journeyLogs):
         
@@ -423,6 +424,8 @@ class MC_Sim:
         print(len(self.households))
         for r in range(nRuns):
             run = MC_Run(self.households,self.nV,self.journeyLogs)
+            if sum(run.charging) == 0:
+                return ''
             for t in range(1440*3,1440*7):
                 self.r1[t].append(run.charging[t])
                 self.r2[t].append(run.dumb_charging[t])

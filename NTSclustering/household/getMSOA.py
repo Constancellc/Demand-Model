@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 data = '../../../Documents/elec_demand/MSOA_domestic_electricity_2016.csv'
 
-vehicles = '../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
+vehicles = '../../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
 
 p1 = []
 p2 = []
@@ -57,15 +57,18 @@ for la in n:
     old_peak = max(p)
 
     t = 0
-    with open(vehicles+la+'.csv','rU') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)
-        for row in reader:
-            if t < 1440:
-                p[t] += float(row[1])/50
-                t += 1
+    try:
+        with open(vehicles+la+'.csv','rU') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)
+            for row in reader:
+                if t < 1440:
+                    p[t] += float(row[1])/50
+                    t += 1
 
-    new_peak = max(p)
+        new_peak = max(p)
+    except:
+        continue
 
     results[la] = [old_peak,new_peak]
 
