@@ -7,7 +7,6 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 100
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
@@ -88,24 +87,33 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in np.arange(0.1,1.1,0.1):
-    g2v = []
-    v2g = []
-    # For each MC simulation
-    for mc in range(nMC):
-        chosenH = []
-        while len(chosenH) < nH:
-            ranH = int(random.random()*len(hhProfiles))
-            if ranH not in chosenH:
-                chosenH.append(ranH)
+# ok first get the households
 
-        totalH = [0.0]*1440
-        for h in chosenH:
-            p = interpolate(hhProfiles[h],30)
-            for t in range(1440):
-                totalH[t] += p[t]
-        
-        nV = int(random.random()*nH*pen)
+chosenH = []
+while len(chosenH) < nH:
+    ranH = int(random.random()*len(hhProfiles))
+    if ranH not in chosenH:
+        chosenH.append(ranH)
+
+totalH = [0.0]*1440
+for h in chosenH:
+    p = interpolate(hhProfiles[h],30)
+    for t in range(1440):
+        totalH[t] += p[t]
+
+plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+# then get the vehicles
+pn = 1
+t_ = np.linspace(0,24,num=1440)
+for pen in [1.0,0.75,0.5,0.25]:
+    g2v_ind = []
+    v2g_ind = []
+    scnd = []
+    # For each MC simulation
+    for mc in range(1):
+        nV = int(nH*pen)
         chosenV = []
         while len(chosenV) < nV:
             ranV = allVehicles[int(random.random()*len(allVehicles))]
@@ -117,10 +125,10 @@ for pen in np.arange(0.1,1.1,0.1):
         for v in chosenV:
             if v not in journeyLogs:
                 continue
-            kWh = 0
+            kWh = 5
             c = []
             for j in journeyLogs[v]:
-                kWh += j[2]
+                #kWh += j[2]
                 c.append([j[0],j[1]]) # to be clear these are times we cant charge
                 if j[3] != '23':
                     c.append([j[1],''])
@@ -156,6 +164,11 @@ for pen in np.arange(0.1,1.1,0.1):
         A = matrix(0.0,(2*n,n*1440))
         q = matrix(totalH*n)
         P = sparse([[spdiag([1]*1440)]*n]*n)
+
+        for v in range(n):
+            g2v_ind.append([0]*1440)
+            v2g_ind.append([0]*1440)
+            scnd.append([0,v])
         
         for v in range(n):
             for t in range(1440):
@@ -164,7 +177,7 @@ for pen in np.arange(0.1,1.1,0.1):
         
         G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
         h = matrix([0.0]*(n*1440)+[pMax]*(n*1440))
-
+        
         try:
             sol=solvers.qp(P,q,G,h,A,b)
         except:
@@ -177,12 +190,11 @@ for pen in np.arange(0.1,1.1,0.1):
 
         # work out totol power demand and battery throughput
         total1 = [0.0]*1440
-        through1 = 0
         for t in range(1440):
             total1[t] += totalH[t]
             for v in range(n):
                 total1[t] += x[1440*v+t]
-                through1 += abs(x[1440*v+t]/60)
+                g2v_ind[v][t] = x[1440*v+t]
                 
         del A
         del G
@@ -211,21 +223,7 @@ for pen in np.arange(0.1,1.1,0.1):
             totalH_.append(-1*totalH[i]+0.001) # epsilon... I need to check this
 
         q = matrix(totalH*n+totalH_*n)
-        '''
-        # I need to work out what P should look like
-        P = matrix(0.0,(2*n*1440,2*n*1440))
-
-        # I need to get P into sparse form in order for this to run I think...
-
-        for t in range(1440):
-            # I need to find all vechicles at the same time
-            for v in range(n):
-                P[1440*v+t,1440*v+t] = 1.0
-                P[1440*(v+n)+t,1440*(v+n)+t] = 1.0
-                P[1440*v+t,1440*(v+n)+t] = -1.0
-                P[1440*(v+n)+t,1440*v+t] = -1.0 # I think... but this might be really slow
-                
-        P = sparse(P)'''
+        
 
         P1 = sparse([[spdiag([1]*1440)]*n]*n)
         P2 = sparse([[spdiag([-1]*1440)]*n]*n)
@@ -239,7 +237,6 @@ for pen in np.arange(0.1,1.1,0.1):
         if sol['status'] != 'optimal':
             continue
 
-
         # work out totol power demand
         total2 = [0.0]*1440
         through2 = 0
@@ -247,11 +244,9 @@ for pen in np.arange(0.1,1.1,0.1):
             total2[t] += totalH[t]
             for v in range(n):
                 total2[t] += x[1440*v+t]
+                scnd[v][0] += x[1440*(v+n)+t]
                 total2[t] -= x[1440*(v+n)+t]
-                through2 += x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60)
-                
-        g2v.append([max(total1),through1])
-        v2g.append([max(total2),through2])
+                v2g_ind[v][t] = x[1440*v+t]-x[1440*(v+n)+t]
 
         del A
         del b
@@ -260,46 +255,31 @@ for pen in np.arange(0.1,1.1,0.1):
         del P
         del q
 
-    existing = []
-    with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
-              str(int(100*pen))+'.csv',
-              'rU') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)
-        for row in reader:
-            existing.append(row)
-    
+    sorted(scnd)
 
-    with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
-              str(int(100*pen))+'.csv',
-              'w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['Sim No','Peak Demand (kW)','Throughput (kWh)',
-                         'Peak Demand2 (kW)','Throughput2 (kWh)'])
-        for row in existing:
-            writer.writerow(row)
-        for i in range(len(g2v)):
-            writer.writerow([i]+g2v[i]+v2g[i])
-        
+    #plt.figure(1)
+    plt.subplot(2,2,pn)
+    plt.plot(t_,totalH,c='k',ls=':',label='Base')
+    plt.plot(t_,total1,c='b',label='G2V')
+    plt.plot(t_,total2,c='r',ls='--',label='V2G')
+    plt.title(str(int(100*pen))+'%',y=0.85)
+    plt.ylim(0,1.2*max(totalH))
+    plt.xticks([4,12,20],['04:00','12:00','20:00'])
+    plt.xlim(0,24)
+    if pn in [1,3]:
+        plt.ylabel('Power (kW)')
+    plt.grid()
+    pn += 1
+plt.legend()
 '''
-with open('../../../Documents/simulation_results/NTS/v2g_lf.csv',
-          'w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','m1','u1','l1','m2','u2','l2'])
-    for t in range(1440):
-        row = [t]
-        x = []
-        for i in range(len(g2v)):
-            x.append(g2v[i][t])
-        row += [sum(x)/len(x)]
-        row += [max(x)]
-        row += [min(x)]
-        x = []
-        for i in range(len(g2v)):
-            x.append(v2g[i][t])
-        row += [sum(x)/len(x)]
-        row += [max(x)]
-        row += [min(x)]
-        writer.writerow(row)
-'''                    
+plt.figure(2)
+for i in range(4):
+    plt.subplot(2,2,i+1)
+    plt.plot(g2v_ind[scnd[i][1]])
+    plt.plot(v2g_ind[scnd[i][1]])
+'''
+plt.tight_layout()
+plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,
+            format='eps')
+plt.show()
 
