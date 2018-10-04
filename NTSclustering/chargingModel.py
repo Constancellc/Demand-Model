@@ -271,6 +271,7 @@ class MC_Run:
         chosenV = []
         if len(households) < nV:
             print('not enough vehicle data')
+            return None
             
         while len(chosen) < nV:
             ran = int(random.random()*len(households))
@@ -364,6 +365,7 @@ class MC_Run:
         chosenV = []
         if len(households) < nV:
             print('not enough vehicle data')
+            return None
             
         while len(chosen) < nV:
             ran = int(random.random()*len(households))

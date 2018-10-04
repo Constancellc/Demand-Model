@@ -84,7 +84,7 @@ for i in range(len(x)):
         else:
             continue
 
-m.pcolor(X,Y,Z)
+m.pcolor(X,Y,Z)#,cmap='inferno')
 #m.pcolormesh(x,y,Z,latlon=True)
 #m.drawmapboundary(fill_color='#99ffff')
 #m.drawlsmask(land_color='coral',ocean_color='aqua')
@@ -93,5 +93,5 @@ m.pcolor(X,Y,Z)
 # draw meridians
 #m.drawmeridians(np.arange(-180,180,30),labels=[1,1,0,1])
 plt.colorbar()
-plt.savefig('../../Dropbox/papers/clustering/img/UK.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/papers/clustering/img/UK_.eps', format='eps', dpi=1000)
 plt.show()

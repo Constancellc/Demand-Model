@@ -16,9 +16,9 @@ with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
     next(reader)
     for row in reader:
         l1.append(float(row[1])/50)
-        t1.append(float(row[2])/(0.5*pen))
+        t1.append(float(row[2]))
         l2.append(float(row[3])/50)
-        t2.append(float(row[4])/(0.5*pen))
+        t2.append(float(row[4]))
 
 plt.figure()
 plt.rcParams["font.family"] = 'serif'
@@ -34,7 +34,7 @@ plt.boxplot([t1,t2],sym='')
 plt.xticks([1,2],['Uni-directional','Bi-directional'])
 plt.ylabel('Average Throughput\nPer EV Battery (kWh)')
 plt.grid()
-plt.ylim(0,10)
+plt.ylim(0,12)
 plt.tight_layout()
 plt.show()
         
