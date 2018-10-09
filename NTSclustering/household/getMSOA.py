@@ -5,22 +5,46 @@ data = '../../../Documents/elec_demand/MSOA_domestic_electricity_2016.csv'
 
 vehicles = '../../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
 
-p1 = []
-p2 = []
+p1_winter = []
+p1_spring = []
+p1_summer = []
+p1_autumn = []
+
+p2_winter = []
+p2_spring = []
+p2_summer = []
+p2_autumn = []
 with open('../../../Documents/elec_demand/ProfileClass1.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        p1.append(float(row[-3]))
+        p1_winter.append(float(row[-3]))
+        p1_spring.append(float(row[-6]))
+        p1_summer.append(float(row[-9]))
+        p1_autumn.append(float(row[1]))
+        
 with open('../../../Documents/elec_demand/ProfileClass2.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        p2.append(float(row[-3]))
+        p2_winter.append(float(row[-3]))
+        p2_spring.append(float(row[-6]))
+        p2_summer.append(float(row[-9]))
+        p2_autumn.append(float(row[1]))
+
+p1 = p1_winter
+p2 = p2_winter
 
 s1 = sum(p1)
 s2 = sum(p2)
 
+r1 = sum(p1_winter)/(sum(p1_winter)+sum(p1_spring)+sum(p1_summer)+\
+                     sum(p1_autumn))
+r2 = sum(p2_winter)/(sum(p2_winter)+sum(p2_spring)+sum(p2_summer)+\
+                     sum(p2_autumn))
+
+print(r1)
+print(r2)
 for t in range(48):
     p1[t] = p1[t]/s1
     p2[t] = p2[t]/s2
@@ -46,8 +70,8 @@ with open(data,'r+',encoding="utf-8") as csvfile:
 
 results = {}       
 for la in n:
-    e = E7[la]*2/365
-    s = Std[la]*2/365
+    e = E7[la]*2*r2/(365*0.25)
+    s = Std[la]*2*r1/(365*0.25)
     p = []
     for t in range(48):
         new = (p1[t]*e+p2[t]*s)/n[la]

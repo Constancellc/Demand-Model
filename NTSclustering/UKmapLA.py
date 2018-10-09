@@ -33,7 +33,8 @@ with open(stem+'peaks.csv','rU') as csvfile:
     next(reader)
     for row in reader:
         pList.append(locs[row[0]])
-        z.append(100*(float(row[2])-float(row[1]))/float(row[1]))
+        z.append(float(row[1])) # kW 1- before 2- after
+        #z.append(100*(float(row[2])-float(row[1]))/float(row[1])) # % incr
         
 '''    
 for l in locs:
@@ -84,7 +85,7 @@ for i in range(len(x)):
         else:
             continue
 
-m.pcolor(X,Y,Z)#,cmap='inferno')
+m.pcolor(X,Y,Z,vmax=2.5)#,cmap='inferno')
 #m.pcolormesh(x,y,Z,latlon=True)
 #m.drawmapboundary(fill_color='#99ffff')
 #m.drawlsmask(land_color='coral',ocean_color='aqua')
