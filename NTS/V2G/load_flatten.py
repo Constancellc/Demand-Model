@@ -5,18 +5,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, spdiag, sparse, solvers
 
-'''
-This can probably be deleted
-
-'''
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 100
+nMC = 80
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
 pMax = 3.5 # kW
 pMax_ = 3.5 # kW for V2G
+
+'''
+This is the right one
+
+'''
 
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
@@ -92,7 +93,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in np.arange(0.1,1.1,0.1):
+for pen in [1.0]:#np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
@@ -109,7 +110,7 @@ for pen in np.arange(0.1,1.1,0.1):
             for t in range(1440):
                 totalH[t] += p[t]
         
-        nV = int(random.random()*nH*pen)
+        nV = int(nH*pen)
         chosenV = []
         while len(chosenV) < nV:
             ranV = allVehicles[int(random.random()*len(allVehicles))]
@@ -156,25 +157,31 @@ for pen in np.arange(0.1,1.1,0.1):
             b.append(kWh)
 
         n = len(b)
-        #b = matrix(b+[0.0]*n)
-        b = matrix(b)
-        #ΩA = matrix(0.0,(2*n,n*1440))
-        A = matrix(0.0,(n,n*1440))
-        
-        totalH_ = []
-        for i in range(len(totalH)):
-            totalH_.append(totalH[i]/c_eff)
-        q = matrix(totalH_*n)
-        
-        P = sparse([[spdiag([1/(c_eff*c_eff)]*1440)]*n]*n)
+        if n == 0:
+            continue
+        b = matrix(b+[0.0]*n)
+        A = matrix(0.0,(2*n,n*1440+1))
+        G = matrix(0.0,(1440,n*1440+1))
+        q = matrix([0.0]*(1440*n)+[1.0])
+        P = spdiag([0.0001]*(1440*n+1))
         
         for v in range(n):
             for t in range(1440):
-                A[v,1440*v+t] = 1/60
-                #A[v+n,1440*v+t] = a_[v][t]
+                A[v,1440*v+t] = c_eff/60
+                A[v+n,1440*v+t] = a_[v][t]
+                G[t,1440*v+t] = 1.0
+                
+        h0 = []
+        for t in range(1440):
+            G[t,1440*n] = -1.0
+            h0.append(-1.0*totalH[t])
+
+        G1 = sparse([[spdiag([-1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
+        G2 = sparse([[spdiag([1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
         
-        G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
-        h = matrix([0.0]*(n*1440)+[pMax]*(n*1440))
+
+        G = sparse([G,G1,G2])
+        h = matrix(h0+[0.0]*(n*1440)+[pMax]*(n*1440))
 
         try:
             sol=solvers.qp(P,q,G,h,A,b)
@@ -192,8 +199,8 @@ for pen in np.arange(0.1,1.1,0.1):
         for t in range(1440):
             total1[t] += totalH[t]
             for v in range(n):
-                total1[t] += x[1440*v+t]/c_eff
-                through1 += x[1440*v+t]/60
+                total1[t] += x[1440*v+t]
+                through1 += abs(x[1440*v+t]/60)
                 
         del A
         del G
@@ -203,34 +210,48 @@ for pen in np.arange(0.1,1.1,0.1):
                 
         # I think I actually need to reformulate for V2G,
         # defining seperate variables for charigng and discharging
-
-        # ok so new plan - decision variable now power into battery not grid
         
-        #A = matrix(0.0,(2*n,2*n*1440))
-        A = matrix(0.0,(n,2*n*1440))
+        A = matrix(0.0,(2*n,2*n*1440+1))
+        G = matrix(0.0,(1440,2*n*1440+1))
+        P = spdiag([0.0001]*(1440*2*n+1))
+        q = matrix([0.0]*(1440*2*n)+[1.0])
 
         for v in range(n):
             for t in range(1440):
-                A[v,1440*v+t] = 1/60
-                A[v,1440*(n+v)+t] = -1/60
+                A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
+                A[v,1440*(n+v)+t] = -1/(60*c_eff)
                 
-                #A[v+n,1440*v+t] = a_[v][t]
-                #A[v+n,1440*(n+v)+t] = a_[v][t]
+                A[v+n,1440*v+t] = a_[v][t]
+                A[v+n,1440*(n+v)+t] = a_[v][t]
+
+                G[t,1440*v+t] = 1.0
+                G[t,1440*(n+v)+t] = -1.0
+
+        for t in range(1440):
+            G[t,1440*2*n] = -1.0
+
+        G1 = sparse([[spdiag([-1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
+        G2 = sparse([[spdiag([1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
         
+        G = sparse([G,G1,G2])
+        h = matrix(h0+[0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
+                
+        '''
         G = sparse([spdiag([-1.0]*(2*n*1440)),spdiag([1.0]*(2*n*1440))])
         h = matrix([0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
-
-        totalH_2 = []
+        
+        totalH_ = []
         for i in range(len(totalH)):
-            totalH_2.append(-c_eff*totalH[i])
+            totalH_.append(-1*totalH[i]+0.001) # epsilon... I need to check this
 
-        q = matrix(totalH_*n+totalH_2*n)
+        q = matrix(totalH*n+totalH_*n)
+        
 
-        P1 = sparse([[spdiag([1/(c_eff*c_eff)]*1440)]*n]*n)
+        P1 = sparse([[spdiag([1]*1440)]*n]*n)
         P2 = sparse([[spdiag([-1]*1440)]*n]*n)
-        P3 = sparse([[spdiag([c_eff*c_eff]*1440)]*n]*n)
 
-        P = sparse([[P1,P2],[P2,P3]])
+        P = sparse([[P1,P2],[P2,P1]])
+        '''
         
         sol=solvers.qp(P,q,G,h,A,b)
 
@@ -246,18 +267,12 @@ for pen in np.arange(0.1,1.1,0.1):
         for t in range(1440):
             total2[t] += totalH[t]
             for v in range(n):
-                total2[t] += x[1440*v+t]/c_eff
-                total2[t] -= x[1440*(v+n)+t]*c_eff
+                total2[t] += x[1440*v+t]
+                total2[t] -= x[1440*(v+n)+t]
                 through2 += x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60)
                 
-        plt.figure()
-        plt.plot(total1)
-        plt.plot(total2)
-        plt.plot(totalH,'k',ls=':')
-        plt.show()
-                
-        g2v.append([max(total1),through1])
-        v2g.append([max(total2),through2])
+        g2v.append([max(total1),through1/n])
+        v2g.append([max(total2),through2/n])
 
         del A
         del b
@@ -265,8 +280,9 @@ for pen in np.arange(0.1,1.1,0.1):
         del h
         del P
         del q
-
+    
     existing = []
+    '''
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
               str(int(100*pen))+'.csv',
               'rU') as csvfile:
@@ -274,6 +290,7 @@ for pen in np.arange(0.1,1.1,0.1):
         next(reader)
         for row in reader:
             existing.append(row)
+    '''
     
 
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
