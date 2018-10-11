@@ -7,6 +7,8 @@ from clustering import Cluster, ClusteringExercise
 
 # This is the case for single day clustering rather than week average
 
+# PRETTY SURE THIS IS OLD
+
 data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'

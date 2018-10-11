@@ -22,7 +22,6 @@ with open(stem+'NTSlabels.csv','rU') as csvfile:
         NTS[row[0]] = int(row[1])
         
 NTS2 = {}
-
 # get the labels for both data types
 with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -35,6 +34,7 @@ c2 = [0]*7
 c3 = [0]*7
 c4 = [0]*7
 
+nts_n = {'W':[0,0,0],'WE':[0,0,0]}
 with open(stem+'allVehicles.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
@@ -47,7 +47,7 @@ with open(stem+'allVehicles.csv','rU') as csvfile:
             except:
                 c4[day] += 1
                 continue
-
+            nts_n['W'][c] += 1
             if c == 0:
                 c1[day] += 1
             elif c == 1:
@@ -61,6 +61,7 @@ with open(stem+'allVehicles.csv','rU') as csvfile:
             except:
                 c4[day] += 1
                 continue
+            nts_n['WE'][c] += 1
 
             if c == 0:
                 c1[day] += 1
@@ -68,7 +69,7 @@ with open(stem+'allVehicles.csv','rU') as csvfile:
                 c2[day] += 1
             elif c == 2:
                 c3[day] += 1
-
+print(nts_n)
 
 for i in range(7):
     c1[i] = 100*(c1[i]+c2[i]+c3[i])/n                  
@@ -92,4 +93,29 @@ plt.ylabel('Percentage')
 #plt.grid(zorder=1)
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/clustering/img/composition.eps', format='eps', dpi=1000)
+
+nts_dist = {'W':[0,0,0],'WE':[0,0,0]}
+with open(data,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        vehicle = row[2]
+        day = row[6]
+        
+        if int(row[6]) > 5:
+            try:
+                c = NTS2[vehicle+day]
+            except:
+                continue
+            nts_dist['WE'][c] += float(row[11])
+        else:
+            try:
+                c = NTS[vehicle+day]
+            except:
+                continue
+            nts_dist['W'][c] += float(row[11])
+
+for t in ['W','WE']:
+    for i in range(3):
+        print(nts_dist[t][i]/nts_n[t][i])
 plt.show()

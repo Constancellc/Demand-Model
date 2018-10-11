@@ -7,12 +7,12 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 80
+nMC = 800
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
-pMax = 3.5 # kW
-pMax_ = 3.5 # kW for V2G
+pMax = 7.0 # kW
+pMax_ = 7.0 # kW for V2G
 
 '''
 This is the right one
@@ -93,7 +93,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in [1.0]:#np.arange(0.1,1.1,0.1):
+for pen in np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
@@ -195,12 +195,12 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
 
         # work out totol power demand and battery throughput
         total1 = [0.0]*1440
-        through1 = 0
+        through1 = sum(b)
         for t in range(1440):
             total1[t] += totalH[t]
             for v in range(n):
                 total1[t] += x[1440*v+t]
-                through1 += abs(x[1440*v+t]/60)
+                through1 += x[1440*v+t]*c_eff/60
                 
         del A
         del G
@@ -263,13 +263,13 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
 
         # work out totol power demand
         total2 = [0.0]*1440
-        through2 = 0
+        through2 = sum(b)
         for t in range(1440):
             total2[t] += totalH[t]
             for v in range(n):
                 total2[t] += x[1440*v+t]
                 total2[t] -= x[1440*(v+n)+t]
-                through2 += x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60)
+                through2 += c_eff*x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60*c_eff)
                 
         g2v.append([max(total1),through1/n])
         v2g.append([max(total2),through2/n])
@@ -291,7 +291,6 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
         for row in reader:
             existing.append(row)
     '''
-    
 
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
               str(int(100*pen))+'.csv',
@@ -304,25 +303,69 @@ for pen in [1.0]:#np.arange(0.1,1.1,0.1):
         for i in range(len(g2v)):
             writer.writerow([i]+g2v[i]+v2g[i])
         
-'''
-with open('../../../Documents/simulation_results/NTS/v2g_lf.csv',
-          'w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','m1','u1','l1','m2','u2','l2'])
-    for t in range(1440):
-        row = [t]
-        x = []
-        for i in range(len(g2v)):
-            x.append(g2v[i][t])
-        row += [sum(x)/len(x)]
-        row += [max(x)]
-        row += [min(x)]
-        x = []
-        for i in range(len(g2v)):
-            x.append(v2g[i][t])
-        row += [sum(x)/len(x)]
-        row += [max(x)]
-        row += [min(x)]
-        writer.writerow(row)
-'''                    
+plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '10'
+
+lbls = {'':'UK','texas_':'Texas'}
+
+for loc in ['','texas_']:
+    bnft = []
+    cost = []
+    bnft_u = []
+    cost_u = []
+    bnft_l = []
+    cost_l = []
+
+    conf = 0.75
+    for pen in range(10,110,10):
+        a = []
+        b = []
+        with open('../../../Documents/simulation_results/NTS/v2g/'+loc+\
+                  'v2g_lf'+str(pen)+'.csv','rU') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)
+            for row in reader:
+                a.append(100*(float(row[1])-float(row[3]))/float(row[1]))
+                try:
+                    b.append(100*(float(row[4])-float(row[2]))/float(row[2]))
+                except:
+                    b.append(0.0)
+        '''           
+        bnft.append(sum(a)/len(a))
+        cost.append(sum(b)/len(b))
+        '''
+        a = sorted(a)
+        b = sorted(b)
+        bnft_u.append(a[int(conf*len(a))])
+        cost_u.append(b[int(conf*len(b))])
+        bnft_l.append(a[int((1-conf)*len(a))])
+        cost_l.append(b[int((1-conf)*len(b))])
+        bnft.append(a[int(0.5*len(a))])
+        cost.append(b[int(0.5*len(b))])
+        
+    #bnft = filt.gaussian_filter1d(bnft,1)
+    #cost = filt.gaussian_filter1d(cost,1)
+    plt.subplot(2,1,1)
+    plt.plot(range(10,110,10),bnft)
+    plt.xlim(10,100)
+    plt.ylim(0,30)
+    plt.fill_between(range(10,110,10),bnft_l,bnft_u,alpha=0.2)
+    plt.ylabel('% Reduction in\nPeak Demand')
+    if loc == '':
+        plt.grid()
+    plt.subplot(2,1,2)
+    plt.plot(range(10,110,10),cost,label=lbls[loc])
+    plt.xlim(10,100)
+    plt.ylim(0,300)
+    plt.fill_between(range(10,110,10),cost_l,cost_u,alpha=0.2)
+    plt.ylabel('% Increase in\nBattery Throughput')
+    if loc == '':
+        plt.grid()
+    plt.xlabel('% EV Penetration')
+    plt.tight_layout()
+plt.legend()
+plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
+            format='eps', dpi=1000)
+                  
 

@@ -51,15 +51,15 @@ for loc in ['','texas_']:
     plt.subplot(2,1,1)
     plt.plot(range(10,110,10),bnft)
     plt.xlim(20,100)
-    plt.ylim(0,35)
+    plt.ylim(0,30)
     plt.fill_between(range(10,110,10),bnft_l,bnft_u,alpha=0.2)
     plt.ylabel('% Reduction in\nPeak Demand')
     if loc == '':
         plt.grid()
     plt.subplot(2,1,2)
     plt.plot(range(10,110,10),cost,label=lbls[loc])
-    plt.xlim(20,100)
-    plt.ylim(0,500)
+    plt.xlim(10,100)
+    plt.ylim(0,300)
     plt.fill_between(range(10,110,10),cost_l,cost_u,alpha=0.2)
     plt.ylabel('% Increase in\nBattery Throughput')
     if loc == '':
@@ -67,6 +67,8 @@ for loc in ['','texas_']:
     plt.xlabel('% EV Penetration')
     plt.tight_layout()
 plt.legend()
+plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
+            format='eps', dpi=1000)
 plt.show()
         
 '''

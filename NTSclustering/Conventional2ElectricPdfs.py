@@ -117,6 +117,8 @@ endPdfWE = {'y':[],'n':[]}
 
 nCharges = {}
 nChargesWE = {}
+mea_dist = [0]*3
+mea_distWE = [0]*3
 for i in range(3):
     chargingPdf.append([0]*48)
     chargingPdf2.append([0]*48)
@@ -144,6 +146,7 @@ with open(data3,'rU') as csvfile:
         dayNo = int(row[1])
         start = int(row[2])
         end = int(row[3])
+        dist = float(row[-3])/1000
 
         if end > 1440:
             end -= 1440
@@ -164,6 +167,7 @@ with open(data3,'rU') as csvfile:
         tripEnds[vehicle].append(end)
         try:
             if row[-1] == '0':
+                mea_dist[MEA[vehicle]] += dist
                 #endPdf[MEA[vehicle]][end] += 1
                 if start < end:
                     for t in range(start,end):
@@ -174,6 +178,7 @@ with open(data3,'rU') as csvfile:
                     for t in range(end):
                         availPdf[MEA[vehicle]][t] += 1
             else:
+                mea_distWE[MEA2[vehicle]] += dist
                 #endPdfWE[MEA2[vehicle]][end] += 1
                 if start < end:
                     for t in range(start,end):
@@ -186,6 +191,10 @@ with open(data3,'rU') as csvfile:
         except:
             continue
 
+for i in range(3):
+    print(mea_dist[i]/nW[i])
+for i in range(3):
+    print(mea_distWE[i]/nWE[i])
 plt.figure()
 for i in range(3):
     plt.subplot(3,2,2*i+1)
