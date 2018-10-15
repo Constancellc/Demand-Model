@@ -108,9 +108,9 @@ x = [8,24,40]
 x_ticks = ['04:00','12:00','20:00']
 
 css = []
-plt.figure(figsize=(5,2.2))
+plt.figure(figsize=(5,2.3))
 plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
+plt.rcParams["font.size"] = '9'
 plt.subplot(1,2,1)
 
 for k in range(1,11):
@@ -119,16 +119,17 @@ for k in range(1,11):
     css.append(CE.get_sum_of_squares())
 
     CE.reset_clusters()
+
+S = max(css)*0.5
+for i in range(10):
+    css[i] = css[i]/S
     
 plt.plot(range(1,11),css)
 plt.grid()
-plt.xlim(0.5,10)
+plt.xlim(0.5,9.5)
 plt.xlabel('# Clusters')
 plt.ylabel('Sum of Squares')
 plt.title('Weekdays')
-
-
-      
 
 # first cluster the wProfiles
 data = []
@@ -156,11 +157,13 @@ for k in range(1,11):
     CE.k_means(k)
     css.append(CE.get_sum_of_squares())
 
-
+for i in range(10):
+    css[i] = css[i]/S
+    
 plt.subplot(1,2,2)
 plt.plot(range(1,11),css)
 plt.grid()
-plt.xlim(0.5,10)
+plt.xlim(0.5,9.5)
 plt.xlabel('# Clusters')
 plt.title('Weekends')
 plt.tight_layout()
