@@ -11,7 +11,7 @@ plt.rcParams["font.size"] = '10'
 
 lbls = {'':'UK','texas_':'Texas'}
 
-for loc in ['','texas_']:
+for loc in ['']:#,'texas_']:
     bnft = []
     cost = []
     bnft_u = []
@@ -49,18 +49,18 @@ for loc in ['','texas_']:
     #bnft = filt.gaussian_filter1d(bnft,1)
     #cost = filt.gaussian_filter1d(cost,1)
     plt.subplot(2,1,1)
-    plt.plot(range(10,110,10),bnft)
-    plt.xlim(20,100)
-    plt.ylim(0,30)
-    plt.fill_between(range(10,110,10),bnft_l,bnft_u,alpha=0.2)
+    plt.plot(range(0,110,10),[0]+bnft)
+    plt.xlim(0,100)
+    plt.ylim(0,35)
+    plt.fill_between(range(0,110,10),[0]+bnft_l,[0]+bnft_u,alpha=0.2)
     plt.ylabel('% Reduction in\nPeak Demand')
     if loc == '':
         plt.grid()
     plt.subplot(2,1,2)
-    plt.plot(range(10,110,10),cost,label=lbls[loc])
-    plt.xlim(10,100)
-    plt.ylim(0,300)
-    plt.fill_between(range(10,110,10),cost_l,cost_u,alpha=0.2)
+    plt.plot(range(0,110,10),[0]+cost,label=lbls[loc])
+    plt.xlim(0,100)
+    plt.ylim(0,100)
+    plt.fill_between(range(0,110,10),[0]+cost_l,[0]+cost_u,alpha=0.2)
     plt.ylabel('% Increase in\nBattery Throughput')
     if loc == '':
         plt.grid()

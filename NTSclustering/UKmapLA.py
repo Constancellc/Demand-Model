@@ -33,8 +33,8 @@ with open(stem+'peaks.csv','rU') as csvfile:
     next(reader)
     for row in reader:
         pList.append(locs[row[0]])
-        z.append(float(row[1])) # kW 1- before 2- after
-        #z.append(100*(float(row[2])-float(row[1]))/float(row[1])) # % incr
+        #z.append(float(row[2])) # kW 1- before 2- after
+        z.append(100*(float(row[2])-float(row[1]))/float(row[1])) # % incr
         
 '''    
 for l in locs:

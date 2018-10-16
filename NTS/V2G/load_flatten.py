@@ -93,7 +93,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in np.arange(0.1,1.1,0.1):
+for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
@@ -235,23 +235,6 @@ for pen in np.arange(0.1,1.1,0.1):
         
         G = sparse([G,G1,G2])
         h = matrix(h0+[0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
-                
-        '''
-        G = sparse([spdiag([-1.0]*(2*n*1440)),spdiag([1.0]*(2*n*1440))])
-        h = matrix([0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
-        
-        totalH_ = []
-        for i in range(len(totalH)):
-            totalH_.append(-1*totalH[i]+0.001) # epsilon... I need to check this
-
-        q = matrix(totalH*n+totalH_*n)
-        
-
-        P1 = sparse([[spdiag([1]*1440)]*n]*n)
-        P2 = sparse([[spdiag([-1]*1440)]*n]*n)
-
-        P = sparse([[P1,P2],[P2,P1]])
-        '''
         
         sol=solvers.qp(P,q,G,h,A,b)
 
@@ -259,7 +242,6 @@ for pen in np.arange(0.1,1.1,0.1):
 
         if sol['status'] != 'optimal':
             continue
-
 
         # work out totol power demand
         total2 = [0.0]*1440
@@ -302,70 +284,3 @@ for pen in np.arange(0.1,1.1,0.1):
             writer.writerow(row)
         for i in range(len(g2v)):
             writer.writerow([i]+g2v[i]+v2g[i])
-        
-plt.figure()
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '10'
-
-lbls = {'':'UK','texas_':'Texas'}
-
-for loc in ['','texas_']:
-    bnft = []
-    cost = []
-    bnft_u = []
-    cost_u = []
-    bnft_l = []
-    cost_l = []
-
-    conf = 0.75
-    for pen in range(10,110,10):
-        a = []
-        b = []
-        with open('../../../Documents/simulation_results/NTS/v2g/'+loc+\
-                  'v2g_lf'+str(pen)+'.csv','rU') as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader)
-            for row in reader:
-                a.append(100*(float(row[1])-float(row[3]))/float(row[1]))
-                try:
-                    b.append(100*(float(row[4])-float(row[2]))/float(row[2]))
-                except:
-                    b.append(0.0)
-        '''           
-        bnft.append(sum(a)/len(a))
-        cost.append(sum(b)/len(b))
-        '''
-        a = sorted(a)
-        b = sorted(b)
-        bnft_u.append(a[int(conf*len(a))])
-        cost_u.append(b[int(conf*len(b))])
-        bnft_l.append(a[int((1-conf)*len(a))])
-        cost_l.append(b[int((1-conf)*len(b))])
-        bnft.append(a[int(0.5*len(a))])
-        cost.append(b[int(0.5*len(b))])
-        
-    #bnft = filt.gaussian_filter1d(bnft,1)
-    #cost = filt.gaussian_filter1d(cost,1)
-    plt.subplot(2,1,1)
-    plt.plot(range(10,110,10),bnft)
-    plt.xlim(10,100)
-    plt.ylim(0,30)
-    plt.fill_between(range(10,110,10),bnft_l,bnft_u,alpha=0.2)
-    plt.ylabel('% Reduction in\nPeak Demand')
-    if loc == '':
-        plt.grid()
-    plt.subplot(2,1,2)
-    plt.plot(range(10,110,10),cost,label=lbls[loc])
-    plt.xlim(10,100)
-    plt.ylim(0,300)
-    plt.fill_between(range(10,110,10),cost_l,cost_u,alpha=0.2)
-    plt.ylabel('% Increase in\nBattery Throughput')
-    if loc == '':
-        plt.grid()
-    plt.xlabel('% EV Penetration')
-    plt.tight_layout()
-plt.legend()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
-            format='eps', dpi=1000)
-                  
-

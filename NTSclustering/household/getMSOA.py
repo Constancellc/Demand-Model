@@ -75,8 +75,7 @@ for la in n:
     p = []
     for t in range(48):
         new = (p1[t]*e+p2[t]*s)/n[la]
-        for tt in range(30):
-            p.append(new)
+        p.append(new)
 
     old_peak = max(p)
 
@@ -87,7 +86,7 @@ for la in n:
             next(reader)
             for row in reader:
                 if t < 1440:
-                    p[t] += float(row[1])/50
+                    p[int(t/30)] += float(row[1])/(50*30)
                     t += 1
 
         new_peak = max(p)
