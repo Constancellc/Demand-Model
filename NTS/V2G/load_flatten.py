@@ -60,8 +60,9 @@ with open('../../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfil
             journeyLogs[vehicle] = []
 
         try:
-            start = int(30*int(int(row[9])/30)+30*random.random())
-            end = int(30*int(int(row[10])/30)+30*random.random())
+            shift = 30*random.random()
+            start = int(30*int(int(row[9])/30)+shift)
+            end = int(30*int(int(row[10])/30)+shift)
             distance = float(row[11]) # miles
             purpose = row[-2]
         except:

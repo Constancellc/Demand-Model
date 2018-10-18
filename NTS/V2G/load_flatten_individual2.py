@@ -139,7 +139,7 @@ for h in chosenH:
     for t in range(1440):
         totalH[t] += p[t]
 
-plt.figure()
+plt.figure(figsize=(6,4))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 # then get the vehicles
@@ -156,15 +156,15 @@ for pen in [1.0,0.75,0.5,0.25]:
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
     plt.plot(t_,tot2,c='b',label='G2V')
     plt.plot(t_,tot1,c='r',ls='--',label='V2G')
-    plt.title(str(int(100*pen))+'%',y=0.85)
-    plt.ylim(0,1.2*max(tot2))
+    plt.title(str(int(100*pen))+'%',y=0.8)
+    plt.ylim(0,1.3*max(tot2))
     plt.xticks([4,12,20],['04:00','12:00','20:00'])
     plt.xlim(0,24)
     if pn in [1,3]:
         plt.ylabel('Power (kW)')
     plt.grid()
     pn += 1
-plt.legend()
+plt.legend(ncol=2)
 
 plt.tight_layout()
 plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,

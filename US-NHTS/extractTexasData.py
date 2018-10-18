@@ -71,8 +71,9 @@ with open(trips17,'rU') as csvfile:
             continue
 
         dates = hhs[hhID]
+        purp = row[58]
 
-        trips.append([vID,hhID]+dates+[start,end,distance])
+        trips.append([vID,hhID]+dates+[start,end,distance,purp])
        
         
 with open(trips9,'rU') as csvfile:
@@ -99,15 +100,16 @@ with open(trips9,'rU') as csvfile:
         except:
             continue
         vehicleID  = householdID+row[-29]
+        purp = row[-26]
 
         dates = hhs[householdID]
 
-        trips.append([vehicleID,householdID]+dates+[start,end,distance])
+        trips.append([vehicleID,householdID]+dates+[start,end,distance,purp])
 
 
 with open(outfile2,'w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['vehicleID','householdID','weekday','month','year',
-                     'start','end','distance'])
+                     'start','end','distance','purpose'])
     for row in trips:
         writer.writerow(row)

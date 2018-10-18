@@ -7,12 +7,12 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 100
+nMC = 800
 nH = 50
-c_eff = 0.9
-#capacity = 30 # kWh
-#pMax = 3.5 # kW
-#pMax_ = 3.5 # kW for V2G
+c_eff = 0.9 
+pMax = 3.5 # kW G2V
+pMax_ = 3.5 # kW V2G
+capacity = 30 # kWh
 
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
@@ -26,58 +26,16 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
-def v2g_eval(hh,e0,delta):
-    over = 0
-    p = (e0+delta)/24
-    for t in range(1440):
-        if hh[t] > p:
-            over += hh[t]/60
-    return over
-
-def flatten_v2g(hh,eV):
-    e0 = sum(hh)/60 + eV
-    delta = 0
-    for i in range(10):
-        over = v2g_eval(hh,e0,delta)
-        delta = over*(1/0.81-1)
-
-    return [over,[(e0+delta)/24]*1440]
-
-def g2v_fill(tot,y):
-    en = 0
-    for t in range(1440):
-        if tot[t] < y:
-            en += (y-tot[t])/60
-            tot[t] = y
-
-    return [tot,en]
-
-def flatten_g2v(hh,eV):
-    total = copy.deepcopy(hh)
-    p = min(total)+0.1
-    while eV > 0:
-        [total,en] = g2v_fill(total,p)
-        eV -= en
-        p += 0.01
-
-    return total
-
-# first get hhs and then their energy consumotion
-
-households = []
+# get vehicle use
+texas_hh = []
 with open('../../../Documents/NHTS/constance/texas-hh.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         if int(row[1]) == simulationDay:
-            households.append(row[0])
-
-print(len(households))
-en = {}
-hh_v = {}
-for hh in households:
-    en[hh] = 0
-    hh_v[hh] = []
-    
+            texas_hh.append(row[0])
+            
+allVehicles = []
+journeyLogs = {}
 with open('../../../Documents/NHTS/constance/texas-trips.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
@@ -86,18 +44,27 @@ with open('../../../Documents/NHTS/constance/texas-trips.csv','rU') as csvfile:
         if day != simulationDay:
             continue
         hh = row[1]
-        if hh not in households:
+        if hh not in texas_hh:
             continue
         v = row[0]
-        if v not in hh_v[hh]:
-            hh_v[hh].append(v)
-        #start = int(row[5])
-        #end = int(row[6])
+        if v not in journeyLogs:
+            journeyLogs[v] = []
+            allVehicles.append(v)
+            
+        start = int(row[5])
+        end = int(row[6])
+        purp = row[-1]
 
-        en[hh] += 0.3*float(row[7])
+        if purp in ['01','02']:
+            home = True
+        else:
+            home = False
 
-# Get the HH demand, one from each hh
-# get a list of hh?
+        kWh = 0.3*float(row[7])
+
+        journeyLogs[v].append([start,end,kWh,home])
+        
+# get household profiles
 c = 0
 hhProfiles = {}
 with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
@@ -105,13 +72,15 @@ with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        p = []
-        for t in range(48):
-            p.append(float(row[t]))
+        p = [0.0]*48
+        for t in range(1440):
+            p[int(t/30)] += float(row[t])/30
         hhProfiles[c] = p
         c += 1
 
-for pen in np.arange(0.1,1.1,0.1):
+
+for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
+    pen = pen/100
     g2v = []
     v2g = []
     # For each MC simulation
@@ -127,31 +96,169 @@ for pen in np.arange(0.1,1.1,0.1):
             p = interpolate(hhProfiles[h],30)
             for t in range(1440):
                 totalH[t] += p[t]
-                
+        
+        nV = int(nH*pen)
         chosenV = []
-        nV = 0
-        while len(chosenV) < int(nH*pen):
-            ranV = households[int(random.random()*len(households))]
+        while len(chosenV) < nV:
+            ranV = allVehicles[int(random.random()*len(allVehicles))]
             if ranV not in chosenV:
-                chosenV.append(en[ranV])
-                nV += len(hh_v[ranV])
+                chosenV.append(ranV)
 
-        if nV == 0:
-            g2v.append([max(totalH),0])
-            v2g.append([max(totalH),0])
-            continue
+        b = []
+        a_ = []
+        for v in chosenV:
+            if v not in journeyLogs:
+                continue
+            kWh = 0
+            c = []
+            for j in journeyLogs[v]:
+                kWh += j[2]
+                c.append([j[0],j[1]]) # to be clear these are times we cant charge
+                if j[3] == False:
+                    c.append([j[1],''])
+
+            a = [0]*1440
+            for i in range(len(c)):
+                c_ = c[i]
+                if c_[1] != '':
+                    for t in range(c_[0],c_[1]):
+                        if t < 1440:
+                            a[t] = 1
+                elif i < len(c)-1:
+                    for t in range(c_[0],c[i+1][0]):
+                        if t < 1440:
+                            a[t] = 1
+                else:
+                    for t in range(c_[0],1440):
+                        a[t] = 1
+
+            a_.append(a)
+
+            possible_charge = pMax*(1440-sum(a))/60
             
-        eV = sum(chosenV)
+            if kWh > capacity:
+                kWh = capacity
+            if kWh >= possible_charge:
+                kWh = possible_charge*0.99
 
-        [over,tot1] = flatten_v2g(totalH,eV/0.9)
-        tot2 = flatten_g2v(totalH,eV/0.9)
-        through2 = eV*2
-        through1 = eV*2+over*2/0.9
+            b.append(kWh)
 
-        g2v.append([max(tot2),through2/nV])
-        v2g.append([max(tot1),through1/nV])
+        n = len(b)
+        if n == 0:
+            continue
+        b = matrix(b+[0.0]*n)
+        A = matrix(0.0,(2*n,n*1440+1))
+        G = matrix(0.0,(1440,n*1440+1))
+        q = matrix([0.0]*(1440*n)+[1.0])
+        P = spdiag([0.0001]*(1440*n+1))
+        
+        for v in range(n):
+            for t in range(1440):
+                A[v,1440*v+t] = c_eff/60
+                A[v+n,1440*v+t] = a_[v][t]
+                G[t,1440*v+t] = 1.0
+                
+        h0 = []
+        for t in range(1440):
+            G[t,1440*n] = -1.0
+            h0.append(-1.0*totalH[t])
+
+        G1 = sparse([[spdiag([-1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
+        G2 = sparse([[spdiag([1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
+        
+
+        G = sparse([G,G1,G2])
+        h = matrix(h0+[0.0]*(n*1440)+[pMax]*(n*1440))
+
+        try:
+            sol=solvers.qp(P,q,G,h,A,b)
+        except:
+            continue
+        
+        x = sol['x'] # without V2G
+
+        if sol['status'] != 'optimal':
+            continue
+
+        # work out totol power demand and battery throughput
+        total1 = [0.0]*1440
+        through1 = sum(b)
+        for t in range(1440):
+            total1[t] += totalH[t]
+            for v in range(n):
+                total1[t] += x[1440*v+t]
+                through1 += x[1440*v+t]*c_eff/60
+                
+        del A
+        del G
+        del h
+        del P
+        del q
+                
+        # I think I actually need to reformulate for V2G,
+        # defining seperate variables for charigng and discharging
+        
+        A = matrix(0.0,(2*n,2*n*1440+1))
+        G = matrix(0.0,(1440,2*n*1440+1))
+        P = spdiag([0.0001]*(1440*2*n+1))
+        q = matrix([0.0]*(1440*2*n)+[1.0])
+
+        for v in range(n):
+            for t in range(1440):
+                A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
+                A[v,1440*(n+v)+t] = -1/(60*c_eff)
+                
+                A[v+n,1440*v+t] = a_[v][t]
+                A[v+n,1440*(n+v)+t] = a_[v][t]
+
+                G[t,1440*v+t] = 1.0
+                G[t,1440*(n+v)+t] = -1.0
+
+        for t in range(1440):
+            G[t,1440*2*n] = -1.0
+
+        G1 = sparse([[spdiag([-1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
+        G2 = sparse([[spdiag([1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
+        
+        G = sparse([G,G1,G2])
+        h = matrix(h0+[0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
+        
+        sol=solvers.qp(P,q,G,h,A,b)
+
+        x = sol['x'] # with V2G
+
+        if sol['status'] != 'optimal':
+            continue
+
+        # work out totol power demand
+        total2 = [0.0]*1440
+        through2 = sum(b)
+        for t in range(1440):
+            total2[t] += totalH[t]
+            for v in range(n):
+                total2[t] += x[1440*v+t]
+                total2[t] -= x[1440*(v+n)+t]
+                through2 += c_eff*x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60*c_eff)
+              
+        g2v.append([max(total1),through1/n])
+        v2g.append([max(total2),through2/n])
+        
+        del A
+        del b
+        del G
+        del h
+        del P
+        del q
 
     existing = []
+    
+    with open('../../../Documents/simulation_results/NTS/v2g/texas_v2g_lf'+\
+              str(int(100*pen))+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            existing.append(row)
+    
     with open('../../../Documents/simulation_results/NTS/v2g/texas_v2g_lf'+\
               str(int(100*pen))+'.csv',
               'w') as csvfile:
@@ -162,4 +269,3 @@ for pen in np.arange(0.1,1.1,0.1):
             writer.writerow(row)
         for i in range(len(g2v)):
             writer.writerow([i]+g2v[i]+v2g[i])
-    

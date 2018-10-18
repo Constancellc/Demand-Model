@@ -11,7 +11,7 @@ plt.rcParams["font.size"] = '10'
 
 lbls = {'':'UK','texas_':'Texas'}
 
-for loc in ['']:#,'texas_']:
+for loc in ['texas_']:#,'texas_']:
     bnft = []
     cost = []
     bnft_u = []
@@ -50,27 +50,25 @@ for loc in ['']:#,'texas_']:
     #cost = filt.gaussian_filter1d(cost,1)
     plt.subplot(2,1,1)
     plt.xlim(0,100)
-    plt.ylim(0,35)
+    plt.ylim(0,60)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+bnft_l,[0]+bnft_u,color='#CCCCFF')
+                     [0]+bnft_l,[0]+bnft_u,color='#CCFFCC')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],[0]+bnft,
-             c='b')
+             c='g')
     plt.ylabel('% Reduction in\nPeak Demand')
-    if loc == '':
-        plt.grid()
+    plt.grid()
     plt.subplot(2,1,2)
     plt.xlim(0,100)
-    plt.ylim(0,100)
+    plt.ylim(0,130)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+cost_l,[0]+cost_u,color='#CCCCFF')
+                     [0]+cost_l,[0]+cost_u,color='#CCFFCC')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-             [0]+cost,label=lbls[loc],c='b')
+             [0]+cost,label=lbls[loc],c='g')
     plt.ylabel('% Increase in\nBattery Throughput')
-    if loc == '':
-        plt.grid()
+    plt.grid()
     plt.xlabel('% EV Penetration')
     plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
+plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results2.eps',
             format='eps', dpi=1000)
 plt.show()
         
