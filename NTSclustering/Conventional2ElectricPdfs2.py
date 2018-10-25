@@ -44,6 +44,15 @@ I will make a new journeys dict which will contain a list for each vehicle of
 where the last parameter will be updated as I go
 
 I will have to make sure to only start while the charging data is active
+
+==== UPDATE ====
+
+I don't think this is working - I think we're going to have to interpolate the
+SOC. Basically we'll have to find the nearest known point of SOC and try and
+work backwards or forwards. This still doesn't help if it turns out there is a
+lot of charging not at work. I mean I guess it helps a bit. I need to think more
+
+I guess the question is how we 
 '''
 NTS = {}
 MEA = {}
@@ -174,20 +183,21 @@ for vehicle in journeys:
     while j < len(jLog):
         soc -= jLog[j][2]/24
 
-        print(soc)
-
         if soc < 0:
-            print(soc)
-            soc = 0
+            soc += 0.5 # assume charged elsewhere
+            #print(soc)
+            #soc = 0
 
         jLog[j][4] = soc
         
         j += 1
 
+        if c >= len(cLog):
+            continue
+
         if cLog[c][0] >= jLog[j][0] and cLog[c][1] >= jLog[j][1]:
             soc = 1
             c += 1
-
 
 del charges
 
