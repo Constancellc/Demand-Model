@@ -335,7 +335,33 @@ for i in range(3):
                                                     wPdf[i]['n'][s][t])
             except:
                 continue
+            if wPdf[i]['y'][s][t]+wPdf[i]['n'][s][t] == 1:
+                heatmaps[i][s][t] = 0
+                
+    heatmaps[i] = filt.gaussian_filter(heatmaps[i],1)
 
     plt.subplot(3,1,i+1)
-    plt.imshow(heatmaps[i],vmin=0,vmax=1)
+    plt.imshow(heatmaps[i],vmin=0,vmax=1,cmap='magma')
+plt.figure()
+heatmaps = {}
+for i in range(3):
+    heatmaps[i] = []
+    for s in range(6):
+        heatmaps[i].append([0]*48)
+
+    for s in range(6):
+        for t in range(48):
+            try:
+                heatmaps[i][s][t] = wePdf[i]['y'][s][t]/(wePdf[i]['y'][s][t]+\
+                                                    wePdf[i]['n'][s][t])
+            except:
+                continue
+            if wePdf[i]['y'][s][t]+wePdf[i]['n'][s][t] == 1:
+                heatmaps[i][s][t] = 0
+                
+    heatmaps[i] = filt.gaussian_filter(heatmaps[i],1)
+
+    plt.subplot(3,1,i+1)
+    plt.imshow(heatmaps[i],vmin=0,vmax=1,cmap='magma')
+
 plt.show()
