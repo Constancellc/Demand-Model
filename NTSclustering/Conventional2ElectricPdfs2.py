@@ -52,7 +52,17 @@ SOC. Basically we'll have to find the nearest known point of SOC and try and
 work backwards or forwards. This still doesn't help if it turns out there is a
 lot of charging not at work. I mean I guess it helps a bit. I need to think more
 
-I guess the question is how we 
+Proposal:
+Sort through all of the journeys and store then as
+[end,kWh,purp,SOC,plugin]
+
+except the last two will not be filled in.
+
+Then sort through all of the charges and fill in Y and the SOC on all other
+points, store all the indexes for which the values are known
+
+Next for each missing entry find the nearest known one and infer the SOC at that
+point. If it is > 0 and the purpose is home, add it to the distribution.
 '''
 NTS = {}
 MEA = {}
@@ -88,6 +98,7 @@ def get_nearest(p,lst):
             d = abs(x-p)
 
     return d
+
 def get_nearest2(p,lst):
     d = 30
     for x in lst:
@@ -95,6 +106,16 @@ def get_nearest2(p,lst):
             d = abs(x[0]-p)
 
     return d
+
+def get_nearest3(p,lst):
+    d = 2000000
+    best = None
+    for x in lst:
+        if abs(x-p) < d:
+            d = abs(x-p)
+            best = x
+
+    return best
 
 y = []
 n = []
@@ -110,7 +131,6 @@ for i in range(3):
 charges = {}
 highest = {}
 lowest = {}
-chargeLog = {}
 # now get the MEA data
 with open(charge_data,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -130,16 +150,11 @@ with open(charge_data,'rU') as csvfile:
         if day > highest[vehicle]:
             highest[vehicle] = day
 
-        #soc = int(6*float(row[4]))
+        soc = float(row[4])
         start = int(row[2])
 
-        charges[vehicle].append([day,start])
-
-        vehicle += str(day)
-
-        if vehicle not in chargeLog:
-            chargeLog[vehicle] = []
-        
+        charges[vehicle].append([day,start,soc])
+       
 journeys = {}
 with open(trip_data,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -168,507 +183,159 @@ with open(trip_data,'rU') as csvfile:
             end -= 1440
             day += 1
 
-        journeys[vehicle].append([day,end,kWh,dType,None])
+        journeys[vehicle].append([day,end,kWh,dType,None,None])
 
+# I need 12 arrays to store the reults
+wPdf = {}
+wePdf = {}
+for i in range(3):
+    wPdf[i] = {}
+    wePdf[i] = {}
+    for t in ['y','n']:
+        wPdf[i][t] = []
+        wePdf[i][t] = []
 
+        for S in range(6):
+            wPdf[i][t].append([0]*48)
+            wePdf[i][t].append([0]*48)
+known = {}
+n = 0
 for vehicle in journeys:
+    if vehicle not in known:
+        known[vehicle] = []
     jLog = journeys[vehicle]
     cLog = charges[vehicle]
 
-    c = 0
-    j = 0
+    cList = []
+    cSOC = {}
+    for c in cLog:
+        t = int(c[0]*1440+c[1])
+        cList.append(t)
+        cSOC[t] = c[2]
 
-    soc = 1
 
-    while j < len(jLog):
-        soc -= jLog[j][2]/24
+    for j1 in range(len(jLog)):
+        j = jLog[j1]
+        t = j[0]*1440+j[1]
+        t1 = get_nearest3(t,cList)
 
-        if soc < 0:
-            soc += 0.5 # assume charged elsewhere
-            #print(soc)
-            #soc = 0
 
-        jLog[j][4] = soc
-        
-        j += 1
-
-        if c >= len(cLog):
+        if t1 == None:
             continue
 
-        if cLog[c][0] >= jLog[j][0] and cLog[c][1] >= jLog[j][1]:
-            soc = 1
-            c += 1
+        elif abs(t1-t) < 10:
+            n += 1
+            j[5] = True
+            j[4] = cSOC[t1]
+            known[vehicle].append(j1)
+        else:
+            j[5] = False
+    '''
+        
+    c = 0
+    j = 0    
+    while j < len(jLog) and c < len(cLog):
+        if cLog[c][0] == jLog[j][0]:
+            
+            d = abs(cLog[c][1]-jLog[j][1])
+            if d < 10:
+                n += 1
+                jLog[j][4] = cLog[c][2]
+                jLog[j][5] = True
+                known[vehicle].append(j)#1440*cLog[c][0]+cLog[c][1])
+                c += 1
+            else:
+                # ok I think I see the problem here, we could be on the right
+                # day but the charge happens later in the 
+                jLog[j][5] == False
+            j += 1
 
+        elif jLog[j][0] < cLog[c][0]:
+            jLog[j][5] = False
+            j += 1
+
+        elif jLog[j][0] > cLog[c][0]:
+            c += 1
+    '''
+
+        
+print(n)
 del charges
 
-# Let's check this soc thing
 for vehicle in journeys:
-    s = []
-    for j in journeys[vehicle]:
-        s.append(j[4])
-    plt.figure()
-    plt.plot(s)
-    plt.show()
-        
-# now I need to step through the journeys and work out if there was a charge
+    jLog = journeys[vehicle]
+    for j1 in range(len(jLog)):
+        j = jLog[j1]
+        if j[-1] == True:
+            SOC = j[4]#int(12*j[4])
+            t = int(j[1]/30)
+            if SOC == 1.0:
+                SOC = 0.99
+            if t == 48:
+                t = 47
+            if j[-3] == '0':
+                if vehicle+str(j[0]) not in MEA:
+                    continue
+                wPdf[MEA[vehicle+str(j[0])]]['y'][int(6*SOC)][t] += 1
+                
+            else:
+                if vehicle+str(j[0]) not in MEA2:
+                    continue
+                wePdf[MEA2[vehicle+str(j[0])]]['y'][int(6*SOC)][t] += 1
 
-'''
-        
-
-
-
-chargeTimes = {}       
-# now get the MEA data
-with open(charge_data,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        if row[-1] == '1':
             continue
-        vehicle = row[0]+row[1]
 
-        if vehicle not in chargeTimes:
-            chargeTimes[vehicle] = []
-
-        soc = int(6*float(row[4]))
-        start = int(row[2])
-
-        chargeTimes[vehicle].append([start,soc])
-        
-tripEnds = {}
-# now get the MEA data
-with open(trip_data,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    #next(reader)
-    for row in reader:
-        print(row)
-        if row[-1] == '1': # skip weekends
+        if j[-1] == None:
             continue
-        kWh = float(row[-2])/1000
-        vehicle = row[0]
+
+        j2 = get_nearest3(j1,known[vehicle])
+
+        if j2 == None:
+            continue
+        
             
-        dayNo = int(row[1])
-        end = int(row[3])
-        #start = int(row[2])
-        #dist = float(row[-3])/1000
+        if j1 < j2:
+            SOC = jLog[j2][4]
+            for i in range(j2-j1):
+                SOC += jLog[j2-i][2]/24
 
-        if end > 1440:
-            end -= 1440
-            dayNo += 1
-
-        vehicle += str(dayNo)
-        if vehicle not in tripEnds:
-            tripEnds[vehicle] = []
-
-
-        if soc < 0:
-            soc = 0
-            
-        tripEnds[vehicle].append([end,kWh])
-
-
-for vehicle in endTimes:
-    ends = endTimes[vehicle]
-
-    try:
-        k = MEA[vehicle]
-    except:
-        continue
-
-    try:
-        charges = chargeTimes[vehicle]
-    except:
-        charges = []
-
-    cT = []
-    for charge in charges:
-        cT.append(charge[0])
-
-    for j in ends:
-        d = get_nearest(end,cT)
-
-        if d > 5:
-            c
-
-        try:
-            k = MEA[vehicle]
-        except:
-            continue
-        try:
-            ends = tripEnds[vehicle]
-        except:
-            ends = []
-        soc = int(6*float(row[4]))
-        start = int(row[2])
-        d = get_nearest(start,ends)
-        
-        if d > 5:
-            continue
-        
-        start = int(start/30)
-
-        
-
-
-        
-
-
-        
-        #soc = int(100*float(row[4])+random.random()*16.666-8.333)
-
-        vehicle += row[1]
-        
-        if row[-1] == '0':
-            pdf = chargingPdf
-            pdf2 = chargingPdf2
-            pdf3 = endPdf
-            sPdf = socPdf
-            cls = MEA
-            nc = nCharges
         else:
-            pdf = chargingPdfWE
-            pdf2 = chargingPdfWE2
-            pdf3 = endPdfWE
-            sPdf = socPdfWE
-            cls = MEA2
-            nc = nChargesWE
-        
-        start = int(row[2])
-        try:
-            ends = tripEnds[vehicle]
-        except:
-            ends = []
+            SOC = 1
+            for i in range(j1-j2):
+                SOC -= jLog[j1-i][2]/24
 
-        d = get_nearest(start,ends)
-        if d < 5:
-            pdf_ = pdf
-            try:
-                pdf3['y'][cls[vehicle]][start] += 1
-            except:
-                continue
-        else:
-            pdf_ = pdf2
-            try:
-                pdf3['n'][cls[vehicle]][start] += 1
-            except:
-                continue
-        
-        if start >= 48:
-            start -= 48
-
-        soc = int(100*float(row[4])+random.random()*16.666-8.333)
-                  
-        if vehicle not in nc:
-            nc[vehicle] = 1
-        else:
-            nc[vehicle] += 1
-
-            
-        try:
-            pdf_[cls[vehicle]][start] += 1
-        except:
-            continue
-            
-        try:
-            sPdf[cls[vehicle]][soc] += 1
-        except:
-            continue
-
+        if SOC > 0 and SOC < 1:
+            # store result in relevant array
+            jLog[j1][4] = SOC
+            SOC = int(6*SOC)
+            t = int(j[1]/30)
+            if t == 48:
+                t = 47
+            if j[-3] == '0':
+                if vehicle+str(j[0]) not in MEA:
+                    continue
+                wPdf[MEA[vehicle+str(j[0])]]['n'][SOC][t] += 1
+            else:
+                if vehicle+str(j[0]) not in MEA2:
+                    continue
+                wePdf[MEA2[vehicle+str(j[0])]]['n'][SOC][t] += 1
+                
+del known
 plt.figure()
+heatmaps = {}
 for i in range(3):
+    heatmaps[i] = []
+    for s in range(6):
+        heatmaps[i].append([0]*48)
+
+    for s in range(6):
+        for t in range(48):
+            try:
+                heatmaps[i][s][t] = wPdf[i]['y'][s][t]/(wPdf[i]['y'][s][t]+\
+                                                    wPdf[i]['n'][s][t])
+            except:
+                continue
+
     plt.subplot(3,1,i+1)
-    plt.plot(endPdf['y'][i])
-    plt.plot(endPdf['n'][i])
+    plt.imshow(heatmaps[i],vmin=0,vmax=1)
 plt.show()
-
-# now get the MEA data
-with open(data3,'rU') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        vehicle = row[0]
-
-        if vehicle not in highest:
-            continue
-
-        day = int(row[1])
-
-        if day < lowest[vehicle] or day > highest[vehicle]:
-            continue
-        
-        if row[-1] == '0':
-            nc = nCharges
-        else:
-            nc = nChargesWE
-
-        if vehicle+row[1] not in nc:
-            nc[vehicle+row[1]] = 0
-            
-# now get pdfs
-nChargesPdf = []
-nChargesPdfWE = []
-for i in range(3):
-    nChargesPdf.append([0]*25)
-    nChargesPdfWE.append([0]*10)
-
-for vehicle in nCharges:
-    try:
-        nChargesPdf[MEA[vehicle]][nCharges[vehicle]] += 1
-    except:
-        continue
-    
-for vehicle in nChargesWE:
-    try:
-        nChargesPdfWE[MEA2[vehicle]][nChargesWE[vehicle]] += 1
-    except:
-        continue
-
-pInt = []
-pIntWE = []
-for i in range(3):
-    S = sum(nChargesPdf[i])
-    S2 = sum(nChargesPdfWE[i])
-    exp = 0
-    for t in range(len(nChargesPdf[i])):
-        nChargesPdf[i][t] = nChargesPdf[i][t]/S
-        exp += nChargesPdf[i][t]*t
-    pInt.append(exp)
-    exp = 0
-    for t in range(len(nChargesPdfWE[i])):
-        nChargesPdfWE[i][t] = nChargesPdfWE[i][t]/S2
-        exp += nChargesPdfWE[i][t]*t
-    pIntWE.append(exp)
-
-print(pInt)
-print(pIntWE)
-half = [0,0,0]
-halfWE = [0,0,0]
-for i in range(3):
-    s1 = sum(chargingPdf[i])
-    s2 = sum(chargingPdfWE[i])
-    s3 = sum(chargingPdf2[i])
-    s4 = sum(chargingPdfWE2[i])
-    for t in range(48):
-        chargingPdf[i][t] = chargingPdf[i][t]*100/s1
-        chargingPdfWE[i][t] = chargingPdfWE[i][t]*100/s2
-        chargingPdf2[i][t] = chargingPdf2[i][t]*100/s3
-        chargingPdfWE2[i][t] = chargingPdfWE2[i][t]*100/s4
-
-for i in range(3):
-    s1 = sum(socPdf[i])
-    s2 = sum(socPdfWE[i])
-    socPdf2 = filt.gaussian_filter1d([0]+socPdf[i],5)
-    socPdfWE2 = filt.gaussian_filter1d([0]+socPdfWE[i],4)
-    c1 = 0
-    c2 = 0
-    for t in range(101):
-        if half[i] == 0:
-            c1 += socPdf[i][t]
-            if c1 > s1/2:
-                half[i] = t
-        if halfWE[i] == 0:
-            c2 += socPdfWE[i][t]
-            if c2 > s2/2:
-                halfWE[i] = t
-        socPdf[i][t] = float(socPdf2[t+1])*100.0/float(s1)
-        socPdfWE[i][t] = socPdfWE2[t+1]*100/s2
-
-plt.figure(figsize=(5,2.5))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-x = [8,24,40]
-x_ticks = ['04:00','12:00','20:00']
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-clrs2 = {'0':'y','1':'m','2':'c'}
-n = 1
-for i in range(3):
-    plt.subplot(2,3,n)
-    plt.plot(chargingPdf[i],c=clrs[str(i)])
-    plt.plot(chargingPdf2[i],c=clrs[str(i)],ls=':')
-    plt.xlim(0,47)
-    plt.ylim(0,12)
-    plt.grid()
-    if n == 2:
-        plt.title('Weekday')
-    if n in [2,3,5]:
-        plt.yticks([5,10],['',''])
-    else:
-        plt.yticks([0,5,10],['0%','5%','10%'])
-    if n in []:#7,8,9]:
-        plt.xticks([0,4,8],['',''])
-    else:
-        plt.xticks(x,x_ticks)
-    n += 1
-    
-for i in range(3):
-    plt.subplot(2,3,n)
-    plt.plot(chargingPdfWE[i],c=clrs2[str(i)],label=str(i))
-    plt.plot(chargingPdfWE2[i],c=clrs2[str(i)],ls=':',label=str(i))
-    plt.xlim(0,47)
-    plt.ylim(0,12)
-    plt.grid()
-    if n == 5:
-        plt.title('Weekend')
-    if n in [5,6]:
-        plt.yticks([5,10],['',''])
-    else:
-        plt.yticks([0,5,10],['0%','5%','10%'])
-    plt.xticks(x,x_ticks)
-    n += 1
-plt.tight_layout()
-plt.savefig('../../Dropbox/papers/clustering/img/chargePdfs.eps', format='eps', dpi=1000)
-
-plt.figure(figsize=(5,2.5))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-clrs = {'2':'g','3':'y','1':'b','0':'r','4':'c'}
-clrs2 = {'0':'y','1':'m','2':'c'}
-n = 1
-for i in range(3):
-    plt.subplot(2,3,n)
-    plt.plot(socPdf[i],c=clrs[str(i)])
-    plt.plot([half[i],half[i]],[0,socPdf[i][half[i]]],c='k',ls=':')
-    plt.xlim(0,100)
-    plt.ylim(0,2)
-    plt.grid()
-    if n == 2:
-        plt.title('Weekday')
-    if n in [2,3,5]:
-        plt.yticks([1,2],['',''])
-    else:
-        plt.yticks([0,1,2],['0%','1%','2%'])
-
-    n += 1
-    
-for i in range(3):
-    plt.subplot(2,3,n)
-    plt.plot(socPdfWE[i],c=clrs2[str(i)],label=str(i))
-    plt.plot([halfWE[i],halfWE[i]],[0,socPdfWE[i][halfWE[i]]],c='k',ls=':')
-    plt.xlim(0,100)
-    plt.ylim(0,2)
-    plt.grid()
-    if n == 5:
-        plt.title('Weekend')
-    if n in [5,6]:
-        plt.yticks([1,2],['',''])
-    else:
-        plt.yticks([0,1,2],['0%','1%','2%'])
-    n += 1
-plt.tight_layout()
-plt.savefig('../../Dropbox/papers/clustering/img/socPdfs.eps', format='eps', dpi=1000)
-
-plt.figure(figsize=(5,2))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-plt.bar(np.arange(1,4)-0.2,pInt,width=0.4,label='Week')
-plt.bar(np.arange(1,4)+0.2,pIntWE,width=0.4,label='Weekend')
-plt.grid()
-plt.ylabel('Expected Charges')
-plt.xlabel('Cluster')
-plt.legend()
-plt.xticks(range(1,4),['1','2','3'])
-#plt.ylim(0,1.5)
-plt.tight_layout()
-plt.savefig('../../Dropbox/papers/clustering/img/ncharges.eps', format='eps', dpi=1000)
-
-
-# now let's store the individual pdf
-with open(stem+'chargePdfW.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdf[i][t]]
-        writer.writerow(row)
-        
-with open(stem+'chargePdfWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdfWE[i][t]]
-        writer.writerow(row)
-
-with open(stem+'meaAvail.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(1440):
-        row = [t]
-        for i in range(3):
-            row += [availPdf[i][t]]
-        writer.writerow(row)
-        
-with open(stem+'meaAvailWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(1440):
-        row = [t]
-        for i in range(3):
-            row += [availPdfWE[i][t]]
-        writer.writerow(row)
-
-with open(stem+'meaEnds.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [endPdf['y'][i][t]/(endPdf['n'][i][t]+endPdf['y'][i][t])]
-        writer.writerow(row)
-        
-with open(stem+'meaEndsWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [endPdfWE['y'][i][t]/(endPdfWE['n'][i][t]+endPdfWE['y'][i][t])]
-        writer.writerow(row)
-
-with open(stem+'chargePdfW2.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdf2[i][t]]
-        writer.writerow(row)
-        
-with open(stem+'chargePdfWE2.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['t','0','1','2'])
-    for t in range(48):
-        row = [t]
-        for i in range(3):
-            row += [chargingPdfWE2[i][t]]
-        writer.writerow(row)
-
-with open(stem+'socPdfW.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['SOC','0','1','2'])
-    for t in range(101):
-        row = [t]
-        for i in range(3):
-            row += [socPdf[i][t]]
-        writer.writerow(row)
-        
-with open(stem+'socPdfWE.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['SOC','0','1','2'])
-    for t in range(101):
-        row = [t]
-        for i in range(3):
-            row += [socPdfWE[i][t]]
-        writer.writerow(row)
-        
-
-with open(stem+'nCharges.csv','w') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['cluster','w','we'])
-    for i in range(3):
-        writer.writerow([i,pInt[i],pIntWE[i]])
-
-plt.show()
-'''
