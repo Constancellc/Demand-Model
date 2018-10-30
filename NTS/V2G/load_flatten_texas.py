@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 800
+nMC = 80
 nH = 50
 c_eff = 0.9 
 pMax = 3.5 # kW G2V

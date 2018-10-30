@@ -14,56 +14,7 @@ trip_data = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.c
 
 stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
-'''
 
-This is not a replacement file, this is trying something new!
-
-Ok, thinking time.
-
-What I want to know is the probability that a journey end results in a charge,
-given the SOC, time, weekday/weekend, and cluster.
-
-I need to step through all of the journeys, see if they resulted in a charge
-and store the observation in the appropriate pdf.
-
-The problem is that I only have SOC recorded when there is a charge, not when
-there isn't. However, I do have the energy consumption in Wh of each journey.
-
-So here is what I will have to do:
-
-Get all journey end times and energy consumption
-
-Get all charges
-
-For each vehicle step through and add a SOC
-
-
-I will make a new journeys dict which will contain a list for each vehicle of
-[day,mins,kWh,soc]
-
-where the last parameter will be updated as I go
-
-I will have to make sure to only start while the charging data is active
-
-==== UPDATE ====
-
-I don't think this is working - I think we're going to have to interpolate the
-SOC. Basically we'll have to find the nearest known point of SOC and try and
-work backwards or forwards. This still doesn't help if it turns out there is a
-lot of charging not at work. I mean I guess it helps a bit. I need to think more
-
-Proposal:
-Sort through all of the journeys and store then as
-[end,kWh,purp,SOC,plugin]
-
-except the last two will not be filled in.
-
-Then sort through all of the charges and fill in Y and the SOC on all other
-points, store all the indexes for which the values are known
-
-Next for each missing entry find the nearest known one and infer the SOC at that
-point. If it is > 0 and the purpose is home, add it to the distribution.
-'''
 NTS = {}
 MEA = {}
 NTS2 = {}
@@ -230,33 +181,7 @@ for vehicle in journeys:
             known[vehicle].append(j1)
         else:
             j[5] = False
-    '''
-        
-    c = 0
-    j = 0    
-    while j < len(jLog) and c < len(cLog):
-        if cLog[c][0] == jLog[j][0]:
-            
-            d = abs(cLog[c][1]-jLog[j][1])
-            if d < 10:
-                n += 1
-                jLog[j][4] = cLog[c][2]
-                jLog[j][5] = True
-                known[vehicle].append(j)#1440*cLog[c][0]+cLog[c][1])
-                c += 1
-            else:
-                # ok I think I see the problem here, we could be on the right
-                # day but the charge happens later in the 
-                jLog[j][5] == False
-            j += 1
 
-        elif jLog[j][0] < cLog[c][0]:
-            jLog[j][5] = False
-            j += 1
-
-        elif jLog[j][0] > cLog[c][0]:
-            c += 1
-    '''
 
         
 print(n)
@@ -340,6 +265,11 @@ for i in range(3):
                 
     heatmaps[i] = filt.gaussian_filter(heatmaps[i],1)
 
+    with open(stem+'jointPdfW'+str(i+1)+'.csv','w') as csvfile:
+        writer = csv.writer(csvfile)
+        for s in range(6):
+            writer.writerow(heatmaps[i][s])
+
     plt.subplot(3,1,i+1)
     plt.imshow(heatmaps[i],vmin=0,vmax=1,cmap='magma')
 plt.figure()
@@ -360,8 +290,13 @@ for i in range(3):
                 heatmaps[i][s][t] = 0
                 
     heatmaps[i] = filt.gaussian_filter(heatmaps[i],1)
+    
+    with open(stem+'jointPdfWE'+str(i+1)+'.csv','w') as csvfile:
+        writer = csv.writer(csvfile)
+        for s in range(6):
+            writer.writerow(heatmaps[i][s])
 
     plt.subplot(3,1,i+1)
     plt.imshow(heatmaps[i],vmin=0,vmax=1,cmap='magma')
-
+plt.tight_layout()
 plt.show()

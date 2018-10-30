@@ -108,20 +108,17 @@ with open('../../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfil
 '''
 # Get the HH demand, one from each hh
 # get a list of hh?
+# get household profiles
 c = 0
 hhProfiles = {}
-with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
+with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
+          'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        day = int(row[-1])
-        if day != simulationDay:
-            continue
-        if random.random() > 0.01:
-            continue
-        p = []
-        for t in range(48):
-            p.append(float(row[2+t]))
+        p = [0.0]*48
+        for t in range(1440):
+            p[int(t/30)] += float(row[t])/30
         hhProfiles[c] = p
         c += 1
 
@@ -154,20 +151,21 @@ for pen in [1.0,0.75,0.5,0.25]:
     
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
-    plt.plot(t_,tot2,c='b',label='G2V')
+    plt.plot(t_,tot2,c='g',label='G2V')
     plt.plot(t_,tot1,c='r',ls='--',label='V2G')
     plt.title(str(int(100*pen))+'%',y=0.8)
-    plt.ylim(0,1.3*max(totalH))
+    plt.ylim(1.3*min(totalH),1.3*max(tot2))
     plt.xticks([4,12,20],['04:00','12:00','20:00'])
     plt.xlim(0,24)
     if pn in [1,3]:
         plt.ylabel('Power (kW)')
     plt.grid()
     pn += 1
-plt.legend(ncol=2)
+    if pn == 2:
+        plt.legend(ncol=1,loc=3)
 
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,
+plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles2.eps',dpi=1000,
             format='eps')
 plt.show()
 
