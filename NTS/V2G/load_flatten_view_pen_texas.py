@@ -31,6 +31,7 @@ for loc in ['texas_']:#,'texas_']:
                 a.append(100*(float(row[1])-float(row[3]))/float(row[1]))
                 try:
                     b.append(100*(float(row[4])-float(row[2]))/float(row[2]))
+
                 except:
                     b.append(0.0)
         '''           

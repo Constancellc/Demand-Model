@@ -70,8 +70,8 @@ for loc in ['']:#,'texas_']:
         plt.grid()
     plt.xlabel('% EV Penetration')
     plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
-            format='eps', dpi=1000)
+#plt.savefig('../../../Dropbox/papers/PES-GM-19/img/results.eps',
+#            format='eps', dpi=1000)
 plt.show()
         
 '''

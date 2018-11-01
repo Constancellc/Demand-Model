@@ -124,6 +124,7 @@ for pen in [0.5]:
         
         nV = int(nH*pen)
         chosenV = []
+        #vCon = []
         while len(chosenV) < nV:
             ranV = allVehicles[int(random.random()*len(allVehicles))]
             if ranV not in chosenV:
@@ -134,6 +135,9 @@ for pen in [0.5]:
         for v in chosenV:
             if v not in journeyLogs:
                 continue
+            #vCon.append({})
+            #for t in range(48):
+            #    vCon[v][t] = []
             kWh = 0
             c = []
             for j in journeyLogs[v]:
@@ -148,13 +152,16 @@ for pen in [0.5]:
                 if c_[1] != '':
                     for t in range(c_[0],c_[1]):
                         if t < 1440:
+                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 elif i < len(c)-1:
                     for t in range(c_[0],c[i+1][0]):
                         if t < 1440:
+                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 else:
                     for t in range(c_[0],1440):
+                        #vCon[v][int(t/30)].append(t%30)
                         a[t] = 1
 
             a_.append(a)
@@ -273,6 +280,63 @@ for pen in [0.5]:
         for t in range(1440):
             total2[t] += totalH[t]
 
+        '''
+
+        individuals2 = []
+        for i in range(v):
+            individuals2.append([0]*1440)
+
+        # for each time interval
+        for t in range(48):
+            veh = []                            
+
+            # get all vehicles and order them by their floats
+            for v in range(n):
+                minC = x[v*48+t]
+                maxC = h[48+v*48+t]
+                veh.append([maxC-minC,v])
+            veh = sorted(veh)
+
+            # work out the ideal shape which the vehices should fill
+            cumulative = []
+
+            for i in range(len(veh)):
+                v = veh[i][1]
+                f = veh[i][0]
+                minC = x[v*48+t]
+                maxC = h[48+v*48+t]
+
+                # get time constraints
+                con = vCon[v][t]
+
+                # these are a list of the times within the half hour which
+                # cannot be charged
+
+                if con == []:
+                    frst = 0
+                    lst = 29
+
+                if 0 in con:
+                    frst = max(con)+1
+                    lst = 29
+                elif 29 in co:
+                    frst = 0
+                    lst = min(con)-1
+
+                if f == 0:
+                    for t_ in range(minC):
+                        cumulative[v][t*48+t_] -= 1
+                        individuals[v][t*48+t_] += pMax
+
+                else:
+                    # find best time to allocate                   
+
+        '''
+        
+
+        # then step through allocating charge to vehicles in order of most
+        # constrained to least constrained
+        '''
         individuals2 = []
         for v in range(n):
             individuals2.append([])
@@ -291,17 +355,48 @@ for pen in [0.5]:
 
                 new = [0]*30
 
-                for t in range(int(minCharged)):
+                for t in range(int(round(minCharged,0))):
                     new[int(t+wait+30-maxCharged)] = pMax
+                individuals2[v] += new
+        '''
+        individuals2 = []
+        for v in range(n):
+            individuals2.append([])
+            for t in range(48):
+                minCharged = int(round(x[v*48+t],0))
+                wait = int(random.random()*30)
+
+                new = [0]*30
+                for t_ in range(wait,wait+minCharged):
+                    if t_ < 30:
+                        new[t_] += pMax
+                    else:
+                        new[t_-30] += pMax
+                    
                 individuals2[v] += new
 
             for t in range(1440):
                 total2[t] += individuals2[v][t]
 
 plt.figure()
+plt.subplot(2,1,1)
 plt.plot(total1)
-plt.plot(totalH)
+plt.plot(totalH,ls=':',c='k')
 plt.plot(total2)
+
+totalH30 = [0]*48
+total130 = [0]*48
+total230 = [0]*48
+for t in range(1440):
+    totalH30[int(t/30)] += totalH[t]/30
+    total130[int(t/30)] += total1[t]/30
+    total230[int(t/30)] += total2[t]/30
+
+
+plt.subplot(2,1,2)
+plt.plot(total130)
+plt.plot(totalH30,ls=':',c='k')
+plt.plot(total230)
 plt.show()
         
                 

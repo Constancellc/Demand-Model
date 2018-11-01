@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 80
+nMC = 800
 nH = 50
 c_eff = 0.9 
 pMax = 3.5 # kW G2V
@@ -79,7 +79,7 @@ with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
         c += 1
 
 
-for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
+for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,6,70,80,90,100]:
     pen = pen/100
     g2v = []
     v2g = []
@@ -91,11 +91,13 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
             if ranH not in chosenH:
                 chosenH.append(ranH)
 
-        totalH = [0.0]*1440
+        totalH = [0.0]*144
+        totalH1 = [0.0]*1440
         for h in chosenH:
             p = interpolate(hhProfiles[h],30)
             for t in range(1440):
-                totalH[t] += p[t]
+                totalH[int(t/10)] += p[t]/10
+                totalH1[t] += p[t]
         
         nV = int(nH*pen)
         chosenV = []
@@ -117,24 +119,24 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
                 if j[3] == False:
                     c.append([j[1],''])
 
-            a = [0]*1440
+            a = [0]*144
             for i in range(len(c)):
                 c_ = c[i]
                 if c_[1] != '':
-                    for t in range(c_[0],c_[1]):
-                        if t < 1440:
+                    for t in range(int(c_[0]/10),int(c_[1]/10)):
+                        if t < 144:
                             a[t] = 1
                 elif i < len(c)-1:
-                    for t in range(c_[0],c[i+1][0]):
-                        if t < 1440:
+                    for t in range(int(c_[0]/10),int(c[i+1][0]/10)):
+                        if t < 144:
                             a[t] = 1
                 else:
-                    for t in range(c_[0],1440):
+                    for t in range(int(c_[0]/10),144):
                         a[t] = 1
 
             a_.append(a)
 
-            possible_charge = pMax*(1440-sum(a))/60
+            possible_charge = pMax*(144-sum(a))/6
             
             if kWh > capacity:
                 kWh = capacity
@@ -147,28 +149,28 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         if n == 0:
             continue
         b = matrix(b+[0.0]*n)
-        A = matrix(0.0,(2*n,n*1440+1))
-        G = matrix(0.0,(1440,n*1440+1))
-        q = matrix([0.0]*(1440*n)+[1.0])
-        P = spdiag([0.0001]*(1440*n+1))
+        A = matrix(0.0,(2*n,n*144+1))
+        G = matrix(0.0,(144,n*144+1))
+        q = matrix([0.0]*(144*n)+[1.0])
+        P = spdiag([0.0001]*(144*n+1))
         
         for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60
-                A[v+n,1440*v+t] = a_[v][t]
-                G[t,1440*v+t] = 1.0
+            for t in range(144):
+                A[v,144*v+t] = c_eff/6
+                A[v+n,144*v+t] = a_[v][t]
+                G[t,144*v+t] = 1.0
                 
         h0 = []
-        for t in range(1440):
-            G[t,1440*n] = -1.0
+        for t in range(144):
+            G[t,144*n] = -1.0
             h0.append(-1.0*totalH[t])
 
-        G1 = sparse([[spdiag([-1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
-        G2 = sparse([[spdiag([1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
+        G1 = sparse([[spdiag([-1.0]*(n*144))],[matrix([0.0]*(n*144))]])
+        G2 = sparse([[spdiag([1.0]*(n*144))],[matrix([0.0]*(n*144))]])
         
 
         G = sparse([G,G1,G2])
-        h = matrix(h0+[0.0]*(n*1440)+[pMax]*(n*1440))
+        h = matrix(h0+[0.0]*(n*144)+[pMax]*(n*144))
 
         try:
             sol=solvers.qp(P,q,G,h,A,b)
@@ -184,10 +186,10 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         total1 = [0.0]*1440
         through1 = sum(b)
         for t in range(1440):
-            total1[t] += totalH[t]
+            total1[t] += totalH1[t]
             for v in range(n):
-                total1[t] += x[1440*v+t]
-                through1 += x[1440*v+t]*c_eff/60
+                total1[t] += x[144*v+int(t/10)]
+                through1 += x[144*v+int(t/10)]*c_eff/60
                 
         del A
         del G
@@ -198,30 +200,30 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         # I think I actually need to reformulate for V2G,
         # defining seperate variables for charigng and discharging
         
-        A = matrix(0.0,(2*n,2*n*1440+1))
-        G = matrix(0.0,(1440,2*n*1440+1))
-        P = spdiag([0.0001]*(1440*2*n+1))
-        q = matrix([0.0]*(1440*2*n)+[1.0])
+        A = matrix(0.0,(2*n,2*n*144+1))
+        G = matrix(0.0,(144,2*n*144+1))
+        P = spdiag([0.0001]*(144*2*n+1))
+        q = matrix([0.0]*(144*2*n)+[1.0])
 
         for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
-                A[v,1440*(n+v)+t] = -1/(60*c_eff)
+            for t in range(144):
+                A[v,144*v+t] = c_eff/6 # incorporate efficiency here also?
+                A[v,144*(n+v)+t] = -1/(6*c_eff)
                 
-                A[v+n,1440*v+t] = a_[v][t]
-                A[v+n,1440*(n+v)+t] = a_[v][t]
+                A[v+n,144*v+t] = a_[v][t]
+                A[v+n,144*(n+v)+t] = a_[v][t]
 
-                G[t,1440*v+t] = 1.0
-                G[t,1440*(n+v)+t] = -1.0
+                G[t,144*v+t] = 1.0
+                G[t,144*(n+v)+t] = -1.0
 
-        for t in range(1440):
-            G[t,1440*2*n] = -1.0
+        for t in range(144):
+            G[t,144*2*n] = -1.0
 
-        G1 = sparse([[spdiag([-1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
-        G2 = sparse([[spdiag([1.0]*(2*n*1440))],[matrix([0.0]*(2*n*1440))]])
+        G1 = sparse([[spdiag([-1.0]*(2*n*144))],[matrix([0.0]*(2*n*144))]])
+        G2 = sparse([[spdiag([1.0]*(2*n*144))],[matrix([0.0]*(2*n*144))]])
         
         G = sparse([G,G1,G2])
-        h = matrix(h0+[0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
+        h = matrix(h0+[0.0]*(2*n*144)+[pMax]*(n*144)+[pMax_]*(n*144))
         
         sol=solvers.qp(P,q,G,h,A,b)
 
@@ -233,15 +235,16 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         # work out totol power demand
         total2 = [0.0]*1440
         through2 = sum(b)
-        for t in range(1440):
+        for t in range(144):
             total2[t] += totalH[t]
             for v in range(n):
-                total2[t] += x[1440*v+t]
-                total2[t] -= x[1440*(v+n)+t]
-                through2 += c_eff*x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60*c_eff)
+                total2[t] += x[144*v+t]
+                total2[t] -= x[144*(v+n)+t]
+                through2 += c_eff*x[144*v+t]/(6) + x[144*(v+n)+t]/(6*c_eff)
               
         g2v.append([max(total1),through1/n])
         v2g.append([max(total2),through2/n])
+
         
         del A
         del b
@@ -249,15 +252,16 @@ for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         del h
         del P
         del q
-
     existing = []
     
+    '''
     with open('../../../Documents/simulation_results/NTS/v2g/texas_v2g_lf'+\
               str(int(100*pen))+'.csv','rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
             existing.append(row)
+    '''
     
     with open('../../../Documents/simulation_results/NTS/v2g/texas_v2g_lf'+\
               str(int(100*pen))+'.csv',
