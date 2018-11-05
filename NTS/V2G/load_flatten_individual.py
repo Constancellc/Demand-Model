@@ -25,12 +25,50 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
+def v2g_eval(hh,e0,delta,constrain=[]):
+    over = 0
+    p = (e0+delta)/24
+    for t in range(1440):
+        if hh[t] > p and t not in constrain:
+            over += hh[t]/60
+    return over
+
+def flatten_v2g(hh,eV,constrain=[]):
+    e0 = sum(hh)/60 + eV
+    delta = 0
+    for i in range(10):
+        over = v2g_eval(hh,e0,delta,constrain)
+        delta = over*(1/0.81-1)
+
+    return [over,[(e0+delta)/24]*1440]
+
+def g2v_fill(tot,y,constrain=[]):
+    en = 0
+    for t in range(1440):
+        if tot[t] < y and t not in constrain:
+            en += (y-tot[t])/60
+            tot[t] = y
+
+    return [tot,en]
+
+def flatten_g2v(hh,eV,constrain=[]):
+    total = copy.deepcopy(hh)
+    p = min(total)+0.1
+    while eV > 0:
+        [total,en] = g2v_fill(total,p,constrain=[])
+        eV -= en
+        p += 0.01
+
+    return total
+
+
 # First we gotta get vehicle usage and household demand.
 
 # Pick a simulation day (just going to loop round hehe)
 
 # Get the list of all vehicles and journey logs
 # get all Vehicles
+'''
 allVehicles = []
 with open('../../../Documents/simulation_results/NTS/clustering/labels2/allVehicles.csv',
           'rU') as csvfile:
@@ -67,7 +105,7 @@ with open('../../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfil
             end += 1440
 
         journeyLogs[vehicle].append([start,end,kWh,purpose])
-
+'''
 # Get the HH demand, one from each hh
 # get a list of hh?
 c = 0
@@ -101,183 +139,35 @@ for h in chosenH:
     for t in range(1440):
         totalH[t] += p[t]
 
-plt.figure()
+plt.figure(figsize=(6,4))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 # then get the vehicles
 pn = 1
 t_ = np.linspace(0,24,num=1440)
 for pen in [1.0,0.75,0.5,0.25]:
-    g2v_ind = []
-    v2g_ind = []
-    scnd = []
-    # For each MC simulation
-    for mc in range(1):
-        nV = int(nH*pen)
-        chosenV = []
-        while len(chosenV) < nV:
-            ranV = allVehicles[int(random.random()*len(allVehicles))]
-            if ranV not in chosenV:
-                chosenV.append(ranV)
+    nV = int(nH*pen)
+    eV = nV*5
 
-        b = []
-        a_ = []
-        for v in chosenV:
-            if v not in journeyLogs:
-                continue
-            kWh = 5
-            c = []
-            for j in journeyLogs[v]:
-                #kWh += j[2]
-                c.append([j[0],j[1]]) # to be clear these are times we cant charge
-                if j[3] != '23':
-                    c.append([j[1],''])
+    constrian = list(range(700,900))
 
-            a = [0]*1440
-            for i in range(len(c)):
-                c_ = c[i]
-                if c_[1] != '':
-                    for t in range(c_[0],c_[1]):
-                        if t < 1440:
-                            a[t] = 1
-                elif i < len(c)-1:
-                    for t in range(c_[0],c[i+1][0]):
-                        if t < 1440:
-                            a[t] = 1
-                else:
-                    for t in range(c_[0],1440):
-                        a[t] = 1
-
-            a_.append(a)
-
-            possible_charge = pMax*(1440-sum(a))/60
-            
-            if kWh > capacity:
-                kWh = capacity
-            if kWh >= possible_charge:
-                kWh = possible_charge*0.99
-
-            b.append(kWh)
-
-        n = len(b)
-        b = matrix(b+[0.0]*n)
-        A = matrix(0.0,(2*n,n*1440))
-        q = matrix(totalH*n)
-        P = sparse([[spdiag([1]*1440)]*n]*n)
-
-        for v in range(n):
-            g2v_ind.append([0]*1440)
-            v2g_ind.append([0]*1440)
-            scnd.append([0,v])
-        
-        for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60
-                A[v+n,1440*v+t] = a_[v][t]
-        
-        G = sparse([spdiag([-1.0]*(n*1440)),spdiag([1.0]*(n*1440))])
-        h = matrix([0.0]*(n*1440)+[pMax]*(n*1440))
-        
-        try:
-            sol=solvers.qp(P,q,G,h,A,b)
-        except:
-            continue
-        
-        x = sol['x'] # without V2G
-
-        if sol['status'] != 'optimal':
-            continue
-
-        # work out totol power demand and battery throughput
-        total1 = [0.0]*1440
-        for t in range(1440):
-            total1[t] += totalH[t]
-            for v in range(n):
-                total1[t] += x[1440*v+t]
-                g2v_ind[v][t] = x[1440*v+t]
-                
-        del A
-        del G
-        del h
-        del P
-        del q
-                
-        # I think I actually need to reformulate for V2G,
-        # defining seperate variables for charigng and discharging
-        
-        A = matrix(0.0,(2*n,2*n*1440))
-
-        for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60 # incorporate efficiency here also?
-                A[v,1440*(n+v)+t] = -1/(60*c_eff)
-                
-                A[v+n,1440*v+t] = a_[v][t]
-                A[v+n,1440*(n+v)+t] = a_[v][t]
-        
-        G = sparse([spdiag([-1.0]*(2*n*1440)),spdiag([1.0]*(2*n*1440))])
-        h = matrix([0.0]*(2*n*1440)+[pMax]*(n*1440)+[pMax_]*(n*1440))
-        
-        totalH_ = []
-        for i in range(len(totalH)):
-            totalH_.append(-1*totalH[i]+0.001) # epsilon... I need to check this
-
-        q = matrix(totalH*n+totalH_*n)
-        
-
-        P1 = sparse([[spdiag([1]*1440)]*n]*n)
-        P2 = sparse([[spdiag([-1]*1440)]*n]*n)
-
-        P = sparse([[P1,P2],[P2,P1]])
-        
-        sol=solvers.qp(P,q,G,h,A,b)
-
-        x = sol['x'] # with V2G
-
-        if sol['status'] != 'optimal':
-            continue
-
-        # work out totol power demand
-        total2 = [0.0]*1440
-        through2 = 0
-        for t in range(1440):
-            total2[t] += totalH[t]
-            for v in range(n):
-                total2[t] += x[1440*v+t]
-                scnd[v][0] += x[1440*(v+n)+t]
-                total2[t] -= x[1440*(v+n)+t]
-                v2g_ind[v][t] = x[1440*v+t]-x[1440*(v+n)+t]
-
-        del A
-        del b
-        del G
-        del h
-        del P
-        del q
-
-    sorted(scnd)
-
-    #plt.figure(1)
+    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain)
+    tot2 = flatten_g2v(totalH,eV/0.9,constrain)
+    
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
-    plt.plot(t_,total1,c='b',label='G2V')
-    plt.plot(t_,total2,c='r',ls='--',label='V2G')
-    plt.title(str(int(100*pen))+'%',y=0.85)
-    plt.ylim(0,1.2*max(totalH))
+    plt.plot(t_,tot2,c='b',label='G2V')
+    plt.plot(t_,tot1,c='r',ls='--',label='V2G')
+    plt.title(str(int(100*pen))+'%',y=0.8)
+    plt.ylim(0,1.3*max(totalH))
     plt.xticks([4,12,20],['04:00','12:00','20:00'])
     plt.xlim(0,24)
     if pn in [1,3]:
         plt.ylabel('Power (kW)')
     plt.grid()
     pn += 1
-plt.legend()
-'''
-plt.figure(2)
-for i in range(4):
-    plt.subplot(2,2,i+1)
-    plt.plot(g2v_ind[scnd[i][1]])
-    plt.plot(v2g_ind[scnd[i][1]])
-'''
+plt.legend(ncol=2)
+
 plt.tight_layout()
 plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,
             format='eps')

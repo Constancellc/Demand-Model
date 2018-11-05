@@ -42,9 +42,6 @@ r1 = sum(p1_winter)/(sum(p1_winter)+sum(p1_spring)+sum(p1_summer)+\
                      sum(p1_autumn))
 r2 = sum(p2_winter)/(sum(p2_winter)+sum(p2_spring)+sum(p2_summer)+\
                      sum(p2_autumn))
-
-print(r1)
-print(r2)
 for t in range(48):
     p1[t] = p1[t]/s1
     p2[t] = p2[t]/s2
