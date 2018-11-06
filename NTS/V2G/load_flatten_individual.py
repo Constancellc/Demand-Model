@@ -28,6 +28,7 @@ def interpolate(x0,T):
 def v2g_eval(hh,e0,delta,constrain=[]):
     over = 0
     p = (e0+delta)/24
+    p = p*(1440/(1440-len(constrain)))
     for t in range(1440):
         if hh[t] > p and t not in constrain:
             over += hh[t]/60
@@ -40,7 +41,14 @@ def flatten_v2g(hh,eV,constrain=[]):
         over = v2g_eval(hh,e0,delta,constrain)
         delta = over*(1/0.81-1)
 
-    return [over,[(e0+delta)/24]*1440]
+    out = []
+    for t in range(1440):
+        if t in constrain:
+            out.append(hh[t])
+        else:
+            out.append((e0+delta)/24)
+
+    return [over,out]
 
 def g2v_fill(tot,y,constrain=[]):
     en = 0
@@ -55,7 +63,7 @@ def flatten_g2v(hh,eV,constrain=[]):
     total = copy.deepcopy(hh)
     p = min(total)+0.1
     while eV > 0:
-        [total,en] = g2v_fill(total,p,constrain=[])
+        [total,en] = g2v_fill(total,p,constrain)
         eV -= en
         p += 0.01
 
@@ -148,8 +156,12 @@ t_ = np.linspace(0,24,num=1440)
 for pen in [1.0,0.75,0.5,0.25]:
     nV = int(nH*pen)
     eV = nV*5
-
-    constrian = list(range(700,900))
+    if pen == 0.25:
+        constrain = list(range(693,900))
+    elif pen == 0.5:
+        constrain = list(range(711,806))
+    else:
+        constrain = []
 
     [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain)
     tot2 = flatten_g2v(totalH,eV/0.9,constrain)

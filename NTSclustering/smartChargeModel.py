@@ -94,7 +94,7 @@ with open('../../Documents/UKDA-7553-tab/constance/hh-veh.csv','rU') as csvfile:
 
 def g2v_fill(tot,y):
     en = 0
-    for t in range(1440):
+    for t in range(1440*5):
         if tot[t] < y:
             en += (y-tot[t])/60
             tot[t] = y
@@ -120,7 +120,6 @@ class MC_Run:
     def get_charging(self,households,nV,enLogs):
         
         chosen = []
-        chosenV = []
         if len(households) < nV:
             print('not enough vehicle data')
             return None
@@ -135,7 +134,8 @@ class MC_Run:
                     if v in enLogs:
                         eV += enLogs[v]
 
-        return flatten_g2v(self.baseLoad,eV)
+        total = flatten_g2v(self.baseLoad,eV)
+        return total
         
                  
 class MC_Sim:
@@ -205,11 +205,11 @@ class MC_Sim:
         return sum(results)/len(results)
 
 peaks = {}
-with open(vehicles+'peaks.csv','rU') as csvfile:
+with open(outStem+'peaks.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        peaks[row[0]] = [float(row[1]),float(row[2]),]
+        peaks[row[0]] = [float(row[1]),float(row[2]),'']
 
 for la in peaks:
     # get baseLoad
@@ -218,7 +218,7 @@ for la in peaks:
     baseLoad = []
     for t in range(48):
         new = (p1[t]*e+p2[t]*s)/n[la]
-        baseLoad.append(new)
+        baseLoad.append(new*50)
     baseLoad = interpolate(baseLoad,30)
     baseLoad = baseLoad*5
 
@@ -226,10 +226,14 @@ for la in peaks:
     sim = MC_Sim(50,baseLoad,la,2)
     res = sim.run(40)
 
-    # store results
-    peaks[la][2] = res
+    print(peaks[la])
 
-with open(vehicles+'peaks.csv','w') as csvfile:
+    print(res)
+
+    # store results
+    peaks[la][2] = res/50
+
+with open(outStem+'peaks.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['LA Code','Old Peak','Dumb Peak','Smart Peak'])
     for la in peaks:

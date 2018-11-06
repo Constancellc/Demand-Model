@@ -13,6 +13,7 @@ capacity = 30 # kWh
 pMax = 3.5 # kW
 pMax_ = 3.5 # kW for V2G
 
+
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
     for t in range(len(x1)):
@@ -25,37 +26,45 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
-def v2g_eval(hh,e0,delta):
+def v2g_eval(hh,e0,delta,constrain=[]):
     over = 0
     p = (e0+delta)/24
+    p = p*(1440/(1440-len(constrain)))
     for t in range(1440):
-        if hh[t] > p:
+        if hh[t] > p and t not in constrain:
             over += hh[t]/60
     return over
 
-def flatten_v2g(hh,eV):
+def flatten_v2g(hh,eV,constrain=[]):
     e0 = sum(hh)/60 + eV
     delta = 0
     for i in range(10):
-        over = v2g_eval(hh,e0,delta)
+        over = v2g_eval(hh,e0,delta,constrain)
         delta = over*(1/0.81-1)
 
-    return [over,[(e0+delta)/24]*1440]
+    out = []
+    for t in range(1440):
+        if t in constrain:
+            out.append(hh[t])
+        else:
+            out.append((e0+delta)/24)
 
-def g2v_fill(tot,y):
+    return [over,out]
+
+def g2v_fill(tot,y,constrain=[]):
     en = 0
     for t in range(1440):
-        if tot[t] < y:
+        if tot[t] < y and t not in constrain:
             en += (y-tot[t])/60
             tot[t] = y
 
     return [tot,en]
 
-def flatten_g2v(hh,eV):
+def flatten_g2v(hh,eV,constrain=[]):
     total = copy.deepcopy(hh)
     p = min(total)+0.1
     while eV > 0:
-        [total,en] = g2v_fill(total,p)
+        [total,en] = g2v_fill(total,p,constrain)
         eV -= en
         p += 0.01
 
@@ -145,9 +154,15 @@ t_ = np.linspace(0,24,num=1440)
 for pen in [1.0,0.75,0.5,0.25]:
     nV = int(nH*pen)
     eV = nV*5
+    if pen == 0.25:
+        constrain = list(range(727,900))
+    elif pen == 0.5:
+        constrain = list(range(444,611))
+    else:
+        constrain = []
 
-    [over,tot1] = flatten_v2g(totalH,eV/0.9)
-    tot2 = flatten_g2v(totalH,eV/0.9)
+    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain)
+    tot2 = flatten_g2v(totalH,eV/0.9,constrain)
     
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')

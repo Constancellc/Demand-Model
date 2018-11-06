@@ -47,14 +47,20 @@ for loc in ['texas_']:#,'texas_']:
         bnft.append(a[int(0.5*len(a))])
         cost.append(b[int(0.5*len(b))])
         
-    #bnft = filt.gaussian_filter1d(bnft,1)
-    #cost = filt.gaussian_filter1d(cost,1)
+    bnft = filt.gaussian_filter1d([0]+bnft,0.5)
+    cost = filt.gaussian_filter1d([0]+cost,0.5)
+        
+    bnft_u = filt.gaussian_filter1d([0]+bnft_u,0.5)
+    cost_u = filt.gaussian_filter1d([0]+cost_u,0.5)
+        
+    bnft_l = filt.gaussian_filter1d([0]+bnft_l,0.5)
+    cost_l = filt.gaussian_filter1d([0]+cost_l,0.5)
     plt.subplot(2,1,1)
     plt.xlim(0,100)
     plt.ylim(0,60)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+bnft_l,[0]+bnft_u,color='#CCFFCC')
-    plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],[0]+bnft,
+                     bnft_l,bnft_u,color='#CCFFCC')
+    plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],bnft,
              c='g')
     plt.ylabel('% Reduction in\nPeak Demand')
     plt.grid()
@@ -62,9 +68,9 @@ for loc in ['texas_']:#,'texas_']:
     plt.xlim(0,100)
     plt.ylim(0,130)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+cost_l,[0]+cost_u,color='#CCFFCC')
+                     cost_l,cost_u,color='#CCFFCC')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-             [0]+cost,label=lbls[loc],c='g')
+             cost,label=lbls[loc],c='g')
     plt.ylabel('% Increase in\nBattery Throughput')
     plt.grid()
     plt.xlabel('% EV Penetration')

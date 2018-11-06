@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 800
+nMC = 80
 nH = 50
 c_eff = 0.9 
 pMax = 3.5 # kW G2V
@@ -79,7 +79,7 @@ with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
         c += 1
 
 
-for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,6,70,80,90,100]:
+for pen in [60]:
     pen = pen/100
     g2v = []
     v2g = []
