@@ -11,8 +11,7 @@ nMC = 1
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
-pMax = 7.0 # kW
-pMax_ = 7.0 # kW for V2G
+pMax = 3.5 # kW
 
 
 def interpolate(x0,T):
@@ -26,21 +25,6 @@ def interpolate(x0,T):
         f = float(t%T)/30
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
-
-'''
-TO DO
-
-I need to change the formulation so that after the optimization the vehicle
-limits are allocated more accurately
-
-Can I think of a better way that the
-
-Incorporation of teh distribution losses
-
-It might be good to go to 1 min load data in this case, maybe from network rev?
-
-'''
-
 
 
 # First we gotta get vehicle usage and household demand.
@@ -107,7 +91,7 @@ with open('../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         c += 1
 
 
-for pen in [0.5]:
+for pen in [1.0]:
     # For each MC simulation
     for mc in range(nMC):
         chosenH = []
@@ -135,9 +119,6 @@ for pen in [0.5]:
         for v in chosenV:
             if v not in journeyLogs:
                 continue
-            #vCon.append({})
-            #for t in range(48):
-            #    vCon[v][t] = []
             kWh = 0
             c = []
             for j in journeyLogs[v]:
@@ -152,16 +133,13 @@ for pen in [0.5]:
                 if c_[1] != '':
                     for t in range(c_[0],c_[1]):
                         if t < 1440:
-                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 elif i < len(c)-1:
                     for t in range(c_[0],c[i+1][0]):
                         if t < 1440:
-                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 else:
                     for t in range(c_[0],1440):
-                        #vCon[v][int(t/30)].append(t%30)
                         a[t] = 1
 
             a_.append(a)
@@ -178,148 +156,65 @@ for pen in [0.5]:
         n = len(b_)
         if n == 0:
             continue
-        b = matrix(b_+[0.0]*n)
-        A = matrix(0.0,(2*n,n*1440+1))
-        G = matrix(0.0,(1440,n*1440+1))
-        q = matrix([0.0]*(1440*n)+[1.0])
-        P = spdiag([0.0001]*(1440*n+1))
+
+        # actually, I should only do one optimization
+
+        T = 1440
+
+        A = matrix(0.0,(2*n,n*T))
+        b = matrix(b_+[0]*n)
         
         for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60
-                A[v+n,1440*v+t] = a_[v][t]
-                G[t,1440*v+t] = 1.0
+            for t in range(T):
+                A[v,T*v+t] = c_eff/60
+                A[v+n,T*v+t] = a_[v][t]
                 
-        h0 = []
-        for t in range(1440):
-            G[t,1440*n] = -1.0
-            h0.append(-1.0*totalH[t])
 
-        G1 = sparse([[spdiag([-1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
-        G2 = sparse([[spdiag([1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
-
-        G = sparse([G,G1,G2])
-        h = matrix(h0+[0.0]*(n*1440)+[pMax]*(n*1440))
+        P = sparse([[spdiag([1]*T)]*n]*n)
+        q = matrix(copy.deepcopy(totalH)*n)
+        
+        G = sparse([spdiag([-1.0]*(n*T)),spdiag([1.0]*(n*T))])
+        h = matrix([0.0]*(n*T)+[pMax]*(n*T))
 
         sol=solvers.qp(P,q,G,h,A,b)
         
         x = sol['x'] # original method
 
         # work out totol power demand and battery throughput
-        total1 = [0.0]*1440
+        total1 = [0.0]*48
+        total2 = [0.0]*48
+        totalH30 = [0.0]*48
         individuals1 = []
-        for v in range(n):
-            individuals1.append([])
-        for t in range(1440):
-            total1[t] += totalH[t]
-            for v in range(n):
-                total1[t] += x[1440*v+t]
-                individuals1[v].append(x[1440*v+t])
-                
-        del A
-        del G
-        del h
-        del P
-        del q
-
-        # for the second optimization the decision variable will be the minutes
-        # within each half hour that the vehicle was charging
-
-        # b will contain the number of minutes charging required (incl eff)
-
-        # h will BOTH contain the limit thing and the number of
-        
-        G = matrix(0.0,(48,n*48+1))
-        
-        A = matrix(0.0,(n,n*48+1))
-        G = matrix(0.0,(48,n*48+1))
-        q = matrix([0.0]*(48*n)+[1.0])
-        P = spdiag([0.0001]*(48*n+1))
-
-        for v in range(n):
-            for t in range(48):
-                A[v,48*v+t] = c_eff*pMax/60
-                G[t,48*v+t] = pMax/30
-                
-        h = []
-        for t in range(48):
-            G[t,48*n] = -1.0
-            h_ = 0
-            for t2 in range(30):
-                h_ += -1.0*totalH[t*30+t2]/30
-            h.append(h_)
-        
-        for v in range(n):
-            h_ = [30]*48
-            for t in range(1440):
-                h_[int(t/30)] -= a_[v][t]
-            h += h_
-
-        h = matrix(h+[0.0]*(n*48))
-        b = matrix(b_)
-        
-        G1 = sparse([[spdiag([1.0]*(n*48))],[matrix([0.0]*(n*48))]])
-        G2 = sparse([[spdiag([-1.0]*(n*48))],[matrix([0.0]*(n*48))]])
-
-        G = sparse([G,G1,G2])
-
-        print(A.size)
-        print(b.size)
-        print(G.size)
-        print(h.size)
-        print(P.size)
-        print(q.size)
-
-        sol=solvers.qp(P,q,G,h,A,b)
-        
-        x = sol['x'] # new method
-
-        # ok, first I need to seperate out the individual profiles
-
-        total2 = [0.0]*1440
-        for t in range(1440):
-            total2[t] += totalH[t]
         individuals2 = []
         for v in range(n):
-            individuals2.append([])
-            for t in range(48):
-                minCharged = int(round(x[v*48+t],0))
-                wait = int(random.random()*30)
-
-                new = [0]*30
-                for t_ in range(wait,wait+minCharged):
-                    if t_ < 30:
-                        new[t_] += pMax
-                    else:
-                        new[t_-30] += pMax
-                    
-                individuals2[v] += new
-
+            individuals1.append([])
+            individuals2.append([0]*1440)
             for t in range(1440):
-                total2[t] += individuals2[v][t]
-
-         
-
+                individuals1.append(x[1440*v+t])
+            for t in range(48):
+                p_av = sum(x[30*t:30*(t+1)])
+                t_req = int(p_av*30/3.5)
+                p_rem = p_av*30%3.5
+                wait = int(random.random()*(29-t_req))
+                for t_ in range(t_req):
+                    inidivuals2[30*t+wait+t_] = 3.5
+                individuals2[30*t+wait+t_req] = p_rem
+        for t in range(1440):
+            total1[int(t/30)] += totalH[t]/30
+            total2[int(t/30)] += totalH[t]/30
+            totalH30[int(t/30)] += totalH[t]/30
+            for v in range(n):
+                total1[int(t/30)] += individuals1[v][t]/30
+                total2[int(t/30)] += individuals2[v][t]/30
+                
 plt.figure()
-plt.subplot(2,1,1)
+plt.plot(totalH30)
 plt.plot(total1)
-plt.plot(totalH,ls=':',c='k')
 plt.plot(total2)
 
-totalH30 = [0]*48
-total130 = [0]*48
-total230 = [0]*48
-for t in range(1440):
-    totalH30[int(t/30)] += totalH[t]/30
-    total130[int(t/30)] += total1[t]/30
-    total230[int(t/30)] += total2[t]/30
-
-
-plt.subplot(2,1,2)
-plt.plot(total130)
-plt.plot(totalH30,ls=':',c='k')
-plt.plot(total230)
+plt.figure()
+for i in range(4):
+    plt.subplot(2,2,i+1)
+    plt.plot(individuals1[i])
+    plt.plot(individuals2[i])
 plt.show()
-        
-                
-
