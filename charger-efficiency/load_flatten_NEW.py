@@ -7,7 +7,7 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 1
+nMC = 4
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
@@ -176,7 +176,13 @@ for pen in [1.0]:
         G = sparse([spdiag([-1.0]*(n*T)),spdiag([1.0]*(n*T))])
         h = matrix([0.0]*(n*T)+[pMax]*(n*T))
 
-        sol=solvers.qp(P,q,G,h,A,b)
+        try:
+            sol=solvers.qp(P,q,G,h,A,b)
+        except:
+            continue
+
+        if sol['status'] != 'optimal':
+            continue
         
         x = sol['x'] # original method
 
@@ -187,18 +193,25 @@ for pen in [1.0]:
         individuals1 = []
         individuals2 = []
         for v in range(n):
-            individuals1.append([])
+            individuals1.append([0]*1440)
             individuals2.append([0]*1440)
             for t in range(1440):
-                individuals1.append(x[1440*v+t])
+                individuals1[v][t] = x[1440*v+t]
             for t in range(48):
-                p_av = sum(x[30*t:30*(t+1)])
+                p_av = sum(x[1440*v+30*t:1440*v+30*(t+1)])/30
+                if p_av < 0.05:
+                    continue
                 t_req = int(p_av*30/3.5)
                 p_rem = p_av*30%3.5
                 wait = int(random.random()*(29-t_req))
                 for t_ in range(t_req):
-                    inidivuals2[30*t+wait+t_] = 3.5
-                individuals2[30*t+wait+t_req] = p_rem
+                    try:
+                        individuals2[v][30*t+wait+t_] = 3.5
+                    except:
+                        continue
+                if (30*t+wait+t_req) < 1440:
+                    individuals2[v][30*t+wait+t_req] = p_rem
+                
         for t in range(1440):
             total1[int(t/30)] += totalH[t]/30
             total2[int(t/30)] += totalH[t]/30
@@ -208,13 +221,15 @@ for pen in [1.0]:
                 total2[int(t/30)] += individuals2[v][t]/30
                 
 plt.figure()
-plt.plot(totalH30)
-plt.plot(total1)
-plt.plot(total2)
+plt.plot(np.arange(0,24,0.5),totalH30,c='k',ls=':',label='base')
+plt.plot(np.arange(0,24,0.5),total1,label='continous')
+plt.plot(np.arange(0,24,0.5),total2,ls='--',label='discrete')
+plt.legend()
+plt.grid()
 
 plt.figure()
 for i in range(4):
     plt.subplot(2,2,i+1)
     plt.plot(individuals1[i])
-    plt.plot(individuals2[i])
+    plt.plot(individuals2[i],ls='--')
 plt.show()

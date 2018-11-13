@@ -132,6 +132,8 @@ class MC_Run:
                 chosen.append(households[ran])
                 for v in hh_v[households[ran]]:
                     if v in enLogs:
+                        if enLogs[v] > 150:
+                            enLogs[v] = 150
                         eV += enLogs[v]
 
         total = flatten_g2v(self.baseLoad,eV)

@@ -3,28 +3,34 @@ import numpy as np
 import csv
 import random
 
+# OK. This version I am controlling the charge INTO the battery not grid
+
+'''
+What am I comparing? The case where I optimized with knowledge of charging
+losses and the case where I didn't know.
+'''
 power = [0,0.5,1,1.5,2,2.5,3,3.5]
 eff = [0,0.3,0.5,0.6,0.8,0.85,0.89,0.9]
 eff_ = {}
 for i in range(8):
     eff_[power[i]] = eff[i]
-charge = []
-charge0 = []
+grid = [0]
+grid0 = [0]
 
 t_int = 30 # mins
 T = 16
-for i in range(8):
-    charge.append(power[i]*eff[i]*t_int/60)
-    charge0.append(power[i]*0.9*t_int/60)
-
-print(charge)
-print(charge0)
+for i in range(1,8):
+    grid.append(power[i]/eff[i]) # power from grid
+    grid0.append(power[i]/0.9)
+    
+    #charge.append(power[i]*eff[i]*t_int/60)
+    #charge0.append(power[i]*0.9*t_int/60)
+    
+print(grid)
 goal = 5 # kWh
 tol = 0.5*0.5*t_int/60
-xx = [0]*20
-yy = [0]*20
+                
 possible = []
-possible0 =[]
 for a in range(T):
     if a > T:
         continue
@@ -48,39 +54,17 @@ for a in range(T):
                                 continue
                             for h in range(T+1-a-b-c-d-e-f-g):
                                 if a+b+c+d+e+f+g+h == T:
-                                    energy = a*charge[0]+b*charge[1]+\
-                                             c*charge[2]+d*charge[3]+\
-                                             e*charge[4]+f*charge[5]+\
-                                             g*charge[6]+h*charge[7]
-                                    energy0 = a*charge0[0]+b*charge0[1]+\
-                                              c*charge0[2]+d*charge0[3]+\
-                                              e*charge0[4]+f*charge0[5]+\
-                                              g*charge0[6]+h*charge0[7]
+                                    energy = a*power[0]+b*power[1]+\
+                                             c*power[2]+d*power[3]+\
+                                             e*power[4]+f*power[5]+\
+                                             g*power[6]+h*power[7]
+                                    energy = energy*t_int/60
+                        
                                     if energy > goal-tol and energy<goal+tol:
                                         possible.append([a,b,c,d,e,f,g,h])
-                                        '''
-                                        possible.append([power[0]]*a+\
-                                                        [power[1]]*b+\
-                                                        [power[2]]*c+\
-                                                        [power[3]]*d+\
-                                                        [power[4]]*e+\
-                                                        [power[5]]*f+\
-                                                        [power[6]]*g+\
-                                                        [power[7]]*h)'''
-                                    if energy0 > goal-tol and energy0<goal+tol:
-                                        possible0.append([a,b,c,d,e,f,g,h])
-                                        '''
-                                        possible0.append([power[0]]*a+\
-                                                         [power[1]]*b+\
-                                                         [power[2]]*c+\
-                                                         [power[3]]*d+\
-                                                         [power[4]]*e+\
-                                                         [power[5]]*f+\
-                                                         [power[6]]*g+\
-                                                         [power[7]]*h)'''
+
 
 print(len(possible))
-print(len(possible0))
         
 '''
 best = [10]*T
@@ -130,13 +114,14 @@ with open('c.csv','rU') as csvfile:
         c = float(row[0])
 
 losses = {0:0}
+#losses_ = {0:0}
 
 for i in range(1,8):
     x = np.array([-1000]*55)
     losses0 = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
-    x[-1] -= power[i]*1000
+    x[-1] -= grid[i]*1000
     losses1 = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
-    losses[power[i]] = losses1-losses0
+    losses[grid[i]] = losses1-losses0
 
 print(losses)
 def get_losses(p):
@@ -144,10 +129,34 @@ def get_losses(p):
     l2 = 0
     for t in range(len(p)):
         l1 += losses[p[t]]/2000 # W -> kWh
-        l2 += (1-eff_[p[t]])*p[t]/2 # kW -> kWh
+        #l2 += (1-eff_[p[t]])*p[t]/2 # kW -> kWh
 
     return [l1,l2]
 
+best = None
+best_ = None
+ev_en = None
+lowest = 1000000
+lowest_ = 1000000
+for i in range(len(possible)):
+    profile = []
+    #profile0 = []
+    for p in range(8):
+        profile += [grid[p]]*possible[i][p]
+    [l1,l2] = get_losses(profile)
+    l = l1+l2
+    if l < lowest:
+        lowest = l
+        best = profile
+    if 
+
+plt.figure()
+plt.plot(best)
+plt.show()
+    
+
+
+''''
 # and choose the optimal in each case
 best = None
 ev_en = None
@@ -159,7 +168,6 @@ for i in range(len(possible)):
     for p in range(8):
         profile += [power[p]]*possible[i][p]
         ev += charge[p]*possible[i][p]
-        #l += possible[i][p]*losses[p]/2+(1-eff[p])*power[p]*1000
     yy[int(sum(profile)/2)] += 1
     [l1,l2] = get_losses(profile)
     l = l1+l2
@@ -203,9 +211,9 @@ plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 plt.subplot(1,2,1)
 plt.plot(x_,best0_,'r',label='Charger losses\nnot incorporated')
-plt.annotate(str(round(ev_en0,2))+'kWh',(4.5,0.2),color='r')
+#plt.annotate(str(round(ev_en0,2))+'kWh',(4.5,0.2),color='r')
 plt.plot(x_,best_,'g',label='Charger losses\nincorporated')
-plt.annotate(str(round(ev_en,2))+'kWh',(12.5,1.7),color='g')
+#plt.annotate(str(round(ev_en,2))+'kWh',(12.5,1.7),color='g')
 #plt.plot(best0)
 #plt.plot(best,'g',label='Charger losses\nincorporated')
 plt.legend()
@@ -228,3 +236,4 @@ plt.show()
 
 
 
+'''
