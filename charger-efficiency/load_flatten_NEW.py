@@ -211,25 +211,64 @@ for pen in [1.0]:
                         continue
                 if (30*t+wait+t_req) < 1440:
                     individuals2[v][30*t+wait+t_req] = p_rem
+
+        total1_ = []
+        total2_ = []
                 
         for t in range(1440):
             total1[int(t/30)] += totalH[t]/30
             total2[int(t/30)] += totalH[t]/30
+            total1_.append(totalH[t])
+            total2_.append(totalH[t])
             totalH30[int(t/30)] += totalH[t]/30
             for v in range(n):
+                total1_[t] += individuals1[v][t]
+                total2_[t] += individuals2[v][t]
                 total1[int(t/30)] += individuals1[v][t]/30
                 total2[int(t/30)] += individuals2[v][t]/30
                 
-plt.figure()
-plt.plot(np.arange(0,24,0.5),totalH30,c='k',ls=':',label='base')
-plt.plot(np.arange(0,24,0.5),total1,label='continous')
-plt.plot(np.arange(0,24,0.5),total2,ls='--',label='discrete')
-plt.legend()
+plt.figure(figsize=(5,4))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+plt.subplot(2,1,1)
+plt.plot(np.linspace(0,23.5,num=1440),totalH,c='k',ls=':')
+plt.plot(np.linspace(0,23.5,num=1440),total2_,c='b',ls='--')
+plt.plot(np.linspace(0,23.5,num=1440),total1_,c='r')
+plt.xlim(0,23.5)
+plt.ylim(0,max(total2_)*1.1)
+plt.title('1 min resolution')
 plt.grid()
+plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00','22:00'])
+plt.ylabel('Power (kW)')
+plt.subplot(2,1,2)
+plt.title('1 min resolution')
+plt.plot(np.arange(0,24,0.5),totalH30,c='k',ls=':',label='Base')
+plt.plot(np.arange(0,24,0.5),total1,c='r',label='Continous')
+plt.plot(np.arange(0,24,0.5),total2,c='b',ls='--',label='Discrete')
+plt.ylim(0,max(total2)*1.1)
+plt.ylabel('Power (kW)')
+plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00','22:00'])
+plt.legend(ncol=3)
+plt.grid()
+plt.xlim(0,23.5)
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/approximation.eps',format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 
-plt.figure()
-for i in range(4):
-    plt.subplot(2,2,i+1)
-    plt.plot(individuals1[i])
-    plt.plot(individuals2[i],ls='--')
+plt.figure(figsize=(5,4))
+for i in range(3):
+    plt.subplot(3,1,i+1)
+    plt.ylabel('Power (kW)')
+    if i == 2:
+        plt.xticks([2,6,10,14,18,22],
+                   ['02:00','06:00','10:00','14:00','18:00','22:00'])
+    else:
+        plt.xticks([2,6,10,14,18,22],['','','','','',''])
+    plt.plot(np.linspace(0,24,num=1440),individuals2[i],c='b')
+    plt.plot(np.linspace(0,24,num=1440),individuals1[i],c='r')
+    plt.xlim(0,24)
+    plt.grid()
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/individuals.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()

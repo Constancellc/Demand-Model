@@ -3,28 +3,30 @@ import numpy as np
 import csv
 import random
 
-power = [0,0.5,1,1.5,2,2.5,3,3.5]
-eff = [0,0.3,0.5,0.6,0.8,0.85,0.89,0.9]
-eff_ = {}
-for i in range(8):
+# OK. This version I am controlling the charge INTO the battery not grid
+
+# this is the power into the battery
+#power = [0,0.5,1,1.5,2,2.5,3]
+power = [0,0.5,1,1.25,1.5,1.75,2,2.25,2.5,2.75,3]
+# I will need to redo these
+eff = [0,0.3,0.6,0.75,0.78,0.8,0.83,0.86,0.88,0.89,0.9]
+
+nStates = len(power)
+print(nStates)
+grid = [0]
+grid0 = [0]
+eff_ = {0:0}
+for i in range(1,nStates):
+    grid.append(power[i]/eff[i])
+    grid0.append(power[i]/0.9)
     eff_[power[i]] = eff[i]
-charge = []
-charge0 = []
 
 t_int = 30 # mins
-T = 16
-for i in range(8):
-    charge.append(power[i]*eff[i]*t_int/60)
-    charge0.append(power[i]*0.9*t_int/60)
+T = 20
 
-print(charge)
-print(charge0)
-goal = 5 # kWh
-tol = 0.5*0.5*t_int/60
-xx = [0]*20
-yy = [0]*20
+goal = 9
+              
 possible = []
-possible0 =[]
 for a in range(T):
     if a > T:
         continue
@@ -47,65 +49,28 @@ for a in range(T):
                             if a+b+c+d+e+f+g > T:
                                 continue
                             for h in range(T+1-a-b-c-d-e-f-g):
-                                if a+b+c+d+e+f+g+h == T:
-                                    energy = a*charge[0]+b*charge[1]+\
-                                             c*charge[2]+d*charge[3]+\
-                                             e*charge[4]+f*charge[5]+\
-                                             g*charge[6]+h*charge[7]
-                                    energy0 = a*charge0[0]+b*charge0[1]+\
-                                              c*charge0[2]+d*charge0[3]+\
-                                              e*charge0[4]+f*charge0[5]+\
-                                              g*charge0[6]+h*charge0[7]
-                                    if energy > goal-tol and energy<goal+tol:
-                                        possible.append([a,b,c,d,e,f,g,h])
-                                        '''
-                                        possible.append([power[0]]*a+\
-                                                        [power[1]]*b+\
-                                                        [power[2]]*c+\
-                                                        [power[3]]*d+\
-                                                        [power[4]]*e+\
-                                                        [power[5]]*f+\
-                                                        [power[6]]*g+\
-                                                        [power[7]]*h)'''
-                                    if energy0 > goal-tol and energy0<goal+tol:
-                                        possible0.append([a,b,c,d,e,f,g,h])
-                                        '''
-                                        possible0.append([power[0]]*a+\
-                                                         [power[1]]*b+\
-                                                         [power[2]]*c+\
-                                                         [power[3]]*d+\
-                                                         [power[4]]*e+\
-                                                         [power[5]]*f+\
-                                                         [power[6]]*g+\
-                                                         [power[7]]*h)'''
-
+                                if a+b+c+d+e+f+g+h > T:
+                                    continue
+                                for i in range(T+1-a-b-c-d-e-f-g-h):
+                                    if a+b+c+d+e+f+g+h+i > T:
+                                        continue
+                                    for j in range(T+1-a-b-c-d-e-f-g-h-i):
+                                        if a+b+c+d+e+f+g+h+i+j > T:
+                                            continue
+                                        for k in range(T+1-a-b-c-d-e-f-g-h-i-j):
+                                            if a+b+c+d+e+f+g+h+i+j+k == T:
+                                                energy = a*power[0]+b*power[1]+\
+                                                         c*power[2]+d*power[3]+\
+                                                         e*power[4]+f*power[5]+\
+                                                         g*power[6]+h*power[7]+\
+                                                         i*power[8]+j*power[9]+\
+                                                         k*power[10]
+                                                energy = energy/2
+                                                if energy == goal:
+                                                    possible.append([a,b,c,d,e,
+                                                                     f,g,h,i,j,
+                                                                     k])
 print(len(possible))
-print(len(possible0))
-        
-'''
-best = [10]*T
-for i in range(len(possible)):
-    if max(possible[i]) < max(best):
-        best = possible[i]
-        losses = sum(best)/2-goal
-        
-best0 = [10]*T
-for i in range(len(possible0)):
-    if max(possible0[i]) < max(best0):
-        best0 = possible0[i]
-        losses0 = sum(best0)/2-goal
-
-plt.figure()
-plt.subplot(1,2,1)
-plt.plot(best)
-plt.plot(best0)
-plt.ylim(0,3.75)
-
-plt.subplot(1,2,2)
-plt.bar([1],[losses])
-plt.bar([2],[losses0])
-plt.show()
-'''
 Q = np.zeros((55,55))
 p = np.zeros((55,1))
 # now for each option I need to find the network losses
@@ -130,101 +95,151 @@ with open('c.csv','rU') as csvfile:
         c = float(row[0])
 
 losses = {0:0}
-
-for i in range(1,8):
+losses0 = {0:0}
+for i in range(1,nStates):
+    # first the power we think the grid is experiencing
     x = np.array([-1000]*55)
-    losses0 = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
-    x[-1] -= power[i]*1000
+    losses_ = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
+    x[-1] -= grid0[i]*1000
     losses1 = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
-    losses[power[i]] = losses1-losses0
+    losses0[power[i]] = (losses1-losses_)[0]
+    # then the power the grid is actually experiencing
+    x = np.array([-1000]*55)
+    x[-1] -= grid[i]*1000
+    losses1 = np.matmul(x,np.matmul(Q,x)) + np.matmul(x,p) + c
+    losses[power[i]] = (losses1-losses_)[0]
 
-print(losses)
 def get_losses(p):
     l1 = 0
     l2 = 0
     for t in range(len(p)):
-        l1 += losses[p[t]]/2000 # W -> kWh
-        l2 += (1-eff_[p[t]])*p[t]/2 # kW -> kWh
-
+        l1 += (losses[p[t]]*t_int)/(1000*60)
+        if p[t] > 0:
+            l2 += ((p[t]/eff_[p[t]])-p[t])*t_int/60
     return [l1,l2]
+    
+def get_losses0(p):
+    l = 0
+    for t in range(len(p)):
+        l += losses0[p[t]]
+    return l
 
-# and choose the optimal in each case
 best = None
-ev_en = None
-lowest = 1000000
-lowest_ = 1
+best_ = None
+best__ = None
+lowest = 100000
+lowest_ = 100000
+lowest__ = 100000
 for i in range(len(possible)):
+    # first using actual losses 
     profile = []
-    ev = 0
-    for p in range(8):
-        profile += [power[p]]*possible[i][p]
-        ev += charge[p]*possible[i][p]
-        #l += possible[i][p]*losses[p]/2+(1-eff[p])*power[p]*1000
-    yy[int(sum(profile)/2)] += 1
+    for j in range(nStates):
+        profile += [power[nStates-1-j]]*possible[i][nStates-1-j]
     [l1,l2] = get_losses(profile)
-    l = l1+l2
-    if l < lowest:
-        lowest = l
-        lowest_ = l1
-        best = profile
-        ev_en = ev
+    if (l1+l2) < lowest:
+        lowest = (l1+l2)
+        best = possible[i]
 
-       
-best0 = None
-ev_en0 = None
-lowest0 = 1000000
-lowest0_ = 1
-for i in range(len(possible0)):
-    profile = []
-    ev = 0
-    for p in range(8):
-        profile += [power[p]]*possible0[i][p]
-        ev += charge[p]*possible0[i][p]
-    xx[int(sum(profile)/2)] += 1
-    [l1,l2] = get_losses(profile)
-    if l1 < lowest0:
-        lowest0 = l1
-        lowest0_ = l2
-        best0 = profile
-        ev_en0 = ev
-x_ = []
-best_ = []
-best0_ = []
-for i in range(len(best)):
-    x_.append(i)
-    x_.append(i+1)
-    best_.append(best[i])
-    best_.append(best[i])
-    best0_.append(best0[i])
-    best0_.append(best0[i])
+    if l1 < lowest__:
+        lowest__ = l1
+        best__ = possible[i]
 
-plt.figure(figsize=(7,4))
+    # then using predicted losses
+    l = get_losses0(profile)
+    if l < lowest_:
+        lowest_ = l
+        best_ = possible[i]
+
+def zoh(p):
+    x = []
+    p_ = []
+    for t in range(len(p)):
+        x.append(t)
+        x.append(t+1)
+        p_.append(p[t])
+        p_.append(p[t])
+        
+    return [x,p_]
+
+plt.figure(figsize=(6,3.5))
 plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '9'
+plt.rcParams["font.size"] = '10'
+
+
+
+profile_ = []
+for j in range(nStates):
+    profile_ += [power[nStates-1-j]]*best_[nStates-1-j]
+    [l1_,l2_] = get_losses(profile_)
 plt.subplot(1,2,1)
-plt.plot(x_,best0_,'r',label='Charger losses\nnot incorporated')
-plt.annotate(str(round(ev_en0,2))+'kWh',(4.5,0.2),color='r')
-plt.plot(x_,best_,'g',label='Charger losses\nincorporated')
-plt.annotate(str(round(ev_en,2))+'kWh',(12.5,1.7),color='g')
-#plt.plot(best0)
-#plt.plot(best,'g',label='Charger losses\nincorporated')
-plt.legend()
-plt.ylim(0,3.5)
-plt.xlim(0,16)
-plt.xticks([4,8,12],[2,4,6])
-plt.xlabel('Time (hours)')
-plt.ylabel('Power (kW)')
-plt.grid()
+[x,p] = zoh(profile_)
+plt.plot(x,p,'r',label='(a)')
+
+profile_ = []
+for j in range(nStates):
+    profile_ += [grid[nStates-1-j]]*best_[nStates-1-j]
+plt.subplot(1,2,2)
+[x,p] = zoh(profile_)
+plt.plot(x,p,'r',label='(a)')
+
+plt.subplot(1,2,1)
+plt.title('Power into battery')
+# now investigate the best case
+profile = []
+for j in range(nStates):
+    profile += [power[nStates-1-j]]*best[nStates-1-j]
+    [l1,l2] = get_losses(profile)
+[x,p] = zoh(profile)
+plt.plot(x,p,'b',ls='--',label='(b)')
+profile = []
+for j in range(nStates):
+    profile += [grid[nStates-1-j]]*best[nStates-1-j]
 
 plt.subplot(1,2,2)
-plt.bar([1,2],[lowest0+lowest0_,lowest],label='Charger\nlosses')
-plt.bar([1,2],[lowest0,lowest_],label='Distribution\nlosses')
-plt.legend()
-plt.ylabel('Losses (kWh)')
+plt.title('Power from grid')
+[x,p] = zoh(profile)
+plt.plot(x,p,'b',ls='--',label='(b)')
+
+profile__ = []
+for j in range(nStates):
+    profile__ += [power[nStates-1-j]]*best__[nStates-1-j]
+    [l1__,l2__] = get_losses(profile__)
+    
+plt.subplot(1,2,1)
+[x,p] = zoh(profile__)
+plt.plot(x,p,'g',ls=':',label='(c)')
 plt.grid()
-plt.xticks([1,2],['Charger losses\nnot incorporated','Charger losses\nincorporated'])
+plt.xlim(0,T)
+plt.xticks([4,8,12,16],[2,4,6,8])
+plt.xlabel('Time (hours)')
+plt.ylim(0,3.5)
+plt.ylabel('Power (kW)')
+profile__ = []
+for j in range(nStates):
+    profile__ += [grid[nStates-1-j]]*best__[nStates-1-j]
+plt.subplot(1,2,2)
+[x,p] = zoh(profile__)
+plt.plot(x,p,'g',ls=':',label='(c)')
+plt.grid()
+plt.xlim(0,T)
+plt.xticks([4,8,12,16],[2,4,6,8])
+plt.xlabel('Time (hours)')
+plt.ylim(0,3.5)
+plt.legend()
 plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/power.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+
+plt.figure(figsize=(5,3))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+plt.bar([1,2,3],[l1_+l2_,l1+l2,l1__+l2__],label='Charger losses')
+plt.bar([1,2,3],[l1_,l1,l1__],label='Distribution losses')
+plt.legend()
+plt.xticks([1,2,3],['(a)','(b)','(c)'])
+plt.grid()
+plt.ylabel('Energy losses (kWh)')
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/losses.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()
-
-
-
