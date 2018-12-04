@@ -124,7 +124,7 @@ class Simulation:
                 try:
                     k = NTS[vehicle+str(int(t/1440)+1)] # check - days in 0?!
                 except:
-                    print(vehicle)
+                    #print(vehicle)
                     k = int(random.random()*3) # hack
                 if t < 7200:
                     d = '0'
@@ -193,26 +193,38 @@ class MC_Simulation:
         self.sim = Simulation(households)
 
     def dumbCharge(self,power,capacity):
-        return self.sim.dumbCharge(self,power,capacity)
+        return self.sim.dumbCharge(power,capacity)
 
-    def uncontrolledCharge(power,capacity,nSim=1):
+    def uncontrolledCharge(self,power,capacity,nSim=1):
         m = [0]*10080
         l = [999999]*10080
         u = [0]*10080
+
+        x = {}
+        for t in range(10080):
+            x[t] = []
 
         for mc in range(nSim):
             c = self.sim.uncontrolledCharge(power,capacity)
             for t in range(10080):
                 m[t] += c[t]/nSim
-                if c[t] < l[t]:
-                    l[t] = c[t]
-                if c[t] > u[t]:
-                    u[t] = c[t]
+                x[t].append(c[t])
+
+        for t in range(10080):
+            lst = sorted(x[t])
+            l[t] = lst[int(nSim*0.1)]
+            u[t] = lst[int(nSim*0.9)]
                     
         if nSim > 1:
             return [m,l,u]
         else:
             return m
+
+class LV_MC_Simulation:
+
+    def __init__(self,nH,penetration=1):
+        self.nH = nH
+        
 # function: uncontrolledCharge
     # this will apply my new model
     # options? charging power, 
