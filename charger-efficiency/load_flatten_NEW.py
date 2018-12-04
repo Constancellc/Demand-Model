@@ -241,7 +241,7 @@ plt.grid()
 plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00','22:00'])
 plt.ylabel('Power (kW)')
 plt.subplot(2,1,2)
-plt.title('300 min resolution')
+plt.title('30 min resolution')
 plt.plot(np.arange(0,24,0.5),totalH30,c='k',ls=':',label='Base')
 plt.plot(np.arange(0,24,0.5),total1,c='r',label='Continous')
 plt.plot(np.arange(0,24,0.5),total2,c='b',ls='--',label='Discrete')
@@ -252,21 +252,24 @@ plt.legend(ncol=3)
 plt.grid()
 plt.xlim(0,23.5)
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/PowerTech/img/approximation.eps',format='eps',
-            dpi=1000, bbox_inches='tight', pad_inches=0)
+#plt.savefig('../../Dropbox/papers/PowerTech/img/approximation.eps',format='eps',
+#            dpi=1000, bbox_inches='tight', pad_inches=0)
 
 plt.figure(figsize=(5,4))
 for i in range(3):
     plt.subplot(3,1,i+1)
     plt.ylabel('Power (kW)')
-    if i == 2:
+    if i <= 4:
         plt.xticks([2,6,10,14,18,22],
                    ['02:00','06:00','10:00','14:00','18:00','22:00'])
     else:
         plt.xticks([2,6,10,14,18,22],['','','','','',''])
-    plt.plot(np.linspace(0,24,num=1440),individuals2[i],c='b')
-    plt.plot(np.linspace(0,24,num=1440),individuals1[i],c='r')
+    plt.plot(np.linspace(0,24,num=1440),individuals2[i],c='b',label='Discrete')
+    plt.plot(np.linspace(0,24,num=1440),individuals1[i],c='r',label='Continuous')
     plt.xlim(0,24)
+    plt.ylim(0,3.9)
+    if i == 0:
+        plt.legend(loc=9)
     plt.grid()
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/PowerTech/img/individuals.eps', format='eps',

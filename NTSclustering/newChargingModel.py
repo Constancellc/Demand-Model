@@ -180,7 +180,39 @@ class Simulation:
     def smartCharge(self):
         return ''
 
+class MC_Simulation:
 
+    def __init__(self,households,nH=None):
+        if nH != None and nH > len(households):
+            households2 = []
+            while len(households2) < nH:
+                r = households[int(random.random()*len(households))]
+                if r not in households2:
+                    households2.append(r)
+            households = households2
+        self.sim = Simulation(households)
+
+    def dumbCharge(self,power,capacity):
+        return self.sim.dumbCharge(self,power,capacity)
+
+    def uncontrolledCharge(power,capacity,nSim=1):
+        m = [0]*10080
+        l = [999999]*10080
+        u = [0]*10080
+
+        for mc in range(nSim):
+            c = self.sim.uncontrolledCharge(power,capacity)
+            for t in range(10080):
+                m[t] += c[t]/nSim
+                if c[t] < l[t]:
+                    l[t] = c[t]
+                if c[t] > u[t]:
+                    u[t] = c[t]
+                    
+        if nSim > 1:
+            return [m,l,u]
+        else:
+            return m
 # function: uncontrolledCharge
     # this will apply my new model
     # options? charging power, 

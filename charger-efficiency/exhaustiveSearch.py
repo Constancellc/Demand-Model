@@ -9,7 +9,8 @@ import random
 #power = [0,0.5,1,1.5,2,2.5,3]
 power = [0,0.5,1,1.25,1.5,1.75,2,2.25,2.5,2.75,3]
 # I will need to redo these
-eff = [0,0.3,0.6,0.75,0.78,0.8,0.83,0.86,0.88,0.89,0.9]
+eff = [0,0.5,0.7,0.79,0.82,0.85,0.87,0.88,0.89,0.9,0.9]
+
 
 nStates = len(power)
 print(nStates)
@@ -233,11 +234,11 @@ plt.savefig('../../Dropbox/papers/PowerTech/img/power.eps', format='eps',
 plt.figure(figsize=(5,3))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
-plt.bar([1,2,3],[l1_+l2_,l1+l2,l1__+l2__],label='Charger losses')
-plt.bar([1,2,3],[l1_,l1,l1__],label='Distribution losses')
+plt.bar([1,2,3],[l1_+l2_,l1+l2,l1__+l2__],label='Charger losses',zorder=3)
+plt.bar([1,2,3],[l1_,l1,l1__],label='Distribution losses',zorder=3)
 plt.legend()
 plt.xticks([1,2,3],['(a)','(b)','(c)'])
-plt.grid()
+plt.grid(zorder=0)
 plt.ylabel('Energy losses (kWh)')
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/PowerTech/img/losses.eps', format='eps',

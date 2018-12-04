@@ -51,6 +51,12 @@ def randomCharge(d,s,t):
         return True
     else:
         return False
+
+def normalise(x):
+    s = sum(x)
+    for i in range(len(x)):
+        x[i] = x[i]/s
+    return x
     
 # Then get the NTS vehicle labels, and the household to vehicle list
 MEA = {}
@@ -94,8 +100,8 @@ def step(t,d):
         d += 1
     return [t,d]
     
-true = [0]*1440
-trueWE = [0]*1440
+true = [0]*48
+trueWE = [0]*48
 # now get the MEA data
 with open(charge_data,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -103,78 +109,153 @@ with open(charge_data,'rU') as csvfile:
     for row in reader:
         #soc = float(row[4])
         start = int(row[2])
-        true[start] += 1
+        if row[-1] == '0':
+            true[int(start/30)] += 1
+        else:
+            trueWE[int(start/30)] += 1
 
-dumb = [0]*1440
-new = [0]*1440
-dumbWE = [0]*1440
-newWE = [0]*1440
+dumb = [0]*48
+dumbWE = [0]*48
 
-for vehicle in journeyLogs:
-    jLog = journeyLogs[vehicle]
-    d = jLog[0][0]
-    t = jLog[0][1]
-    j = 0
-    SOC = 0.99
-    capacity = 30
-    startCharge = False
+plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
 
-    while d < jLog[-1][0]:
+new_total = []
+newWE_total = []
+for i in range(10):
+    new = [0]*48
+    newWE = [0]*48
+
+    rand = 0
+    afte = 0
+    for vehicle in journeyLogs:
+        jLog = sorted(journeyLogs[vehicle])
+        d = jLog[0][0]
+        t = jLog[0][1]
+        j = 0
+        SOC = 0.99
+        capacity = 30
         startCharge = False
-        while (t < jLog[j][1] or d < jLog[j][0]) and startCharge == False:
-            [t,d] = step(t,d)
-            try:
-                startCharge = randomCharge(dType[vehicle][d],int(SOC*6),
-                                           int(t/30))
-            except:
+
+        while d < jLog[-1][0]:
+            if vehicle == '':
+                print([d,t])
+                print(jLog[j][0:2])
+                print('')
+            startCharge = False
+            while (t < jLog[j][1] or d < jLog[j][0]) and startCharge == False:
+                [t,d] = step(t,d)
+                try:
+                    startCharge = randomCharge(dType[vehicle][d],int(SOC*6),
+                                               int(t/30))
+                except:
+                    startCharge = False
+                if startCharge == True:
+                    rand += 1
+
+            if t == jLog[j][1] and d == jLog[j][0]:
+                SOC -= jLog[j][2]/capacity
+                if SOC < 0:
+                    SOC = 0
+                t = jLog[j][2]
+                if t >= 1440:
+                    t -= 1440
+                    d += 1
+                j += 1
+
+                try:
+                    k = MEA[vehicle+str(int(t/1440)+1)] # check - days in 0?!
+                except:
+                    k = int(random.random()*3) # hack
+                try:
+                    dt = dType[vehicle][day]
+                except:
+                    dt = '0'
+
+                startCharge = chargeAfterJourney(dt,k,int(SOC*6),int(t/30))
+                if startCharge == True:
+                    afte += 1
+
+            if startCharge == True:
+                try:
+                    dt = dType[vehicle][day]
+                except:
+                    dt = '0'
+                if dt == '0':
+                    new[int(t/30)] += 1
+                else:
+                    newWE[int(t/30)] += 1
+                SOC = 0.99
                 startCharge = False
 
-        if t == jLog[j][1] and d == jLog[j][0]:
-            SOC -= jLog[j][2]/capacity
-            if SOC < 0:
-                SOC = 0
-            t = jLog[j][1]
-            j += 1
+            if j == len(jLog)-1:
+                d = jLog[-1][0]
 
-            try:
-                k = MEA[vehicle+str(int(t/1440)+1)] # check - days in 0?!
-            except:
-                print(vehicle)
-                k = int(random.random()*3) # hack
-                
-            startCharge = chargeAfterJourney(dType[vehicle][d],k,int(SOC*6),
-                                             int(t/30))
+            if t >= jLog[j][1] and d >= jLog[j][0]:
+                j += 1
 
-        if startCharge == True:
-            if dType[vehicle][day] == '0':
-                new[t] += 1
-            else:
-                newWE[t] += 1
-            SOC = 0.99
-            startCharge = False
+    print(100*afte/(afte+rand))
+    new_total.append(normalise(new))
+    newWE_total.append(normalise(newWE))
 
-        if j == len(jLog)-1:
-            d = jLog[-1][0]
-        
+
+m = [0]*48
+mW = [0]*48
+l = [1]*48
+lW = [1]*48
+u = [0]*48
+uW = [0]*48
+for t in range(48):
+    for x in range(len(new_total)):
+        m[t] += new_total[x][t]/len(new_total)
+        mW[t] += newWE_total[x][t]/len(new_total)
+        if new_total[x][t] < l[t]:
+            l[t] = new_total[x][t]
+        if new_total[x][t] > u[t]:
+            u[t] = new_total[x][t]
+        if newWE_total[x][t] < lW[t]:
+            lW[t] = newWE_total[x][t]
+        if newWE_total[x][t] > uW[t]:
+            uW[t] = newWE_total[x][t]
+
+plt.subplot(2,1,1)
+plt.plot(m,c='r',label='(b)')
+plt.fill_between(range(48),l,u,color='r',alpha=0.2)
+plt.subplot(2,1,2)
+plt.plot(mW,c='r',label='(b)')
+plt.fill_between(range(48),lW,uW,color='r',alpha=0.2)
+
 # now dumb charging
 for vehicle in journeyLogs:
-    jLog = journeyLogs[vehicle]
+    jLog = sorted(journeyLogs[vehicle])
     j = 0
     while j < len(jLog)-1:
         if jLog[j][0] != jLog[j+1][0]:
             if dType[vehicle][jLog[j][0]] == '0':
-                dumb[jLog[j][1]] += 1
+                dumb[int(jLog[j][1]/30)] += 1
             else:
-                dumbWE[jLog[j][1]] += 1
+                dumbWE[int(jLog[j][1]/30)] += 1
         j += 1
         
-plt.figure()
+
 plt.subplot(2,1,1)
-plt.plot(dumb)
-plt.plot(new)
-plt.plot(true)
+plt.plot(normalise(dumb),c='b',label='(a)')
+plt.plot(normalise(true),ls='--',c='k',label='True')
+plt.xlim(0,47)
+plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
+plt.grid()
+plt.ylabel('Likelihood of starting charge')
+plt.title('Weekday')
+plt.legend()
+
 plt.subplot(2,1,2)
-plt.plot(dumbWE)
-plt.plot(newWE)
-plt.plot(trueWE)
+plt.plot(normalise(dumbWE),c='b',label='(a)')
+plt.plot(normalise(trueWE),ls='--',c='k',label='True')
+plt.xlim(0,47)
+plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
+plt.grid()
+plt.ylabel('Likelihood of starting charge')
+plt.title('Weekend')
+plt.tight_layout()
 plt.show()

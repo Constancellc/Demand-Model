@@ -7,12 +7,11 @@ from cvxopt import matrix, spdiag, sparse, solvers
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 1
+nMC = 4
 nH = 50
 c_eff = 0.9
 capacity = 30 # kWh
-pMax = 7.0 # kW
-pMax_ = 7.0 # kW for V2G
+pMax = 3.5 # kW
 
 
 def interpolate(x0,T):
@@ -27,22 +26,7 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
-'''
-TO DO
-
-I need to change the formulation so that after the optimization the vehicle
-limits are allocated more accurately
-
-Can I think of a better way that the
-
-Incorporation of teh distribution losses
-
-It might be good to go to 1 min load data in this case, maybe from network rev?
-
-'''
-
-
-
+p_length = [0]*30
 # First we gotta get vehicle usage and household demand.
 
 # Pick a simulation day (just going to loop round hehe)
@@ -107,7 +91,7 @@ with open('../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         c += 1
 
 
-for pen in [0.5]:
+for pen in [1.0]:
     # For each MC simulation
     for mc in range(nMC):
         chosenH = []
@@ -135,9 +119,6 @@ for pen in [0.5]:
         for v in chosenV:
             if v not in journeyLogs:
                 continue
-            #vCon.append({})
-            #for t in range(48):
-            #    vCon[v][t] = []
             kWh = 0
             c = []
             for j in journeyLogs[v]:
@@ -152,16 +133,13 @@ for pen in [0.5]:
                 if c_[1] != '':
                     for t in range(c_[0],c_[1]):
                         if t < 1440:
-                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 elif i < len(c)-1:
                     for t in range(c_[0],c[i+1][0]):
                         if t < 1440:
-                            #vCon[v][int(t/30)].append(t%30)
                             a[t] = 1
                 else:
                     for t in range(c_[0],1440):
-                        #vCon[v][int(t/30)].append(t%30)
                         a[t] = 1
 
             a_.append(a)
@@ -178,148 +156,176 @@ for pen in [0.5]:
         n = len(b_)
         if n == 0:
             continue
-        b = matrix(b_+[0.0]*n)
-        A = matrix(0.0,(2*n,n*1440+1))
-        G = matrix(0.0,(1440,n*1440+1))
-        q = matrix([0.0]*(1440*n)+[1.0])
-        P = spdiag([0.0001]*(1440*n+1))
+
+        # actually, I should only do one optimization
+
+        T = 1440
+
+        A = matrix(0.0,(2*n,n*T))
+        b = matrix(b_+[0]*n)
         
         for v in range(n):
-            for t in range(1440):
-                A[v,1440*v+t] = c_eff/60
-                A[v+n,1440*v+t] = a_[v][t]
-                G[t,1440*v+t] = 1.0
+            for t in range(T):
+                A[v,T*v+t] = c_eff/60
+                A[v+n,T*v+t] = a_[v][t]
                 
-        h0 = []
-        for t in range(1440):
-            G[t,1440*n] = -1.0
-            h0.append(-1.0*totalH[t])
 
-        G1 = sparse([[spdiag([-1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
-        G2 = sparse([[spdiag([1.0]*(n*1440))],[matrix([0.0]*(n*1440))]])
+        P = sparse([[spdiag([1]*T)]*n]*n)
+        q = matrix(copy.deepcopy(totalH)*n)
+        
+        G = sparse([spdiag([-1.0]*(n*T)),spdiag([1.0]*(n*T))])
+        h = matrix([0.0]*(n*T)+[pMax]*(n*T))
 
-        G = sparse([G,G1,G2])
-        h = matrix(h0+[0.0]*(n*1440)+[pMax]*(n*1440))
+        try:
+            sol=solvers.qp(P,q,G,h,A,b)
+        except:
+            continue
 
-        sol=solvers.qp(P,q,G,h,A,b)
+        if sol['status'] != 'optimal':
+            continue
         
         x = sol['x'] # original method
 
+        # rank vehicles by energy demand
+        energy_rank = []
+        for v in range(n):
+            energy_rank.append([b_[v],v])
+        energy_rank = sorted(energy_rank,reverse=True)
+
+        saved_for_plots = [energy_rank[0][1],energy_rank[12][1]]
+
+        # now to assign start times in a distributed way
+        phase = {}
+
+        p_ = range(50)
+        p = [p_[0],p_[25],p_[10],p_[40],p_[20],p_[30],p_[5],p_[35],p_[15],
+             p_[45]]
+        for i in range(50):
+            if i%5 != 0:
+                p.append(p_[i])
+            
+        for i in range(n):
+            phase[energy_rank[i][1]] = int(p[i]*30/50)
+
         # work out totol power demand and battery throughput
-        total1 = [0.0]*1440
+        total1 = [0.0]*48
+        total2 = [0.0]*48
+        totalH30 = [0.0]*48
         individuals1 = []
-        for v in range(n):
-            individuals1.append([])
-        for t in range(1440):
-            total1[t] += totalH[t]
-            for v in range(n):
-                total1[t] += x[1440*v+t]
-                individuals1[v].append(x[1440*v+t])
-                
-        del A
-        del G
-        del h
-        del P
-        del q
-
-        # for the second optimization the decision variable will be the minutes
-        # within each half hour that the vehicle was charging
-
-        # b will contain the number of minutes charging required (incl eff)
-
-        # h will BOTH contain the limit thing and the number of
-        
-        G = matrix(0.0,(48,n*48+1))
-        
-        A = matrix(0.0,(n,n*48+1))
-        G = matrix(0.0,(48,n*48+1))
-        q = matrix([0.0]*(48*n)+[1.0])
-        P = spdiag([0.0001]*(48*n+1))
-
-        for v in range(n):
-            for t in range(48):
-                A[v,48*v+t] = c_eff*pMax/60
-                G[t,48*v+t] = pMax/30
-                
-        h = []
-        for t in range(48):
-            G[t,48*n] = -1.0
-            h_ = 0
-            for t2 in range(30):
-                h_ += -1.0*totalH[t*30+t2]/30
-            h.append(h_)
-        
-        for v in range(n):
-            h_ = [30]*48
-            for t in range(1440):
-                h_[int(t/30)] -= a_[v][t]
-            h += h_
-
-        h = matrix(h+[0.0]*(n*48))
-        b = matrix(b_)
-        
-        G1 = sparse([[spdiag([1.0]*(n*48))],[matrix([0.0]*(n*48))]])
-        G2 = sparse([[spdiag([-1.0]*(n*48))],[matrix([0.0]*(n*48))]])
-
-        G = sparse([G,G1,G2])
-
-        print(A.size)
-        print(b.size)
-        print(G.size)
-        print(h.size)
-        print(P.size)
-        print(q.size)
-
-        sol=solvers.qp(P,q,G,h,A,b)
-        
-        x = sol['x'] # new method
-
-        # ok, first I need to seperate out the individual profiles
-
-        total2 = [0.0]*1440
-        for t in range(1440):
-            total2[t] += totalH[t]
         individuals2 = []
         for v in range(n):
-            individuals2.append([])
-            for t in range(48):
-                minCharged = int(round(x[v*48+t],0))
-                wait = int(random.random()*30)
-
-                new = [0]*30
-                for t_ in range(wait,wait+minCharged):
-                    if t_ < 30:
-                        new[t_] += pMax
-                    else:
-                        new[t_-30] += pMax
-                    
-                individuals2[v] += new
-
+            individuals1.append([0]*1440)
+            individuals2.append([0]*14400)
             for t in range(1440):
-                total2[t] += individuals2[v][t]
-
-         
-
-plt.figure()
-plt.subplot(2,1,1)
-plt.plot(total1)
-plt.plot(totalH,ls=':',c='k')
-plt.plot(total2)
-
-totalH30 = [0]*48
-total130 = [0]*48
-total230 = [0]*48
-for t in range(1440):
-    totalH30[int(t/30)] += totalH[t]/30
-    total130[int(t/30)] += total1[t]/30
-    total230[int(t/30)] += total2[t]/30
-
-
-plt.subplot(2,1,2)
-plt.plot(total130)
-plt.plot(totalH30,ls=':',c='k')
-plt.plot(total230)
-plt.show()
-        
+                individuals1[v][t] = x[1440*v+t]
+            for t in range(48):
+                p_av = sum(x[1440*v+30*t:1440*v+30*(t+1)])/30
+                if p_av < 0.05:
+                    continue
+                t_req = int(p_av*300/3.5)
+                #p_length[t_req] += 1
+                p_rem = p_av*300%3.5
+                wait = int(v*300/n)#phase[v]#int(random.random()*(29-t_req))
+                for t_ in range(t_req):
+                    if wait+t_ < 300:
+                        individuals2[v][300*t+wait+t_] = 3.5
+                    else:
+                        individuals2[v][300*t+wait+t_-300] = 3.5
+                
+                if (300*t+wait+t_req) < 14400:
+                    individuals2[v][300*t+wait+t_req] = p_rem
                 
 
+        total1_ = []
+        total2_ = []
+                
+        for t in range(1440):
+            total1[int(t/30)] += totalH[t]/30
+            total2[int(t/30)] += totalH[t]/30
+            total1_.append(totalH[t])
+            total2_.append(totalH[t])
+            totalH30[int(t/30)] += totalH[t]/30
+            for v in range(n):
+                total1_[t] += individuals1[v][t]
+                #total2_[t] += individuals2[v][t]
+                total1[int(t/30)] += individuals1[v][t]/30
+                #total2[int(t/30)] += individuals2[v][t]/30
+
+        for t in range(14400):
+            for v in range(n):
+                total2_[int(t/10)] += individuals2[v][t]/10
+                total2[int(t/300)] += individuals2[v][t]/300
+            
+
+
+
+plt.figure(figsize=(5,4))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+plt.subplot(2,1,1)
+plt.plot(np.linspace(0,23.5,num=1440),totalH,c='k',ls=':')
+plt.plot(np.linspace(0,23.5,num=1440),total2_,c='b',ls='--')
+plt.plot(np.linspace(0,23.5,num=1440),total1_,c='r')
+plt.xlim(0,23.5)
+plt.ylim(0,max(total2_)*1.1)
+plt.title('1 min resolution')
+plt.grid()
+plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00','22:00'])
+plt.ylabel('Power (kW)')
+plt.subplot(2,1,2)
+plt.title('30 min resolution')
+plt.plot(np.arange(0,24,0.5),totalH30,c='k',ls=':',label='Base')
+plt.plot(np.arange(0,24,0.5),total1,c='r',label='Continous')
+plt.plot(np.arange(0,24,0.5),total2,c='b',ls='--',label='Discrete')
+plt.ylim(0,max(total2)*1.1)
+plt.ylabel('Power (kW)')
+plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00','22:00'])
+plt.legend(ncol=3)
+plt.grid()
+plt.xlim(0,23.5)
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/approximation.eps',format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+
+plt.figure(figsize=(5,2.7))
+for i in range(2):
+    plt.subplot(2,1,i+1)
+    plt.ylabel('Power (kW)')
+    if i <= 4:
+        plt.xticks([2,6,10,14,18,22],
+                   ['02:00','06:00','10:00','14:00','18:00','22:00'])
+    else:
+        plt.xticks([2,6,10,14,18,22],['','','','','',''])
+    plt.plot(np.linspace(0,24,num=14400),individuals2[saved_for_plots[i]],
+             c='b',label='Discrete')
+    plt.plot(np.linspace(0,24,num=1440),individuals1[saved_for_plots[i]],
+             c='r',label='Continuous')
+    plt.xlim(0,24)
+    plt.ylim(0,3.9)
+    if i == 0:
+        plt.legend(loc=9)
+    plt.grid()
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/individuals2.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+
+plt.figure(figsize=(5,2.7))
+for i in range(2):
+    plt.subplot(2,1,i+1)
+    plt.ylabel('Power (kW)')
+    if i <= 4:
+        plt.xticks([20.5,21,21.5,22,22.5,23,23.5],
+                   ['20:30','21:00','21:30','22:00','22:30','23:00','23:30'])
+    else:
+        plt.xticks([2,6,10,14,18,22],['','','','','',''])
+    plt.plot(np.linspace(0,24,num=14400),individuals2[saved_for_plots[i]],
+             c='b',label='Discrete')
+    plt.plot(np.linspace(0,24,num=1440),individuals1[saved_for_plots[i]],
+             c='r',label='Continuous')
+    plt.xlim(20,24)
+    plt.ylim(0,3.9)
+    plt.grid()
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/PowerTech/img/individuals3.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+plt.show()
