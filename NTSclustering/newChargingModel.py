@@ -49,7 +49,7 @@ with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
 
 # The class will take a list of households
 class Simulation:
-    def __init__(self,households):
+    def __init__(self,households,kWh_per_mile=[0.3,0.36]):
         #self.households = households
         self.journeyLogs = {}
         with open(trip_data,'rU') as csvfile:
@@ -77,7 +77,11 @@ class Simulation:
                     
                 if end < start:
                     end += 1440
-                kWh = dist*0.3
+                    
+                if dist < 10:
+                    kWh = dist*kWh_per_mile[0]
+                else:
+                    kWh = dist*kWh_per_mile[1]
 
                 self.journeyLogs[vehicle].append([start,end,kWh])
 
@@ -105,6 +109,9 @@ class Simulation:
         SOC = 0.999
         startCharge = False
         while t < 10080:
+            #print(t)
+            #print(jLog[j][0])
+            #print('')
             while t < jLog[j][0] and startCharge == False:
                 if t < 7200:
                     d = '0'
@@ -116,23 +123,24 @@ class Simulation:
 
             if t == jLog[j][0] and t < 10079:
                 SOC -= jLog[j][2]/capacity
-                if SOC < 0:
-                    SOC = 0
                 t = jLog[j][1]
                 j += 1
-                #print(jLog[j])
-                try:
-                    k = NTS[vehicle+str(int(t/1440)+1)] # check - days in 0?!
-                except:
-                    #print(vehicle)
-                    k = int(random.random()*3) # hack
-                if t < 7200:
-                    d = '0'
+                if SOC < 0:
+                    SOC = 0
+                    startCharge = True
                 else:
-                    d = '1'
+                    #print(jLog[j])
+                    try:
+                        k = NTS[vehicle+str(int(t/1440)+1)] # check - days in 0?!
+                    except:
+                        k = int(random.random()*3) # hack
+                    if t < 7200:
+                        d = '0'
+                    else:
+                        d = '1'
 
-                startCharge = self.chargeAfterJourney(d,k,int(SOC*6),
-                                                      int((t%1440)/30))
+                    startCharge = self.chargeAfterJourney(d,k,int(SOC*6),
+                                                          int((t%1440)/30))
 
             if startCharge == True:
                 while SOC < 0.99 and t<jLog[j][0] and t<jLog[-1][0]:
@@ -150,6 +158,7 @@ class Simulation:
     def uncontrolledCharge(self,power,capacity):
         self.charging = [0]*10080
         for vehicle in self.journeyLogs:
+            #print('-')
             self.predictCharging(vehicle,power)
             
         return self.charging
@@ -182,7 +191,7 @@ class Simulation:
 
 class MC_Simulation:
 
-    def __init__(self,households,nH=None):
+    def __init__(self,households,nH=None,kWh_per_mile=[0.3,0.36]):
         if nH != None and nH > len(households):
             households2 = []
             while len(households2) < nH:
@@ -190,7 +199,7 @@ class MC_Simulation:
                 if r not in households2:
                     households2.append(r)
             households = households2
-        self.sim = Simulation(households)
+        self.sim = Simulation(households,kWh_per_mile)
 
     def dumbCharge(self,power,capacity):
         return self.sim.dumbCharge(power,capacity)
@@ -200,30 +209,79 @@ class MC_Simulation:
         l = [999999]*10080
         u = [0]*10080
 
-        x = {}
-        for t in range(10080):
-            x[t] = []
-
         for mc in range(nSim):
             c = self.sim.uncontrolledCharge(power,capacity)
             for t in range(10080):
                 m[t] += c[t]/nSim
-                x[t].append(c[t])
-
-        for t in range(10080):
-            lst = sorted(x[t])
-            l[t] = lst[int(nSim*0.1)]
-            u[t] = lst[int(nSim*0.9)]
+                if c[t] < l[t]:
+                    l[t] = c[t]
+                if c[t] > u[t]:
+                    u[t] = c[t]
                     
         if nSim > 1:
             return [m,l,u]
         else:
             return m
 
-class LV_MC_Simulation:
+class MC_Simulation2:
 
-    def __init__(self,nH,penetration=1):
+    def __init__(self,households,nH,nSim,kWh_per_mile):
+        self.households = households
+        self.kWh_per_mile = kWh_per_mile
         self.nH = nH
+        self.nSim = nSim
+        if nH > len(households):
+            print('not enough hh')
+            self.status = False
+        else:
+            self.status = True
+
+    def dumbAndUncontrolled(self,power,capacity,filepath):
+        if self.status == False:
+            return None
+        dumb = []
+        unctrl = []
+        for mc in range(self.nSim):
+            hh = []
+            while len(hh) < self.nH:
+                r = self.households[int(random.random()*len(self.households))]
+                if r not in hh:
+                    hh.append(r)
+            sim = Simulation(hh,self.kWh_per_mile)
+            dumb.append(sim.dumbCharge(power,capacity)[2*1440:3*1440])
+            unctrl.append(sim.uncontrolledCharge(power,capacity)[2*1440:3*1440])
+
+        m1 = []
+        l1 = []
+        l2 = []
+        m2 = []
+        u1 =[]
+        u2 = []
+
+        for t in range(1440):
+            x = []
+            y = []
+            for mc in range(self.nSim):
+                x.append(dumb[mc][t])
+                y.append(unctrl[mc][t])
+            x = sorted(x)
+            y = sorted(y)
+            m1.append(sum(x)/len(x))
+            m2.append(sum(y)/len(y))
+            l1.append(x[int(0.1*len(x))])
+            l2.append(y[int(0.1*len(y))])
+            u1.append(x[int(0.9*len(x))])
+            u2.append(y[int(0.9*len(y))])
+
+        with open(filepath,'w') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['t','unc_m','unc_l','unc_u','dmb_m','dmb_l',
+                             'dmb_u'])
+            for t in range(1440):
+                writer.writerow([t,m2[t],l2[t],u2[t],m1[t],l1[t],u1[t]])
+                
+                
+                
         
 # function: uncontrolledCharge
     # this will apply my new model
