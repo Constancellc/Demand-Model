@@ -1,5 +1,6 @@
 import csv
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import random
 import numpy as np
 import copy
@@ -8,6 +9,9 @@ import scipy.ndimage.filters as filt
 stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
 plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+fig, axs = plt.subplots(3,1,figsize=(6,3))
 for i in range(3):
     heatmap = np.zeros((6,48))
     with open(stem+'jointPdfW'+str(i+1)+'.csv','rU') as csvfile:
@@ -15,18 +19,31 @@ for i in range(3):
         s = 0
         for row in reader:
             for t in range(48):
-                heatmap[5-s][t] = float(row[t])
+                heatmap[5-s][t] = float(row[t])*100
             s += 1
-    plt.subplot(3,1,i+1)
-    plt.imshow(heatmap,aspect=2,vmin=0,vmax=0.8,cmap='magma')
-    plt.yticks([-0.5,2.5,5.5],['100%','50%','0%'])
-    plt.xticks([7.5,15.5,23.5,31.5,39.5],['','','',''])
-    plt.title(str(i+1),color='w',y=0.7)
+
+    im = axs[i].imshow(heatmap,aspect='auto',vmin=0,vmax=80,cmap='magma')
+    axs[i].set_yticks([-0.5,2.5,5.5])
+    axs[i].set_yticklabels(['100%','50%','0%'])
+    axs[i].set_xticks([7.5,15.5,23.5,31.5,39.5])
+    axs[i].set_ylabel('SOC')
+    if i == 2:
+        axs[i].set_xticklabels(['04:00','08:00','12:00','16:00','20:00'])
+    else:
+        axs[i].set_xticklabels(['','','','',''])
+
+    axs[i].set_title(str(i+1),color='w',y=0.55)
+#plt.tight_layout()
+fig.subplots_adjust(right=0.85)
+cbar_ax = fig.add_axes([0.87, 0.15, 0.02, 0.7])
+fig.colorbar(im, cax=cbar_ax)
 
 plt.xticks([7.5,15.5,23.5,31.5,39.5],['04:00','08:00','12:00','16:00','20:00'])
-plt.tight_layout()
+#plt.tight_layout()
+plt.savefig('../../Dropbox/papers/uncontrolled/img/weekdayHM.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 
-plt.figure()
+fig, axs = plt.subplots(3,1,figsize=(6,3))
 for i in range(3):
     heatmap = np.zeros((6,48))
     with open(stem+'jointPdfWE'+str(i+1)+'.csv','rU') as csvfile:
@@ -34,32 +51,47 @@ for i in range(3):
         s = 0
         for row in reader:
             for t in range(48):
-                heatmap[5-s][t] = float(row[t])
+                heatmap[5-s][t] = float(row[t])*100
             s += 1
-    plt.subplot(3,1,i+1)
-    plt.imshow(heatmap,aspect=2,vmin=0,vmax=0.8,cmap='magma')
-    plt.yticks([-0.5,2.5,5.5],['100%','50%','0%'])
-    plt.xticks([7.5,15.5,23.5,31.5,39.5],
-               ['04:00','08:00','12:00','16:00','20:00'])
+    #plt.subplot(3,1,i+1)
+    im = axs[i].imshow(heatmap,aspect='auto',vmin=0,vmax=80,cmap='magma')
+    axs[i].set_yticks([-0.5,2.5,5.5])
+    axs[i].set_yticklabels(['100%','50%','0%'])
+    axs[i].set_xticks([7.5,15.5,23.5,31.5,39.5])
+    axs[i].set_ylabel('SOC')
+    if i == 2:
+        axs[i].set_xticklabels(['04:00','08:00','12:00','16:00','20:00'])
+    else:
+        axs[i].set_xticklabels(['','','','',''])
 
-    plt.title(str(i+1),color='w',y=0.7)
+    axs[i].set_title(str(i+1),color='w',y=0.55)
+fig.subplots_adjust(right=0.85)
+cbar_ax = fig.add_axes([0.87, 0.15, 0.02, 0.7])
+fig.colorbar(im, cax=cbar_ax)
+#plt.tight_layout()
+plt.savefig('../../Dropbox/papers/uncontrolled/img/weekendHM.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+#fig.colorbar(im,ax=axs,fraction=.5)
 
 #plt.xticks([7.5,15.5,23.5,31.5,39.5],['04:00','08:00','12:00','16:00','20:00'])
-plt.tight_layout()
-plt.figure()
+
+fig3, axs3 = plt.subplots(2,1,figsize=(6,2))
 heatmap = np.zeros((6,48))
 with open(stem+'jointPdfW_.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     s = 0
     for row in reader:
         for t in range(48):
-            heatmap[5-s][t] = float(row[t])
+            heatmap[5-s][t] = float(row[t])*100
         s += 1
-plt.subplot(2,1,1)
-plt.imshow(heatmap,aspect=2,vmin=0,vmax=0.15,cmap='magma')
-plt.yticks([-0.5,2.5,5.5],['100%','50%','0%'])
-plt.xticks([7.5,15.5,23.5,31.5,39.5],
-           ['04:00','08:00','12:00','16:00','20:00'])
+axs3[0].imshow(heatmap,aspect='auto',vmin=0,vmax=15,cmap='magma')
+axs3[0].set_yticks([-0.5,2.5,5.5])
+axs3[0].set_yticklabels(['100%','50%','0%'])
+axs3[0].set_xticks([7.5,15.5,23.5,31.5,39.5])
+axs3[0].set_ylabel('SOC')
+axs3[0].set_xticklabels(['','','','',''])
+
+axs3[0].set_title('Weekday',color='w',y=0.55)
 
 heatmap = np.zeros((6,48))
 with open(stem+'jointPdfWE_.csv','rU') as csvfile:
@@ -67,15 +99,23 @@ with open(stem+'jointPdfWE_.csv','rU') as csvfile:
     s = 0
     for row in reader:
         for t in range(48):
-            heatmap[5-s][t] = float(row[t])
+            heatmap[5-s][t] = float(row[t])*100
         s += 1
-plt.subplot(2,1,2)
-plt.imshow(heatmap,aspect=2,vmin=0,vmax=0.15,cmap='magma')
-plt.yticks([-0.5,2.5,5.5],['100%','50%','0%'])
-plt.xticks([7.5,15.5,23.5,31.5,39.5],
-           ['04:00','08:00','12:00','16:00','20:00'])
+im = axs3[1].imshow(heatmap,aspect='auto',vmin=0,vmax=15,cmap='magma')
+axs3[1].set_yticks([-0.5,2.5,5.5])
+axs3[1].set_yticklabels(['100%','50%','0%'])
+axs3[1].set_ylabel('SOC')
+axs3[1].set_xticks([7.5,15.5,23.5,31.5,39.5])
+axs3[1].set_xticklabels(['04:00','08:00','12:00','16:00','20:00'])
+axs3[1].set_title('Weekend',color='w',y=0.55)
 
+fig3.subplots_adjust(right=0.85)
+cbar_ax = fig3.add_axes([0.87, 0.15, 0.02, 0.7])
+fig3.colorbar(im, cax=cbar_ax)
+#plt.tight_layout()
+plt.savefig('../../Dropbox/papers/uncontrolled/img/randomHM.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 
 #plt.xticks([7.5,15.5,23.5,31.5,39.5],['04:00','08:00','12:00','16:00','20:00'])
-plt.tight_layout()
+#plt.tight_layout()
 plt.show()
