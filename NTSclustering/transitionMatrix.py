@@ -47,6 +47,10 @@ for k in range(4):
 print(M)
 
 plt.figure()
+plt.yticks([0,1,2,3],['1','2','3','N/A'])
+plt.xticks([0,1,2,3],['1','2','3','N/A'])
+plt.ylabel('Current cluster')
+plt.xlabel('Next day cluster')
 plt.imshow(M)
 plt.colorbar()
 plt.show()

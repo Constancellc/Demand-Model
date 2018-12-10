@@ -121,7 +121,7 @@ class Simulation:
                 t += 1
                 startCharge = self.randomCharge(d,int(SOC*6),int((t%1440)/30))
 
-            if t == jLog[j][0] and t < 10079:
+            if t == jLog[j][0]:
                 SOC -= jLog[j][2]/capacity
                 t = jLog[j][1]
                 j += 1
@@ -189,10 +189,36 @@ class Simulation:
     def smartCharge(self):
         return ''
 
+    def dumbAvailable(self):
+        available = [0]*10080
+        for vehicle in self.journeyLogs:
+            jLog = self.journeyLogs[vehicle]
+            days = {0:[1440,0],1:[1440,0],2:[1440,0],3:[1440,0],4:[1440,0],
+                    5:[1440,0],6:[1440,0]}
+            for j in jLog:
+                t = j[1]%1440
+                d = int(j[1]/1440)
+                if d > 6:
+                    continue
+                if t > days[d][1]:
+                    days[d][1] = t
+                if t < days[d][0]:
+                    days[d][0] = t
+            for d in days:
+                start = 1440*d+days[d][1]
+                try:
+                    end = 1440*(d+1)+days[d+1][0]
+                except:
+                    end = 1440*(d+2)
+                for t in range(start,end):
+                    available[t] += 1
+
+        return available
+
 class MC_Simulation:
 
     def __init__(self,households,nH=None,kWh_per_mile=[0.3,0.36]):
-        if nH != None and nH > len(households):
+        if nH != None and nH < len(households):
             households2 = []
             while len(households2) < nH:
                 r = households[int(random.random()*len(households))]

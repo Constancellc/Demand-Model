@@ -10,6 +10,7 @@ charge_data = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charg
 
 trip_data = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
+outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 # First get the pdfs for charging
 pdfs = {'0':{},'1':{}}
 pdfs_ = {'0':{},'1':{}}
@@ -123,7 +124,7 @@ plt.rcParams["font.size"] = '9'
 
 new_total = []
 newWE_total = []
-for i in range(10):
+for i in range(1):
     new = [0]*48
     newWE = [0]*48
 
@@ -219,12 +220,14 @@ for t in range(48):
         if newWE_total[x][t] > uW[t]:
             uW[t] = newWE_total[x][t]
 
+
+
 plt.subplot(2,1,1)
 plt.plot(m,c='r',label='(b)')
-plt.fill_between(range(48),l,u,color='r',alpha=0.2)
+#plt.fill_between(range(48),l,u,color='r',alpha=0.2)
 plt.subplot(2,1,2)
 plt.plot(mW,c='r',label='(b)')
-plt.fill_between(range(48),lW,uW,color='r',alpha=0.2)
+#plt.fill_between(range(48),lW,uW,color='r',alpha=0.2)
 
 # now dumb charging
 for vehicle in journeyLogs:
@@ -237,11 +240,12 @@ for vehicle in journeyLogs:
             else:
                 dumbWE[int(jLog[j][1]/30)] += 1
         j += 1
-        
 
+dumb = normalise(dumb)
+true = normalise(true)
 plt.subplot(2,1,1)
-plt.plot(normalise(dumb),c='b',label='(a)')
-plt.plot(normalise(true),ls='--',c='k',label='True')
+plt.plot(dumb,c='b',label='(a)')
+plt.plot(true,ls='--',c='k',label='True')
 plt.xlim(0,47)
 plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
 plt.grid()
@@ -249,13 +253,24 @@ plt.ylabel('Likelihood of starting charge')
 plt.title('Weekday')
 plt.legend()
 
+dumbWE = normalise(dumbWE)
+trueWE = normalise(trueWE)
+
 plt.subplot(2,1,2)
-plt.plot(normalise(dumbWE),c='b',label='(a)')
-plt.plot(normalise(trueWE),ls='--',c='k',label='True')
+plt.plot(dumbWE,c='b',label='(a)')
+plt.plot(trueWE,ls='--',c='k',label='True')
 plt.xlim(0,47)
 plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
 plt.grid()
 plt.ylabel('Likelihood of starting charge')
 plt.title('Weekend')
 plt.tight_layout()
+
+with open(outstem+'error.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['true','dumb','new','trueW','dumbW','newW'])
+    for t in range(48):
+        writer.writerow([true[t],dumb[t],m[t],trueWE[t],dumbWE[t],mW[t]])
+
+
 plt.show()
