@@ -66,11 +66,13 @@ for l in ld_buses4:
     y4.append(geo.y[l])
 
 plt.figure()
+plt.subplot(1,2,1)
+plt.title('Panda Power Network')
 #plt.scatter(x,y)
 #plt.scatter(x2,y2)
 #plt.scatter(x3,y3)
 #plt.scatter(x4,y4)
-plt.scatter(x+x2+x3+x4,y+y2+y3+y4)
+plt.scatter(y+y2+y3+y4,x+x2+x3+x4)
 
 print(len(x+x2+x3+x4))
 x = []
@@ -83,8 +85,9 @@ with open('gsp.csv','rU') as csvfile:
         x.append(float(row[3]))
         y.append(float(row[4]))
 print(len(x))
-plt.figure()
-plt.scatter(x,y)
+plt.subplot(1,2,2)
+plt.title('Grid Supply Point Locations')
+plt.scatter(y,x)
 plt.show()
 
 lds.p_kw[10] = 4.3

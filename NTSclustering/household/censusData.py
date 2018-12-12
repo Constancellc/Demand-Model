@@ -30,7 +30,7 @@ with open(stem+'centroids-MSOA.csv','rU') as csvfile:
     for row in reader:
         
         try:
-            ll = utm.to_latlon(float(row[1]),float(row[0]),29,'N')
+            ll = utm.to_latlon(float(row[1]),float(row[0]),30,'U')
             print(ll)
             p = m(ll[0],ll[1])
         except:
