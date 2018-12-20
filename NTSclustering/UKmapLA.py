@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.cbook
 import csv
 
-stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
+stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 # create new figure, axes instances.
 fig=plt.figure(figsize=(6,8) )
 plt.rcParams["font.family"] = 'serif'
@@ -12,7 +12,7 @@ plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
 # setup mercator map projection.
 m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=58.7,\
-            resolution='l',projection='merc',\
+            resolution='h',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 
 
@@ -28,6 +28,7 @@ with open(stem+'LA-lat-lon.csv','rU') as csvfile:
 pList = []
 z = []
 
+limZ = 0
 with open(stem+'peaks.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
@@ -35,6 +36,8 @@ with open(stem+'peaks.csv','rU') as csvfile:
         pList.append(locs[row[0]])
         #z.append(float(row[2])) # kW 1- before 2- after
         z.append(100*(float(row[2])-float(row[1]))/float(row[1])) # % incr
+        if z[-1] > limZ:
+            limZ = z[-1]
         
 '''    
 for l in locs:
@@ -60,8 +63,8 @@ def find_nearest(p1):
     return best
 
 # make these smaller to increase the resolution
-x = np.arange(-7,3,0.05)
-y = np.arange(49,59,0.05)
+x = np.arange(-7,3,0.02)
+y = np.arange(49,59,0.02)
 
 Z = np.zeros((len(x),len(y)))
 X = np.zeros((len(x),len(y)))
@@ -85,7 +88,7 @@ for i in range(len(x)):
         else:
             continue
 
-m.pcolor(X,Y,Z,vmax=2.5)#,cmap='inferno')
+m.pcolor(X,Y,Z,vmax=limZ)#,cmap='inferno')
 #m.pcolormesh(x,y,Z,latlon=True)
 #m.drawmapboundary(fill_color='#99ffff')
 #m.drawlsmask(land_color='coral',ocean_color='aqua')
@@ -94,5 +97,6 @@ m.pcolor(X,Y,Z,vmax=2.5)#,cmap='inferno')
 # draw meridians
 #m.drawmeridians(np.arange(-180,180,30),labels=[1,1,0,1])
 plt.colorbar()
-plt.savefig('../../Dropbox/papers/clustering/img/UK_.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/papers/uncontrolled/img/UK_.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()

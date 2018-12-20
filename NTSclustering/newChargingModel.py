@@ -145,7 +145,7 @@ class Simulation:
             if startCharge == True:
                 while SOC < 0.99 and t<jLog[j][0] and t<jLog[-1][0]:
                     self.charging[t] += power
-                    SOC += power/(60*capacity)
+                    SOC += power*0.9/(60*capacity)
                     t += 1
                 startCharge = False
 
@@ -179,7 +179,7 @@ class Simulation:
             for d in days:
                 if days[d][1] > capacity:
                     days[d][1] = capacity
-                time_req = days[d][1]*60/power
+                time_req = days[d][1]*60/(power*0.9)
                 for t in range(int(time_req)):
                     if d*1440+days[d][0]+t < 10080:
                         charging[d*1440+days[d][0]+t] += power

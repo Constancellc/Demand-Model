@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 data = '../../../Documents/elec_demand/MSOA_domestic_electricity_2016.csv'
 
-vehicles = '../../../Documents/simulation_results/NTS/clustering/power/locationsLA/'
+vehicles = '../../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 
 p1_winter = []
 p1_spring = []
@@ -49,6 +49,9 @@ for t in range(48):
 E7 = {}
 Std = {}
 n = {}
+nE7 = {}
+nStd = {}
+av = {}
 with open(data,'r+',encoding="utf-8") as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
@@ -60,10 +63,25 @@ with open(data,'r+',encoding="utf-8") as csvfile:
             E7[LA] = 0
             Std[LA] = 0
             n[LA] = 0
+            nE7[LA] = 0
+            nStd[LA] = 0
+            av[LA] = 0
 
-        E7[LA] += float(row[4])# total kWh E7
-        Std[LA] += float(row[5])# total kWh standard
+        E7[LA] += float(row[5])# total kWh E7
+        Std[LA] += float(row[4])# total kWh standard
         n[LA] += int(row[9])# total number of customers
+        nE7[LA] += int(row[8])# total number of E7 meters
+        nStd[LA] += int(row[7])# total number of standard standard
+
+for l in av:
+    av[l] = (E7[l]+Std[l])/n[l]
+
+with open(vehicles+'censusParams.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['LA','% e7 meters','Average consumption (kWh per hh)',
+                     'nHouseholds'])
+    for l in av:
+        writer.writerow([l,100*nE7[l]/n[l],av[l],n[l]])
 
 results = {}       
 for la in n:
