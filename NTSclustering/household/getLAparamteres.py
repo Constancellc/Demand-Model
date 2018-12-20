@@ -49,10 +49,9 @@ with open(trip_data0,'rU') as csvfile:
 
         if purp != '1':
             continue
-        if mode == '1': # walk less than 1 mile
-            continue
+        
 
-        if mode in ['5','6','7','8','9','10','11','12','13','14','15','16','17']:
+        if mode in ['5','6']:#,'7','8','9','10','11','12','13','14','15','16','17']:
             cMode[hh_l[hh]][0] += 1
 
         cMode[hh_l[hh]][1] += 1

@@ -88,7 +88,7 @@ yp = reg.predict(X_)
 with open(stem+'lsoaPred.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for i in range(len(yp)):
-        writer.writerow([l[i],np.power(np.e,yp[i])])
+        writer.writerow([l[i],100*np.power(np.e,yp[i])])
 plt.figure()
 plt.plot(sorted(y))
 plt.plot(sorted(y2))
