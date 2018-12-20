@@ -27,13 +27,14 @@ with open(stem+'NTSparams.csv','rU') as csvfile:
                        float(row[4])]
 
 cens = {}
-with open(stem+'censusParams.csv','rU') as csvfile:
+with open(stem+'censusParams.csv','r',encoding='ISO-8859-1') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
         if row[0] not in locs:
             continue
-        cens[row[0]] = [float(row[1]),float(row[2]),float(row[3])]
+        cens[row[0]] = [float(row[1]),float(row[2])]#,float(row[3])]
+        #cens[row[0]] = [float(row[2]),float(row[3])]
 
 X = []
 for l in locs:
@@ -70,6 +71,24 @@ with open(stem+'w.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(list(c))
 
+l = []
+X_ = []
+with open(stem+'lsoaX.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        l.append(row[0])
+        p = []
+        for i in range(1,len(row)-1):
+            p.append(float(row[i]))
+        X_.append(p)
+
+yp = reg.predict(X_)
+
+with open(stem+'lsoaPred.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    for i in range(len(yp)):
+        writer.writerow([l[i],np.power(np.e,yp[i])])
 plt.figure()
 plt.plot(sorted(y))
 plt.plot(sorted(y2))

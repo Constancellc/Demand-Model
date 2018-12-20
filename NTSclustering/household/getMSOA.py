@@ -81,7 +81,7 @@ with open(vehicles+'censusParams.csv','w') as csvfile:
     writer.writerow(['LA','% e7 meters','Average consumption (kWh per hh)',
                      'nHouseholds'])
     for l in av:
-        writer.writerow([l,100*nE7[l]/n[l],av[l],n[l]])
+        writer.writerow([l,nE7[l]/n[l],av[l],n[l]])
 
 results = {}       
 for la in n:
