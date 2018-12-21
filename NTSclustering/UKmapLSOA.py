@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.cbook
 import csv
+from pyproj import Proj, transform
+
+inProj = Proj(init='epsg:27700')
+outProj = Proj(init='epsg:4326')
+
 
 stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 locXY = '../../Documents/census/centroids-LSOA.csv'
@@ -27,8 +32,9 @@ with open(locXY,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        x.append(float(row[0]))
-        y.append(float(row[1]))
+        x2,y2 = transform(inProj,outProj,float(row[0]),float(row[1]))
+        x.append(x2)
+        y.append(y2)
         locs[row[3]] = [float(row[0]),float(row[1])]
 
 plt.scatter(x,y)
@@ -80,6 +86,7 @@ m.drawcoastlines()
 for i in range(len(x)):
     for j in range(len(y)):
         p = [x[i],y[j]]
+        
         xpt = x[i]
         ypt = y[j]
         #xpt,ypt = m(x[i],y[j])
