@@ -17,12 +17,12 @@ plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
 # setup mercator map projection.
-m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=58.7,\
-            resolution='l',projection='merc',\
+m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=55.5,\
+            resolution='h',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 
 
-m.drawcoastlines()
+#m.drawcoastlines()
 x = []
 y = []
 #            rsphere=(6378137.00,6356752.3142),\
@@ -32,13 +32,14 @@ with open(locXY,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        x2,y2 = transform(inProj,outProj,float(row[0]),float(row[1]))
-        x.append(x2)
-        y.append(y2)
-        locs[row[3]] = [float(row[0]),float(row[1])]
+        lat,lon = transform(inProj,outProj,float(row[0]),float(row[1]))
+        x_,y_ = m(lat,lon)
+        x.append(x_)
+        y.append(y_)
+        locs[row[3]] = [lat,lon]
 
-plt.scatter(x,y)
-plt.show()
+#plt.scatter(x,y)
+#plt.show()
 pList = []
 z = []
 
@@ -63,12 +64,12 @@ for l in locs:
             z.append(100*(float(row[2])-float(row[1]))/float(row[1]))
 '''
 def find_nearest(p1):
-    closest = 100000000000
+    closest = 0.1
     best = None
 
     for ii in range(len(pList)):
         p = pList[ii]
-        d = np.sqrt(np.power(p[0]-p1[1],2)+np.power(p[1]-p1[0],2))
+        d = np.sqrt(np.power(p[0]-p1[0],2)+np.power(p[1]-p1[1],2))
         if d < closest:
             closest = d
             best = ii
@@ -76,8 +77,8 @@ def find_nearest(p1):
     return best
 
 # make these smaller to increase the resolution
-x = np.arange(10000,950000,10000)
-y = np.arange(20000,1800000,20000)
+x = np.arange(-7,3,0.02)
+y = np.arange(49,56.5,0.02)
 
 Z = np.zeros((len(x),len(y)))
 X = np.zeros((len(x),len(y)))
@@ -87,9 +88,9 @@ for i in range(len(x)):
     for j in range(len(y)):
         p = [x[i],y[j]]
         
-        xpt = x[i]
-        ypt = y[j]
-        #xpt,ypt = m(x[i],y[j])
+        #xpt = x[i]
+        #ypt = y[j]
+        xpt,ypt = m(x[i],y[j])
         X[i,j] = xpt
         Y[i,j] = ypt
         if m.is_land(xpt,ypt) == True:
@@ -100,18 +101,13 @@ for i in range(len(x)):
             if xpt > 766000 and ypt < 104000:
                 continue
             best = find_nearest(p)
-            Z[i,j] = z[best]
+            if best != None:
+                Z[i,j] = z[best]
         else:
             continue
 
-m.pcolor(X,Y,Z,vmax=limZ)#,cmap='inferno')
-#m.pcolormesh(x,y,Z,latlon=True)
-#m.drawmapboundary(fill_color='#99ffff')
-#m.drawlsmask(land_color='coral',ocean_color='aqua')
-# draw parallels
-#m.drawparallels(np.arange(10,90,20),labels=[1,1,0,1])
-# draw meridians
-#m.drawmeridians(np.arange(-180,180,30),labels=[1,1,0,1])
+m.pcolor(X,Y,Z,vmax=100)
+
 plt.colorbar()
 #plt.savefig('../../Dropbox/papers/uncontrolled/img/UK_.eps', format='eps',
 #            dpi=1000, bbox_inches='tight', pad_inches=0)

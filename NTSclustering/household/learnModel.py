@@ -66,7 +66,7 @@ print(e2)
 
 
 c = reg.coef_
-
+print(list(c))
 with open(stem+'w.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(list(c))

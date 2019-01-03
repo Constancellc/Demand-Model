@@ -83,9 +83,11 @@ with open(cens+'nHh-LSOA.csv','rU') as csvfile:
 # now the LSOA electricity
 
 elec = '../../../Documents/elec_demand/LSOA_domestic_electricity_2017.csv'
+elec2 = '../../../Documents/elec_demand/MSOA_domestic_electricity_2016.csv'
 gas = '../../../Documents/elec_demand/LSOA_domestic_gas_2017.csv'
 
 # I need a way to predict % e& - maybe assume all hh not with gas on e7?
+'''
 nGas = {}
 
 with open(gas,'rU',encoding='ISO-8859-1') as csvfile:
@@ -94,7 +96,8 @@ with open(gas,'rU',encoding='ISO-8859-1') as csvfile:
     next(reader)
     for row in reader:
         nGas[row[5]] = int(row[-3])
-
+'''
+lsoa2msoa = {}
 e7 = {}
 avKWh = {}
 with open(elec,'rU',encoding='ISO-8859-1') as csvfile:
@@ -103,23 +106,46 @@ with open(elec,'rU',encoding='ISO-8859-1') as csvfile:
     next(reader)
     for row in reader:
         lsoa = row[5]#[1:-1]
+        msoa = row[3]
         mean = row[-2]#[1:-1]
         if len(mean) < 2:
             continue
-        '''
-        if len(mean) < 4:
-            m = float(mean)
-        else:
-            m = float(mean[-3:])+1000*float(mean[:-4])
+        lsoa2msoa[lsoa] = msoa
         '''
         n = int(row[-3])
         try:
             e7[lsoa] = round((n-nGas[lsoa])/n,3)
         except:
             e7[lsoa] = 0
+        '''
         avKWh[lsoa] = float(mean)
 
+nE7 = {}
+nStd = {}
+with open(elec2,'r+',encoding="utf-8") as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        # lsoa = row[5]
+        msoa = row[3]
+        if msoa == '':
+            continue
 
+        if msoa not in nE7:
+            nE7[msoa] = 0
+            nStd[msoa] = 0
+        
+        nE7[msoa] += int(row[8])# total number of E7 meters
+        nStd[msoa] += int(row[7])# total number of standard standard
+
+
+for lsoa in lsoa2msoa:
+    try:
+        msoa = lsoa2msoa[lsoa]
+        e7[lsoa] = 100*nE7[msoa]/(nE7[msoa]+nStd[msoa])
+    except:
+        e7[lsoa] = 10
+        
 with open(stem+'lsoaX.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['LSOA','vehicles per HH','Av Commute (mi)','% by car',
