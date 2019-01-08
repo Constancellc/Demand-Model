@@ -103,6 +103,8 @@ def step(t,d):
     
 true = [0]*48
 trueWE = [0]*48
+true2 = [0]*48
+trueWE2 = [0]*48
 # now get the MEA data
 with open(charge_data,'rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -110,13 +112,26 @@ with open(charge_data,'rU') as csvfile:
     for row in reader:
         #soc = float(row[4])
         start = int(row[2])
+        end = int(row[3])
         if row[-1] == '0':
             true[int(start/30)] += 1
+            for t in range(start,end):
+                try:
+                    true2[int(t/30)] += 1
+                except:
+                    true2[int(t/30)-48] += 1
         else:
             trueWE[int(start/30)] += 1
+            for t in range(start,end):
+                try:
+                    trueWE2[int(t/30)] += 1
+                except:
+                    trueWE2[int(t/30)-48] += 1
 
 dumb = [0]*48
 dumbWE = [0]*48
+dumb2 = [0]*48
+dumbWE2 = [0]*48
 
 plt.figure()
 plt.rcParams["font.family"] = 'serif'
@@ -124,9 +139,13 @@ plt.rcParams["font.size"] = '9'
 
 new_total = []
 newWE_total = []
+new_total2 = []
+newWE_total2 = []
 for i in range(1):
     new = [0]*48
     newWE = [0]*48
+    new2 = [0]*48
+    newWE2 = [0]*48
 
     rand = 0
     afte = 0
@@ -185,8 +204,22 @@ for i in range(1):
                     dt = '0'
                 if dt == '0':
                     new[int(t/30)] += 1
+                    t2 = t
+                    while SOC <= 0.99:
+                        new2[int(t2/30)] += 1
+                        SOC += 3.5/(60*capacity)
+                        t2 += 1
+                        if t2 == 1440:
+                            t2 = 0
                 else:
                     newWE[int(t/30)] += 1
+                    t2 = t
+                    while SOC <= 0.99:
+                        newWE2[int(t2/30)] += 1
+                        SOC += 3.5/(60*capacity)
+                        t2 += 1
+                        if t2 == 1440:
+                            t2 = 0
                 SOC = 0.99
                 startCharge = False
 
@@ -199,6 +232,8 @@ for i in range(1):
     print(100*afte/(afte+rand))
     new_total.append(normalise(new))
     newWE_total.append(normalise(newWE))
+    new_total2.append(normalise(new2))
+    newWE_total2.append(normalise(newWE2))
 
 
 m = [0]*48
@@ -219,6 +254,14 @@ for t in range(48):
             lW[t] = newWE_total[x][t]
         if newWE_total[x][t] > uW[t]:
             uW[t] = newWE_total[x][t]
+m2 = [0]*48
+mW2 = [0]*48
+
+for t in range(48):
+    for x in range(len(new_total2)):
+        m2[t] += new_total2[x][t]/len(new_total2)
+        mW2[t] += newWE_total2[x][t]/len(new_total2)
+
 
 
 
@@ -233,16 +276,34 @@ plt.plot(mW,c='r',label='(b)')
 for vehicle in journeyLogs:
     jLog = sorted(journeyLogs[vehicle])
     j = 0
+    kWh = 0
     while j < len(jLog)-1:
+        kWh += jLog[j][2]
         if jLog[j][0] != jLog[j+1][0]:
+            if kWh > 30:
+                kWh = 30
+            t = jLog[j][1]
+            t_req = int(kWh*60/3.5)
             if dType[vehicle][jLog[j][0]] == '0':
                 dumb[int(jLog[j][1]/30)] += 1
+                for t2 in range(t_req):
+                    try:
+                        dumb2[int((t+t2)/30)] += 1
+                    except:
+                        dumb2[int((t+t2-1440)/30)] += 1
             else:
                 dumbWE[int(jLog[j][1]/30)] += 1
+                for t2 in range(t_req):
+                    try:
+                        dumbWE2[int((t+t2)/30)] += 1
+                    except:
+                        dumbWE2[int((t+t2-1440)/30)] += 1
         j += 1
 
 dumb = normalise(dumb)
 true = normalise(true)
+dumb2 = normalise(dumb2)
+true2 = normalise(true2)
 plt.subplot(2,1,1)
 plt.plot(dumb,c='b',label='(a)')
 plt.plot(true,ls='--',c='k',label='True')
@@ -255,6 +316,8 @@ plt.legend()
 
 dumbWE = normalise(dumbWE)
 trueWE = normalise(trueWE)
+dumbWE2 = normalise(dumbWE2)
+trueWE2 = normalise(trueWE2)
 
 plt.subplot(2,1,2)
 plt.plot(dumbWE,c='b',label='(a)')
@@ -271,6 +334,14 @@ with open(outstem+'error.csv','w') as csvfile:
     writer.writerow(['true','dumb','new','trueW','dumbW','newW'])
     for t in range(48):
         writer.writerow([true[t],dumb[t],m[t],trueWE[t],dumbWE[t],mW[t]])
+
+
+
+with open(outstem+'error2.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['true','dumb','new','trueW','dumbW','newW'])
+    for t in range(48):
+        writer.writerow([true2[t],dumb2[t],m2[t],trueWE2[t],dumbWE2[t],mW2[t]])
 
 
 plt.show()

@@ -142,9 +142,9 @@ with open(elec2,'r+',encoding="utf-8") as csvfile:
 for lsoa in lsoa2msoa:
     try:
         msoa = lsoa2msoa[lsoa]
-        e7[lsoa] = 100*nE7[msoa]/(nE7[msoa]+nStd[msoa])
+        e7[lsoa] = nE7[msoa]/(nE7[msoa]+nStd[msoa])
     except:
-        e7[lsoa] = 10
+        e7[lsoa] = 0.10
         
 with open(stem+'lsoaX.csv','w') as csvfile:
     writer = csv.writer(csvfile)

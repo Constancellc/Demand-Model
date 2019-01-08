@@ -64,7 +64,7 @@ for l in locs:
             z.append(100*(float(row[2])-float(row[1]))/float(row[1]))
 '''
 def find_nearest(p1):
-    closest = 0.1
+    closest = 0.2
     best = None
 
     for ii in range(len(pList)):
@@ -106,7 +106,7 @@ for i in range(len(x)):
         else:
             continue
 
-m.pcolor(X,Y,Z,vmax=100)
+m.pcolor(X,Y,Z,vmax=90)
 
 plt.colorbar()
 #plt.savefig('../../Dropbox/papers/uncontrolled/img/UK_.eps', format='eps',
