@@ -8,8 +8,8 @@ import pandapower
 import pandapower.networks as pn
 import pandapower.plotting as pplt
 
-#net = pn.GBreducednetwork()
-net = pn.GBnetwork()
+net = pn.GBreducednetwork()
+#net = pn.GBnetwork()
 lines = net.line
 buses = net.bus
 
@@ -18,7 +18,7 @@ print(lds)
 
 lds_ = {}
 
-for l in range(446):
+for l in range(29):
     bus = lds.bus[l]
     p = lds.p_kw[l]
     if bus not in lds_:
