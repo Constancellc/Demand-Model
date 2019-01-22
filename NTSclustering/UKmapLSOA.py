@@ -11,8 +11,9 @@ outProj = Proj(init='epsg:4326')
 
 stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 locXY = '../../Documents/census/centroids-LSOA.csv'
+locLatLon = '../../Documents/census/centroids-LSOA-LatLon.csv'
 # create new figure, axes instances.
-fig=plt.figure(figsize=(6,8) )
+fig=plt.figure(figsize=(6,8))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
@@ -37,6 +38,14 @@ with open(locXY,'rU') as csvfile:
         x.append(x_)
         y.append(y_)
         locs[row[3]] = [lat,lon]
+
+with open(locLatLon,'w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['LSOA','Lat','Lon'])
+    for l in locs:
+        writer.writerow([l]+locs[l])
+
+print('DONE')
 
 #plt.scatter(x,y)
 #plt.show()

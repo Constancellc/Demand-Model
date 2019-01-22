@@ -4,6 +4,9 @@ import random
 import numpy as np
 import copy
 from mpl_toolkits.basemap import Basemap
+from sklearn.linear_model import LinearRegression
+
+
 
 import pandapower
 import pandapower.networks as pn
@@ -19,6 +22,13 @@ m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=59,\
             resolution='h',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 m.drawcoastlines()
+
+ld_inc = {}
+with open('substation_predictions.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        ld_inc[int(row[0])-1] = 1+(float(row[1])/100)
+    
 #net = pn.GBnetwork()
 lines = net.line
 
@@ -67,8 +77,8 @@ lds = net.load
 bus_ld = {}
 
 for i in range(len(lds)):
-    lds.p_kw[i] = lds.p_kw[i]
-    lds.q_kvar[i] = lds.q_kvar[i]
+    lds.p_kw[i] = lds.p_kw[i]*ld_inc[lds.bus[i]]
+    lds.q_kvar[i] = lds.q_kvar[i]*ld_inc[lds.bus[i]]
     bus = lds.bus[i]
     if bus not in bus_ld:
         bus_ld[bus] = 0
@@ -122,7 +132,10 @@ for i in range(len(lineAB)):
     a = lineAB[i][0]
     b = lineAB[i][1]
     if i < 86:
-        plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',lw=loading[i]/20,alpha=0.5)
+        if loading[i] > 100:
+            plt.plot([a[1],b[1]],[a[0],b[0]],c='r',lw=loading[i]/20,alpha=0.5)
+        else:
+            plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',lw=loading[i]/20,alpha=0.5)
     else:
         plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',ls='--',alpha=0.5)
 

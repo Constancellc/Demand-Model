@@ -89,6 +89,26 @@ with open(stem+'lsoaPred.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     for i in range(len(yp)):
         writer.writerow([l[i],100*np.power(np.e,yp[i])])
+
+l2 = []
+X2 = []
+# also predict increase for transmission while we're at it
+with open('../transmission/substation_param.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        l2.append(row[0])
+        p = []
+        for i in range(1,len(row)-1):
+            p.append(float(row[i]))
+        X2.append(p)
+        
+y2 = reg.predict(X2)
+    
+with open('../transmission/substation_predictions.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    for i in range(len(y2)):
+        writer.writerow([l2[i],100*np.power(np.e,yp[i])])
 plt.figure()
 plt.plot(sorted(y))
 plt.plot(sorted(y2))

@@ -1,6 +1,7 @@
 import csv
 import matplotlib.pyplot as plt
 import random
+import datetime
 import numpy as np
 import copy
 import scipy.ndimage.filters as filt
@@ -12,47 +13,47 @@ data2 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/charges.csv
 
 data3 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/trips.csv'
 
+data4 = '../../Documents/My_Electric_Avenue_Technical_Data/constance/ranges.csv'
+
+
 stem = '../../Documents/simulation_results/NTS/clustering/labels2/'
 
 
 NTS = {}
+NTSv = {}
 MEA = {}
 
-NTStotal = [0]*3
-MEAtotal = [0]*3
+mea_range = {}
+with open(data4,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        mea_range[row[0]] = [datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
+                                               int(row[1][8:10])),
+                             datetime.datetime(int(row[2][:4]),int(row[2][5:7]),
+                                               int(row[2][8:10]))]
+
+
+NTStotal = [0]*4
+MEAtotal = [0]*4
 # get the labels for both data types
 with open(stem+'NTSlabels.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         NTS[row[0]] = int(row[1])
-        NTStotal[int(row[1])] += 1
+        if row[0][:-1] not in NTSv:
+            NTSv[row[0][:-1]] = 0
         
 with open(stem+'MEAlabels.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         MEA[row[0]] = int(row[1])
-        MEAtotal[int(row[1])] += 1
 
-for i in range(3):
-    MEAtotal[i] = MEAtotal[i]*100/len(MEA)
-    NTStotal[i] = NTStotal[i]*100/len(NTS)
-
-plt.figure(figsize=(5,1.6))
-plt.rcParams["font.family"] = 'serif'
-plt.rcParams["font.size"] = '8'
-plt.subplot(1,2,1)
-plt.bar(np.arange(1,4)-0.2,NTStotal,width=0.4,label='NTS')
-plt.bar(np.arange(1,4)+0.2,MEAtotal,width=0.4,label='MEA')
-plt.legend()
-plt.title('Weekday')
-plt.ylabel('Probability')
-plt.ylim(0,100)
-plt.grid()
 NTS2= {}
 MEA2 = {}
 
-NTStotal2 = [0]*3
-MEAtotal2 = [0]*3
+NTStotal2 = [0]*4
+MEAtotal2 = [0]*4
 # get the labels for both data types
 with open(stem+'NTSlabelsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -66,19 +67,69 @@ with open(stem+'MEAlabelsWE.csv','rU') as csvfile:
         MEA2[row[0]] = int(row[1])
         MEAtotal2[int(row[1])] += 1
 
-for i in range(3):
-    MEAtotal2[i] = MEAtotal2[i]*100/len(MEA2)
-    NTStotal2[i] = NTStotal2[i]*100/len(NTS2)
+
+for v in NTSv:
+    for d in range(5):
+        try:
+            k = NTS[v+str(d+1)]
+        except:
+            k = 3
+        NTStotal[k] += 1
+    for d in range(5,7):
+        try:
+            k = NTS2[v+str(d+1)]
+        except:
+            k = 3
+        NTStotal2[k] += 1
+
+for v in mea_range:
+    nDays = (mea_range[v][1]-mea_range[v][0]).days
+    for d in range(1,nDays):
+        wd = (mea_range[v][0]+datetime.timedelta(d)).isoweekday()
+        if wd <= 5:
+            try:
+                k = MEA[v+str(d)]
+            except:
+                k = 3
+            MEAtotal[k] += 1
+        else:
+            try:
+                k = MEA2[v+str(d)]
+            except:
+                k = 3
+            MEAtotal2[k] += 1
+            
+for pdf in [NTStotal, NTStotal2, MEAtotal, MEAtotal2]:
+    S = sum(pdf)
+    for k in range(4):
+        pdf[k] = 100*pdf[k]/S
+    print(pdf)
+                             
+
+plt.figure(figsize=(5,1.6))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '8'
+plt.subplot(1,2,1)
+plt.bar(np.arange(1,5)-0.2,NTStotal,width=0.4,label='NTS')
+plt.bar(np.arange(1,5)+0.2,MEAtotal,width=0.4,label='MEA')
+plt.xticks(range(1,5),['1','2','3','U'])
+plt.title('Weekday')
+plt.ylabel('Probability')
+plt.ylim(0,60)
+plt.grid()
 
 plt.subplot(1,2,2)
-plt.bar(np.arange(1,4)-0.2,NTStotal2,width=0.4)
-plt.bar(np.arange(1,4)+0.2,MEAtotal2,width=0.4)
+plt.bar(np.arange(1,5)-0.2,NTStotal2,width=0.4,label='NTS')
+plt.bar(np.arange(1,5)+0.2,MEAtotal2,width=0.4,label='MEA')
+plt.xticks(range(1,5),['1','2','3','U'])
+plt.legend()
 plt.grid()
 plt.title('Weekend')
 plt.ylabel('Probability')
-plt.ylim(0,100)
+plt.ylim(0,60)
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/clustering/img/clusterPdfs.eps', format='eps', dpi=1000)
+plt.show()
+plt.savefig('../../Dropbox/papers/uncontrolled/img/clusterPdfs.eps', format='eps', dpi=1000)
 #plt.show()
 
 # first let's store the individual pdf
