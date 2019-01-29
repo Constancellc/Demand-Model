@@ -87,13 +87,19 @@ plt.bar(range(5,7),c1[5:],color='#FFFFBB')
 plt.bar(range(5,7),c2[5:],color='#FFBBFF')
 plt.bar(range(5,7),c3[5:],color='#BBFFFF')
 plt.xticks(range(7),['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+for d in range(7):
+    plt.annotate('3',(d-0.1,c3[d]/2))
+    plt.annotate('2',(d-0.1,c3[d]-3+(c2[d]-c3[d])/2))
+    plt.annotate('1',(d-0.1,c2[d]-3+(c1[d]-c2[d])/2))
+    plt.annotate('U',(d-0.1,c1[d]-3+(100-c1[d])/2))
+        
 plt.legend(loc=[1.05,0.5])
 plt.ylim(0,100)
 plt.ylabel('Percentage')
 #plt.grid(zorder=1)
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/clustering/img/composition.eps', format='eps', dpi=1000)
-
+plt.savefig('../../Dropbox/papers/uncontrolled/img/composition.eps', format='eps', dpi=1000)
+plt.show()
 nts_dist = {'W':[0,0,0],'WE':[0,0,0]}
 with open(data,'rU') as csvfile:
     reader = csv.reader(csvfile)

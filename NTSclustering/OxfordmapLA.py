@@ -3,10 +3,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.cbook
 import csv
+from pyproj import Proj, transform
+
+inProj = Proj(init='epsg:27700')
+outProj = Proj(init='epsg:4326')
+
 
 stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
+locXY = '../../Documents/census/centroids-LSOA.csv'
+locLatLon = '../../Documents/census/centroids-LSOA-LatLon.csv'
+
 # create new figure, axes instances.
-fig=plt.figure(figsize=(6,8) )
+fig=plt.figure(figsize=(10,8))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
@@ -15,45 +23,63 @@ m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=58.7,\
             resolution='h',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 
-
 locs = {}
-with open(stem+'LA-lat-lon.csv','rU') as csvfile:
+x = []
+y = []
+
+
+with open(locXY,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        locs[row[1]] = [float(row[3]),float(row[2])]
-
+        lat,lon = transform(inProj,outProj,float(row[0]),float(row[1]))
+        if lat < -1.9 or lat > -0.7:
+            continue
+        if lon < 51.4 or lon > 52.3:
+            continue
+        x_,y_ = m(lat,lon)
+        x.append(x_)
+        y.append(y_)
+        locs[row[3]] = [lat,lon]
+'''
+with open(locLatLon,'w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['LSOA','Lat','Lon'])
+    for l in locs:
+        writer.writerow([l]+locs[l])
+'''
 pList = []
 z = []
 
 limZ = 0
-with open(stem+'peaks.csv','rU') as csvfile:
+with open(stem+'lsoaPred.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
+        if row[0] not in locs:
+            continue
         pList.append(locs[row[0]])
-        #z.append(float(row[2])) # kW 1- before 2- after
-        z.append(100*(float(row[2])-float(row[1]))/float(row[1])) # % incr
+        z.append(float(row[1])) # % increase
         if z[-1] > limZ:
             limZ = z[-1]
-        
-
+ 
 def find_nearest(p1):
-    closest = 100000
+    closest = 0.2
     best = None
 
     for ii in range(len(pList)):
         p = pList[ii]
-        d = np.power(p[0]-p1[1],2)+np.power(p[1]-p1[0],2)
+        d = np.sqrt(np.power(p[0]-p1[0],2)+np.power(p[1]-p1[1],2))
         if d < closest:
             closest = d
             best = ii
 
     return best
 
+
 # make these smaller to increase the resolution
-x = np.arange(-1.87,-0.8,0.01)
-y = np.arange(51.46,52.18,0.01)
+x = np.arange(-1.87,-0.8,0.001)
+y = np.arange(51.46,52.18,0.001)
 
 Z = np.zeros((len(x),len(y)))
 X = np.zeros((len(x),len(y)))
@@ -70,9 +96,14 @@ for i in range(len(x)):
         X[i,j] = xpt
         Y[i,j] = ypt
         Z[i,j] = z[best]
-plt.imshow('oxfordshire.png',extent=[x_l,x_h,y_l,y+h])
-m.pcolor(X,Y,Z,vmax=limZ,alpha=0.2)
-plt.xlim(x_l,x_h)
-plt.ylim(y_l,y_h)
+
+im = plt.imread('oxfordshire.png')
+
+plt.imshow(im,extent=[int(x_l),int(x_h),int(y_l),int(y_h)])
+m.pcolor(X,Y,Z,vmax=70,cmap='inferno',alpha=0.15)
+plt.xlim(x_l+10000,x_h-5000)
+plt.ylim(y_l+1000,y_h-1000)
+plt.savefig('../../Documents/Oxfordshire.pdf', format='pdf',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.colorbar()
 plt.show()

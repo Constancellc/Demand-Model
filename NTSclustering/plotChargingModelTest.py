@@ -6,6 +6,15 @@ import copy
 
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
+def get_error(a,true):
+    diff = 0
+    total = 0
+    for t in range(len(a)):
+        diff += abs(a[t]-true[t])
+        total += true[t]
+    print(diff*100/total)
+    
+
 d = []
 dW = []
 t = []
@@ -24,13 +33,16 @@ with open(outstem+'error.csv','rU') as csvfile:
         dW.append(float(row[4]))
         uW.append(float(row[5]))
 
+
 plt.figure(figsize=(6,3))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 plt.subplot(2,1,1)
-plt.plot(d,c='b',label='(a)')
-plt.plot(u,c='r',ls='--',label='(b)')
-plt.plot(t,ls=':',c='k',label='True')
+plt.plot(d,c='b',label='After final journey')
+plt.plot(u,c='r',ls='--',label='Proposed model')
+plt.plot(t,ls=':',c='k',label='Ground truth')
+get_error(d,t)
+get_error(u,t)
 plt.xlim(0,47)
 plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
 plt.grid()
@@ -51,4 +63,23 @@ plt.title('Weekend',y=0.7)
 plt.tight_layout()
 plt.savefig('../../Dropbox/papers/uncontrolled/img/error.eps',
             format='eps', dpi=1000)
+
+
+d2 = [0]*48
+t2 = [0]*48
+u2 = [0]*48
+for ti in range(48):
+    for ti2 in range(8):
+        try:
+            d2[ti+ti2] += d[ti]
+            t2[ti+ti2] += t[ti]
+            u2[ti+ti2] += u[ti]
+        except:
+            d2[ti+ti2-48] += d[ti]
+            t2[ti+ti2-48] += t[ti]
+            u2[ti+ti2-48] += u[ti]
+
+
+get_error(d2,t2)
+get_error(u2,t2)
 plt.show()

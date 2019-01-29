@@ -128,9 +128,8 @@ plt.title('Weekend')
 plt.ylabel('Probability')
 plt.ylim(0,60)
 plt.tight_layout()
-plt.show()
 plt.savefig('../../Dropbox/papers/uncontrolled/img/clusterPdfs.eps', format='eps', dpi=1000)
-#plt.show()
+plt.show()
 
 # first let's store the individual pdf
 with open(stem+'clusterPdf.csv','w') as csvfile:
