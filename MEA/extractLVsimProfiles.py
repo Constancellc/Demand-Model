@@ -67,7 +67,7 @@ with open(charges,'r',encoding='utf-8') as csvfile:
             continue
         if day > dayE:
             continue
-        dayN = (day-dayS).days
+        dayN = int((day-dayS).days)
             
         start = 60*int(row[1][11:13])+int(row[1][14:16])
         kWh = 2*(float(row[4])-float(row[3]))
