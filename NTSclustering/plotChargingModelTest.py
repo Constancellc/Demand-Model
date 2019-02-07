@@ -10,9 +10,11 @@ def get_error(a,true):
     diff = 0
     total = 0
     for t in range(len(a)):
-        diff += abs(a[t]-true[t])
+        diff += np.power(a[t]-true[t],1)
+        #diff += abs(a[t]-true[t])
         total += true[t]
-    print(diff*100/total)
+    print(diff)
+    print(100*np.sqrt(diff/total))
     
 
 d = []

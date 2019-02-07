@@ -8,7 +8,7 @@ stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 # create new figure, axes instances.
 fig=plt.figure(figsize=(6,8) )
 plt.rcParams["font.family"] = 'serif'
-plt.rcParams['font.size'] = 9
+plt.rcParams['font.size'] = 8
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
 # setup mercator map projection.
 m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=58.7,\
