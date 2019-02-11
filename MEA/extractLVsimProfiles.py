@@ -85,7 +85,7 @@ with open(charges,'r',encoding='utf-8') as csvfile:
                     nextUse = trip
         # finally - hack to ensure that there is 1 min constraint
         if nextUse == 1440:
-            nextUse = start-1
+            nextUse = start-60
 
         charge[vehicle].append([dayN,start,nextUse,kWh,wd])
         
