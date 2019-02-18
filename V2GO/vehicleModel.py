@@ -11,6 +11,9 @@ class Drivecycle:
         for i in range(len(vt)):
             v.append(vt[i][1]*0.277778) # meters per second
             t.append(vt[i][0]) # seconds
+            print(v[-1])
+            print(t[-1])
+            print('')
             if t[-1] < 60:
                 s += v[-1]*t[-1]
 

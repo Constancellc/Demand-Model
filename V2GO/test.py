@@ -15,6 +15,8 @@ from vehicleModel import Vehicle, Drivecycle
 day0 = datetime.datetime(2016,11,16)
 # ok first I think I should sort the data into driving days
 profiles = {}
+
+bad = []
 with open('../../Documents/V2GO/356449064315004_2016-11-16_to_2016-11-30.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
@@ -28,6 +30,9 @@ with open('../../Documents/V2GO/356449064315004_2016-11-16_to_2016-11-30.csv','r
         d = (day-day0).days
         v = float(row[-1])
 
+        if v > 100:
+            bad.append(row[0])
+        
         if d not in profiles:
             profiles[d] = {}
 
@@ -36,6 +41,7 @@ with open('../../Documents/V2GO/356449064315004_2016-11-16_to_2016-11-30.csv','r
 
         profiles[d][h].append([t,v])
 
+print(bad)
 energy = []
 distance = {}
 for d in profiles:
