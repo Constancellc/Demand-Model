@@ -4,11 +4,12 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, spdiag, sparse, solvers
+solvers.options['show_progress'] = False
 
 # ok here is how it's going to go.
 simulationDay = 3
-nMC = 800
-nH = 50
+nMC = 80
+nH = 55
 c_eff = 0.9
 capacity = 30 # kWh
 pMax = 7.0 # kW
@@ -18,6 +19,40 @@ pMax_ = 7.0 # kW for V2G
 This is the right one
 
 '''
+
+# get losses cost matricies
+with open('EULV/c.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        _c = float(row[0])
+
+    _q = []
+    with open('EULV/q.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            _q.append(float(row[0]))
+    _q = matrix(_q)
+
+    _P = matrix(0.0,(nH,nH))
+    with open('EULV/P.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        i = 0
+        for row in reader:
+            for j in range(len(row)):
+                _P[i,j] += float(row[j])
+            i += 1
+
+def getLosses(vProfiles):
+    # vProfiles will be a list of profiles up to 55
+    losses = 0
+    for t in range(1440):
+        y = [0]*55
+        for i in range(len(vProfiles)):
+            y[i] -= vProfiles[i][t]*1000
+        y = matrix(y)
+        losses += (y.T*_P*y+_q.T*y)[0]+_c
+    return losses/1000
+    
 
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
@@ -94,11 +129,12 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
+for pen in [1]:#0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
     for mc in range(nMC):
+        print(mc)
         chosenH = []
         while len(chosenH) < nH:
             ranH = int(random.random()*len(hhProfiles))
@@ -196,18 +232,24 @@ for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
 
         # work out totol power demand and battery throughput
         total1 = [0.0]*1440
+        vProfiles = []
+        for i in range(nH):
+            vProfiles.append(interpolate(hhProfiles[chosenH[i]],30))
         through1 = sum(b)
         for t in range(1440):
             total1[t] += totalH[t]
             for v in range(n):
                 total1[t] += x[1440*v+t]
+                vProfiles[v][t] += x[1440*v+t]
                 through1 += x[1440*v+t]*c_eff/60
+        losses1 = getLosses(vProfiles)
                 
         del A
         del G
         del h
         del P
         del q
+        del vProfiles
                 
         # I think I actually need to reformulate for V2G,
         # defining seperate variables for charigng and discharging
@@ -246,16 +288,24 @@ for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
 
         # work out totol power demand
         total2 = [0.0]*1440
+        vProfiles = []
+        for i in range(nH):
+            vProfiles.append(interpolate(hhProfiles[chosenH[i]],30))
         through2 = sum(b)
         for t in range(1440):
             total2[t] += totalH[t]
             for v in range(n):
                 total2[t] += x[1440*v+t]
+                vProfiles[v][t] += x[1440*v+t]
                 total2[t] -= x[1440*(v+n)+t]
+                vProfiles[v][t] -= x[1440*(v+n)+t]
                 through2 += c_eff*x[1440*v+t]/(60) + x[1440*(v+n)+t]/(60*c_eff)
-                
-        g2v.append([max(total1),through1/n])
-        v2g.append([max(total2),through2/n])
+
+        
+        losses2 = getLosses(vProfiles)
+        
+        g2v.append([max(total1),through1/n,losses1])
+        v2g.append([max(total2),through2/n,losses2])
 
         del A
         del b
@@ -280,7 +330,8 @@ for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
               'w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Sim No','Peak Demand (kW)','Throughput (kWh)',
-                         'Peak Demand2 (kW)','Throughput2 (kWh)'])
+                         'Losses (kWh)','Peak Demand2 (kW)','Throughput2 (kWh)',
+                         'Losses2 (kWh)'])
         for row in existing:
             writer.writerow(row)
         for i in range(len(g2v)):

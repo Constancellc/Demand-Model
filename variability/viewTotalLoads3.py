@@ -42,7 +42,7 @@ plt.rcParams['font.size'] = 9
 t_ = range(0,1440)
 x_ = np.linspace(4*60,20*60,num=3)
 x_ticks = ['04:00','12:00','20:00']
-titles = {1:'No EVs',2:'Uncontrolled',3:'Load Flattening',4:'Loss Minimising'}
+titles = {1:'No EVs',2:'Uncontrolled',3:'Load Flattening',4:'Loss Minimizing'}
 
 
 for typ in [1,2,3,4]:

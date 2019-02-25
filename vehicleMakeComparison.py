@@ -7,6 +7,28 @@ import random
 # get the drivecycle class i wrote to run artemis for a given vehicle / distance
 from vehicleModel import Drivecycle, Vehicle
 
+stem = '../EPA-Code/'
+
+models = {}
+with open(stem+'EVmodelParameters.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        models[row[0]+row[1]] = Vehicle(float(row[3]),float(row[4]),float(row[5]),
+                                  float(row[6]),float(row[7]),float(row[2]))
+
+with open(stem+'kWhPerMile.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['year','model','rural','urban','motorway'])
+    for v in models:
+        vehicle = models[v]
+        vehicle.load = 100
+        e = []
+        for dc in ['rural','urban','motorway']:
+            cycle = Drivecycle(16093,dc)
+            e.append(vehicle.getEnergyExpenditure(cycle,0)/10)
+        writer.writerow([v[:4],v[4:]]+e)
+
 vehicles = {'nissanLeafS':Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0),
             'nissanLeafSL':Vehicle(1647.7,29.61,0.0738,0.02195,0.86,30.0),
             'nissanLeafSV':Vehicle(1704.5,29.92,0.076,0.02195,0.847,30.0),
