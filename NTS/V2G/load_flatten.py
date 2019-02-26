@@ -129,7 +129,7 @@ with open('../../../Documents/sharonb/7591/csv/profiles.csv','rU') as csvfile:
         hhProfiles[c] = p
         c += 1
 
-for pen in [1]:#0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
+for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
     g2v = []
     v2g = []
     # For each MC simulation
