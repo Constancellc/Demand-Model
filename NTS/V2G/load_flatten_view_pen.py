@@ -5,66 +5,87 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 
-plt.figure(figsize=(6,4))
+plt.figure(figsize=(6,6))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '10'
 
 lbls = {'':'UK','texas_':'Texas'}
 
 for loc in ['']:#,'texas_']:
-    bnft = []
-    cost = []
-    bnft_u = []
-    cost_u = []
-    bnft_l = []
-    cost_l = []
+    pk = []
+    tp = []
+    ls = []
+    pk_u = []
+    tp_u = []
+    ls_u = []
+    pk_l = []
+    tp_l = []
+    ls_l = []
 
-    conf = 0.75
+    conf = 0.9
     for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         a = []
         b = []
+        c = []
         with open('../../../Documents/simulation_results/NTS/v2g/'+loc+\
                   'v2g_lf'+str(pen)+'.csv','rU') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                a.append(100*(float(row[1])-float(row[3]))/float(row[1]))
+                a.append(100*(float(row[1])-float(row[4]))/float(row[1]))
                 try:
-                    b.append(100*(float(row[4])-float(row[2]))/float(row[2]))
+                    b.append(100*(float(row[5])-float(row[2]))/float(row[2]))
                 except:
                     b.append(0.0)
+                c.append(100*(float(row[6])-float(row[3]))/float(row[3]))
         '''           
         bnft.append(sum(a)/len(a))
         cost.append(sum(b)/len(b))
         '''
         a = sorted(a)
         b = sorted(b)
-        bnft_u.append(a[int(conf*len(a))])
-        cost_u.append(b[int(conf*len(b))])
-        bnft_l.append(a[int((1-conf)*len(a))])
-        cost_l.append(b[int((1-conf)*len(b))])
-        bnft.append(a[int(0.5*len(a))])
-        cost.append(b[int(0.5*len(b))])
+        c = sorted(c)
+        pk.append(a[int(0.5*len(a))])
+        tp.append(b[int(0.5*len(b))])
+        ls.append(c[int(0.5*len(c))])
+        pk_u.append(a[int(conf*len(a))])
+        tp_u.append(b[int(conf*len(b))])
+        ls_u.append(c[int(conf*len(c))])
+        pk_l.append(a[int((1-conf)*len(a))])
+        tp_l.append(b[int((1-conf)*len(b))])
+        ls_l.append(c[int((1-conf)*len(c))])
         
     #bnft = filt.gaussian_filter1d(bnft,1)
     #cost = filt.gaussian_filter1d(cost,1)
-    plt.subplot(2,1,1)
+    plt.subplot(3,1,1)
     plt.xlim(0,100)
     plt.ylim(0,35)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+bnft_l,[0]+bnft_u,color='#CCCCFF')
-    plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],[0]+bnft,
+                     [0]+pk_l,[0]+pk_u,color='#CCCCFF')
+    plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],[0]+pk,
              c='b')
     plt.ylabel('% Reduction in\nPeak Demand')
     if loc == '':
         plt.grid()
-    plt.subplot(2,1,2)
+        
+    plt.subplot(3,1,2)
     plt.xlim(0,100)
-    plt.ylim(0,100)
+    plt.ylim(-10,10)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-                     [0]+cost_l,[0]+cost_u,color='#CCCCFF')
+                     [0]+ls_l,[0]+ls_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
-             [0]+cost,label=lbls[loc],c='b')
+             [0]+ls,label=lbls[loc],c='b')
+    plt.ylabel('% Increase in\nEnergy Losses')
+    if loc == '':
+        plt.grid()
+    
+    plt.subplot(3,1,3)
+    plt.xlim(0,100)
+    plt.ylim(0,120)
+    plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
+                     [0]+tp_l,[0]+tp_u,color='#CCCCFF')
+    plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
+             [0]+tp,label=lbls[loc],c='b')
     plt.ylabel('% Increase in\nBattery Throughput')
     if loc == '':
         plt.grid()

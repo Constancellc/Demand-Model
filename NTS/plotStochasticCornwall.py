@@ -127,5 +127,5 @@ for m in months:
 
 
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/smart-charging/cornwall.eps', format='eps', dpi=1000)
+#plt.savefig('../../Dropbox/papers/smart-charging/cornwall.eps', format='eps', dpi=1000)
 plt.show()

@@ -315,7 +315,6 @@ for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
         del q
     
     existing = []
-    '''
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
               str(int(100*pen))+'.csv',
               'rU') as csvfile:
@@ -323,7 +322,6 @@ for pen in [0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18]:#np.arange(0.1,1.1,0.1):
         next(reader)
         for row in reader:
             existing.append(row)
-    '''
 
     with open('../../../Documents/simulation_results/NTS/v2g/v2g_lf'+\
               str(int(100*pen))+'.csv',

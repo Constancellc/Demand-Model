@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 ms = {'1':'Jan','2':'Feb','3':'Mar','4':'Apr','5':'May','6':'Jun','7':'Jul',
       '8':'Aug','9':'Sep','10':'Oct','11':'Nov','12':'Dec'}
 
-plt.figure(figsize=(5,4))
+plt.figure(figsize=(9,8))
 plt.rcParams["font.family"] = 'serif'
-plt.rcParams['font.size'] = 8
+plt.rcParams['font.size'] = 12
 x_ticks = ['04:00','12:00','20:00']
 xx = [8,24,40]
 for mo in range(1,13):
@@ -61,11 +61,14 @@ for mo in range(1,13):
             c += 1
         p5.append(sum(s)/len(s))
     plt.subplot(4,3,mo)
+
+    if mo in [1,4,7,10]:
+        plt.ylabel('Generation (%)')
     plt.title(ms[str(mo)],y=0.65)
     plt.fill_between(range(48),p1,p5,color='#c0d6f9')
     plt.fill_between(range(48),p2,p4,color='#7fadff')
     plt.plot(p3,'b')
-    plt.ylim(0,95)
+    plt.ylim(0,100)
     plt.grid()
     plt.xticks(xx,x_ticks)
     plt.xlim(0,48)
@@ -87,6 +90,6 @@ for mo in range(1,13):
         writer.writerow(p4)
         writer.writerow(p5)
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/smart-charging/pv.eps', format='eps', dpi=1000)
+#plt.savefig('../../Dropbox/papers/smart-charging/pv.eps', format='eps', dpi=1000)
 
 plt.show()
