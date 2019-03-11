@@ -22,7 +22,7 @@ for loc in ['']:#,'texas_']:
     tp_l = []
     ls_l = []
 
-    conf = 0.9
+    conf = 0.8
     for pen in [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100]:
         a = []
         b = []
@@ -59,7 +59,7 @@ for loc in ['']:#,'texas_']:
     #cost = filt.gaussian_filter1d(cost,1)
     plt.subplot(3,1,1)
     plt.xlim(0,100)
-    plt.ylim(0,35)
+    plt.ylim(0,40)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
                      [0]+pk_l,[0]+pk_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],[0]+pk,
@@ -70,7 +70,7 @@ for loc in ['']:#,'texas_']:
         
     plt.subplot(3,1,2)
     plt.xlim(0,100)
-    plt.ylim(-10,10)
+    plt.ylim(-4,6)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
                      [0]+ls_l,[0]+ls_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
@@ -81,7 +81,7 @@ for loc in ['']:#,'texas_']:
     
     plt.subplot(3,1,3)
     plt.xlim(0,100)
-    plt.ylim(0,120)
+    plt.ylim(0,250)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
                      [0]+tp_l,[0]+tp_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100],
