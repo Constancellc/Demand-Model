@@ -21,7 +21,10 @@ for r in results:
         for row in reader:
             for i in range(1,len(row)):
                 results[r][t].append(float(row[i]))
+                
             t += 1
+            if t == 1400:
+                t -= 1440
 
 # then find mean and bounds for each
 m = {1:[],2:[],3:[],4:[]}

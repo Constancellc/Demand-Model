@@ -78,15 +78,17 @@ def find_nearest(p1):
 
 
 # make these smaller to increase the resolution
-x = np.arange(-1.87,-0.8,0.001)
-y = np.arange(51.46,52.18,0.001)
+x = np.arange(-1.74,-0.8,0.005)
+y = np.arange(51.45,52.19,0.005)
 
 Z = np.zeros((len(x),len(y)))
 X = np.zeros((len(x),len(y)))
 Y = np.zeros((len(x),len(y)))
 
-x_l,y_h = m(-1.8785,52.1767)
-x_h,y_l = m(-0.7950,51.4568)
+#x_l,y_h = m(-1.8785,52.1767)
+#x_h,y_l = m(-0.7950,51.4568)
+x_l,y_h = m(-1.7270,52.1761)
+x_h,y_l = m(-0.8598,51.4579)
 
 for i in range(len(x)):
     for j in range(len(y)):
@@ -97,12 +99,12 @@ for i in range(len(x)):
         Y[i,j] = ypt
         Z[i,j] = z[best]
 
-im = plt.imread('oxfordshire.png')
+im = plt.imread('../../Downloads/oxfordshire.png')
 
 plt.imshow(im,extent=[int(x_l),int(x_h),int(y_l),int(y_h)])
-m.pcolor(X,Y,Z,vmax=70,cmap='inferno',alpha=0.15)
-plt.xlim(x_l+10000,x_h-5000)
-plt.ylim(y_l+1000,y_h-1000)
+m.pcolor(X,Y,Z,vmax=50,cmap='OrRd',alpha=0.5)
+plt.xlim(x_l+1,x_h-1)
+plt.ylim(y_l+1,y_h-1)
 plt.savefig('../../Documents/Oxfordshire.pdf', format='pdf',
             dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.colorbar()

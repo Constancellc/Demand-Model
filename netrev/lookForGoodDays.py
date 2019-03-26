@@ -54,6 +54,10 @@ with open(stem+'1minProfiles.csv','w') as csvfile:
                 writer.writerow([l,d,t,hh[l][d][t]])
 
 #'''
+
+
+smallest = 1000
+biggest = 0
 hh = {}
 with open(stem+'1minProfiles.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
@@ -64,7 +68,13 @@ with open(stem+'1minProfiles.csv','rU') as csvfile:
         if row[1] not in hh[row[0]]:
             hh[row[0]][row[1]] = [0]*1440
         hh[row[0]][row[1]][int(row[2])] = float(row[3])
+        if int(row[1]) > biggest:
+            biggest = int(row[1])
+        if int(row[1]) < smallest:
+            smallest = int(row[1])
 
+print(day0+datetime.timedelta(smallest))
+print(day0+datetime.timedelta(biggest))
 def check_for_errors(p):
     nZero = 0
     for t in range(len(p)):
