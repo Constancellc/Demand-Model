@@ -77,8 +77,13 @@ for v in journeyLogs:
     for t in range(1440):
         p_home[t] += 1-a[t]
 
+av = 0
+
 for i in range(len(dist)):
     dist[i] = dist[i]/len(journeyLogs)
+    av += 10*i*dist[i]
+
+print(av)
 for t in range(1440):
     p_home[t] = p_home[t]/len(journeyLogs)
 
@@ -161,8 +166,13 @@ for v in journeyLogs:
     for t in range(1440):
         p_home2[t] += 1-a[t]
 
+av = 0
 for i in range(len(dist)):
     dist2[i] = dist2[i]/len(journeyLogs)
+    av += 10*i*dist2[i]
+
+print(av)
+    
 for t in range(1440):
     p_home2[t] = p_home2[t]/len(journeyLogs)
 print(len(journeyLogs))
