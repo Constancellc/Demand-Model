@@ -4,10 +4,11 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, spdiag, sparse, solvers
+import scipy.ndimage.filters as filt
 
 # ok here is how it's going to go.
 simulationDay = 3
-nH = 50
+nH = 300
 c_eff = 0.9
 capacity = 30 # kWh
 pMax = 3.5 # kW
@@ -26,45 +27,50 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
-def v2g_eval(hh,e0,delta,constrain=[]):
+def v2g_eval(hh,e0,delta,constrain=[],limit=0):
     over = 0
     p = (e0+delta)/24
     p = p*(1440/(1440-len(constrain)))
     for t in range(1440):
-        if hh[t] > p and t not in constrain:
+        if hh[t] > p and (t not in constrain or p<limit):
             over += hh[t]/60
     return over
 
-def flatten_v2g(hh,eV,constrain=[]):
+def flatten_v2g(hh,eV,constrain=[],limit=0):
     e0 = sum(hh)/60 + eV
     delta = 0
     for i in range(10):
-        over = v2g_eval(hh,e0,delta,constrain)
+        over = v2g_eval(hh,e0,delta,constrain,limit)
         delta = over*(1/0.81-1)
 
     out = []
     for t in range(1440):
         if t in constrain:
-            out.append(hh[t])
+            if (e0+delta)/24 > limit and limit != 0:
+                out.append(limit)
+            else:
+                out.append(hh[t])
         else:
             out.append((e0+delta)/24)
 
+    out = filt.gaussian_filter1d(out,30)
+
     return [over,out]
 
-def g2v_fill(tot,y,constrain=[]):
+def g2v_fill(tot,y,constrain=[],limit=0):
     en = 0
     for t in range(1440):
-        if tot[t] < y and t not in constrain:
+        if tot[t] < y and (t not in constrain or y<limit):
             en += (y-tot[t])/60
             tot[t] = y
 
     return [tot,en]
 
-def flatten_g2v(hh,eV,constrain=[]):
+def flatten_g2v(hh,eV,constrain=[],limit=0):
     total = copy.deepcopy(hh)
     p = min(total)+0.1
     while eV > 0:
-        [total,en] = g2v_fill(total,p,constrain)
+        [total,en] = g2v_fill(total,p,constrain,limit)
         eV -= en
         p += 0.01
 
@@ -120,14 +126,15 @@ with open('../../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfil
 # get household profiles
 c = 0
 hhProfiles = {}
-with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
+with open('../../../Documents/pecan-street/hourly-texas/profiles.csv',
           'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
         p = [0.0]*48
-        for t in range(1440):
-            p[int(t/30)] += float(row[t])/30
+        for t in range(48):
+            p[t] += float(row[t])
+        p = filt.gaussian_filter1d(p,1)
         hhProfiles[c] = p
         c += 1
 
@@ -153,23 +160,23 @@ pn = 1
 t_ = np.linspace(0,24,num=1440)
 for pen in [1.0,0.75,0.5,0.25]:
     nV = int(nH*pen)
-    eV = nV*5
+    eV = nV*9
     if pen == 0.25:
-        constrain = list(range(727,900))
-    elif pen == 0.5:
+        constrain = list(range(657,900))
+    elif pen == 0.55:
         constrain = list(range(444,611))
     else:
         constrain = []
 
-    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain)
-    tot2 = flatten_g2v(totalH,eV/0.9,constrain)
+    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain,limit=400)
+    tot2 = flatten_g2v(totalH,eV/0.9,constrain,limit=400)
     
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
     plt.plot(t_,tot2,c='g',label='G2V')
     plt.plot(t_,tot1,c='r',ls='--',label='V2G')
     plt.title(str(int(100*pen))+'%',y=0.8)
-    plt.ylim(1.3*min(totalH),1.3*max(tot2))
+    plt.ylim(0.7*min(totalH),1.3*max(tot2))
     plt.xticks([4,12,20],['04:00','12:00','20:00'])
     plt.xlim(0,24)
     if pn in [1,3]:
@@ -177,10 +184,10 @@ for pen in [1.0,0.75,0.5,0.25]:
     plt.grid()
     pn += 1
     if pn == 2:
-        plt.legend(ncol=1,loc=3)
+        plt.legend(ncol=1,loc=2)
 
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles2.eps',dpi=1000,
+plt.savefig('../../../Dropbox/papers/V2G/img/profiles2.eps',dpi=1000,
             format='eps')
 plt.show()
 

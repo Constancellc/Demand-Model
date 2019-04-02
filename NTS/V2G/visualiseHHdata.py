@@ -2,7 +2,8 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-
+import scipy.ndimage.filters as filt
+'''
 c = 0
 hhProfiles = {}
 with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
@@ -13,6 +14,20 @@ with open('../../../Documents/pecan-street/1min-texas/profiles.csv',
         p = [0.0]*48
         for t in range(1440):
             p[int(t/30)] += float(row[t])/30
+        hhProfiles[c] = p
+        c += 1
+'''
+c = 0
+hhProfiles = {}
+with open('../../../Documents/pecan-street/hourly-texas/profiles.csv',
+          'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        p = [0.0]*48
+        for t in range(48):
+            p[t] += float(row[t])
+        p = filt.gaussian_filter1d(p,1)
         hhProfiles[c] = p
         c += 1
 
@@ -42,7 +57,7 @@ plt.ylabel('Power (kW)')
 plt.grid()
 plt.xlim(0.25,23.75)
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/texas_hh.eps',
+plt.savefig('../../../Dropbox/papers/V2G/img/texas_hh.eps',
             format='eps', dpi=1000)
 
 
@@ -89,7 +104,7 @@ plt.ylabel('Power (kW)')
 plt.grid()
 plt.xlim(0.25,23.75)
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/uk_hh.eps',
+plt.savefig('../../../Dropbox/papers/V2G/img/uk_hh.eps',
             format='eps', dpi=1000)
 
 plt.show()

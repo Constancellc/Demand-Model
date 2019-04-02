@@ -12,7 +12,7 @@ plt.rcParams["font.size"] = '10'
 
 lbls = {'':'UK','texas_':'Texas'}
 
-for loc in ['texas_']:#,'texas_']:
+for loc in ['']:#,'texas_']:
     bnft = []
     cost = []
     bnft_u = []
@@ -29,7 +29,7 @@ for loc in ['texas_']:#,'texas_']:
             reader = csv.reader(csvfile)
             next(reader)
             for row in reader:
-                a.append(100*(float(row[1])-float(row[4]))/(1167+float(row[1])))
+                a.append(100*(float(row[1])-float(row[4]))/(float(row[1])))
                 try:
                     b.append(100*(float(row[5])-float(row[2]))/float(row[2]))
 
@@ -58,25 +58,25 @@ for loc in ['texas_']:#,'texas_']:
     cost_l = filt.gaussian_filter1d([0]+cost_l,0.5)
     plt.subplot(2,1,1)
     plt.xlim(0,100)
-    plt.ylim(0,25)
+    plt.ylim(0,42)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-                     bnft_l,bnft_u,color='#CCFFCC')
+                     bnft_l,bnft_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],bnft,
-             c='g')
+             c='b')
     plt.ylabel('% Reduction in\nPeak Demand')
     plt.grid()
     plt.subplot(2,1,2)
     plt.xlim(0,100)
-    plt.ylim(0,350)
+    plt.ylim(0,370)
     plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-                     cost_l,cost_u,color='#CCFFCC')
+                     cost_l,cost_u,color='#CCCCFF')
     plt.plot([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-             cost,label=lbls[loc],c='g')
+             cost,label=lbls[loc],c='b')
     plt.ylabel('% Increase in\nBattery Throughput')
     plt.grid()
     plt.xlabel('% Households with an EV')
     plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/V2G/img/texas_results.eps',
+plt.savefig('../../../Dropbox/papers/V2G/img/results.eps',
             format='eps', dpi=1000)
 
 
@@ -151,13 +151,13 @@ while d_u[i] > c_l[i] and i < len(x)-1:
     i += 1
     
 plt.xlim(0,100)
-plt.plot(x,d,c='g',ls='--')
+plt.plot(x,d,c='b',ls='--')
 plt.grid()
 plt.xlim(0,100)
 plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-                 c_l,c_u,color='#CCFFCC')
+                 c_l,c_u,color='#CCCCFF')
 plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-                 d_l,d_u,facecolor='#FFFF99',edgecolor='grey',
+                 d_l,d_u,facecolor='#FF99FF',edgecolor='grey',
                  linewidth=0.0)
 #plt.fill_between(x_o,l_o,u_o)
 #plt.fill_between(x_o2,l_o2,u_o2)
@@ -166,9 +166,9 @@ plt.fill_between([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
                  d_l,d_u,facecolor='None',hatch='//',edgecolor='grey',
                  linewidth=0.0)'''
 plt.plot([0,2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100],
-         c,label=lbls[loc],c='g')
+         c,label=lbls[loc],c='b')
 plt.ylabel('Increase in Losses  (kWh/day)')
-plt.ylim(-2,25)
+plt.ylim(-0.2,5)
 plt.xlabel('% Households with an EV')
 
 
@@ -180,20 +180,20 @@ def draw_box(x_l,y_l,x_u,y_u,c,ls):
     plt.plot([x_l,x_u],[y_u,y_u],c=c,ls=ls)
     
 
-rect = pat.Rectangle((57,14.1),38,8,facecolor='w',edgecolor='gray',zorder=2)
+rect = pat.Rectangle((57,2.5),38,1.75,facecolor='w',edgecolor='gray',zorder=2)
 ax.add_patch(rect)
-rect2 = pat.Rectangle((59,18.5),5,2.5,facecolor='#CCFFCC',edgecolor='none',zorder=2)
+rect2 = pat.Rectangle((59,3.5),5,0.5,facecolor='#CCCCFF',edgecolor='none',zorder=2)
 ax.add_patch(rect2)
-rect3 = pat.Rectangle((59,15),5,2.5,facecolor='#FFFF99',edgecolor='gray',
+rect3 = pat.Rectangle((59,2.75),5,0.5,facecolor='#FF99FF',edgecolor='gray',
                       zorder=2,linewidth=0.0)
 ax.add_patch(rect3)
-plt.plot([59,64],[19.75,19.75],c='g')
-plt.plot([59,64],[16.25,16.25],c='g',ls='--')
-plt.annotate('Total Losses',(66,19.2))
-plt.annotate('Distribution Losses',(66,15.8))
+plt.plot([59,64],[3.75,3.75],c='b')
+plt.plot([59,64],[3,3],c='b',ls='--')
+plt.annotate('Total Losses',(66,3.6))
+plt.annotate('Distribution Losses',(66,2.85))
 
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/V2G/img/texas_results2.eps',
+plt.savefig('../../../Dropbox/papers/V2G/img/results2.eps',
             format='eps', dpi=1000)
 
 
