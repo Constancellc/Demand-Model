@@ -9,7 +9,7 @@ stem = '../../Documents/simulation_results/LV/manc-models/'
 
 # first get data
 results = {1:[],2:[],3:[],4:[]}
-fs = {1:'b',2:'u',3:'f',4:'m'}
+fs = {1:'b',2:'u',4:'f',3:'m'}
 
 for r in results:
     with open(stem+'1-loads-'+fs[r]+'.csv','rU') as csvfile:
@@ -45,7 +45,7 @@ plt.rcParams['font.size'] = 9
 t_ = range(0,1440)
 x_ = np.linspace(4*60,20*60,num=3)
 x_ticks = ['04:00','12:00','20:00']
-titles = {1:'No EVs',2:'Uncontrolled',3:'Load Flattening',4:'Loss Minimizing'}
+titles = {1:'No EVs',2:'Uncontrolled',4:'Load Flattening',3:'Loss Minimising'}
 
 
 for typ in [1,2,3,4]:

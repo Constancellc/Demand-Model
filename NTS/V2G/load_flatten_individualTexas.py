@@ -8,7 +8,7 @@ import scipy.ndimage.filters as filt
 
 # ok here is how it's going to go.
 simulationDay = 3
-nH = 300
+nH = 311
 c_eff = 0.9
 capacity = 30 # kWh
 pMax = 3.5 # kW
@@ -53,7 +53,7 @@ def flatten_v2g(hh,eV,constrain=[],limit=0):
         else:
             out.append((e0+delta)/24)
 
-    out = filt.gaussian_filter1d(out,30)
+    out = filt.gaussian_filter1d(out,40)
 
     return [over,out]
 
@@ -152,24 +152,50 @@ for h in chosenH:
     for t in range(1440):
         totalH[t] += p[t]
 
+t_ = np.linspace(0,24,num=1440)
+plt.figure(figsize=(3,2))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+
+eV = nH*9
+[over,tot1] = flatten_v2g(totalH,eV/0.9)
+tot2 = flatten_g2v(totalH,eV/0.9)
+plt.plot(t_,totalH,c='k',ls=':',label='Base')
+plt.plot(t_,tot2,c='g',label='G2V')
+plt.plot(t_,tot1,c='r',ls='--',label='V2G')
+plt.ylim(0.7*min(totalH),1.3*max(tot2))
+plt.xticks([4,12,20],['04:00','12:00','20:00'])
+plt.xlim(0,24)
+plt.yticks([250,500,750,1000],['0.2','0.4','0.6','0.8','1.0','1.2'])
+plt.legend()
+plt.ylabel('Power (MW)')
+plt.grid()
+
+plt.tight_layout()
+plt.savefig('../../../Dropbox/papers/V2G/img/profiles2.eps',dpi=1000,
+            format='eps')
+
 plt.figure(figsize=(6,4))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 # then get the vehicles
 pn = 1
 t_ = np.linspace(0,24,num=1440)
-for pen in [1.0,0.75,0.5,0.25]:
+for pen in [1.0,0.5,0.25,0.1]:
     nV = int(nH*pen)
     eV = nV*9
+    lim = None
     if pen == 0.25:
-        constrain = list(range(657,900))
-    elif pen == 0.55:
-        constrain = list(range(444,611))
+        constrain = list(range(657,730))+list(range(803,900))
+        lim = 386
+    elif pen == 0.1:
+        constrain = list(range(487,673))+list(range(671,1060))
+        lim = 210
     else:
         constrain = []
 
-    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain,limit=400)
-    tot2 = flatten_g2v(totalH,eV/0.9,constrain,limit=400)
+    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain,limit=lim)
+    tot2 = flatten_g2v(totalH,eV/0.9,constrain,limit=lim)
     
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
@@ -187,7 +213,7 @@ for pen in [1.0,0.75,0.5,0.25]:
         plt.legend(ncol=1,loc=2)
 
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/V2G/img/profiles2.eps',dpi=1000,
-            format='eps')
+#plt.savefig('../../../Dropbox/papers/V2G/img/profiles2.eps',dpi=1000,
+#            format='eps')
 plt.show()
 

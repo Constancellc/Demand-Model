@@ -4,14 +4,16 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, spdiag, sparse, solvers
+import scipy.ndimage.filters as filt
 
 # ok here is how it's going to go.
 simulationDay = 3
-nH = 50
+nH = 55
 c_eff = 0.9
 capacity = 30 # kWh
 pMax = 3.5 # kW
 pMax_ = 3.5 # kW for V2G
+
 
 def interpolate(x0,T):
     x1 = [0.0]*(len(x0)*T)
@@ -25,42 +27,55 @@ def interpolate(x0,T):
         x1[t] = (1-f)*x0[p1]+f*x0[p2]
     return x1
 
-def v2g_eval(hh,e0,delta):
+
+def v2g_eval(hh,e0,delta,constrain=[],limit=0):
     over = 0
     p = (e0+delta)/24
+    p = p*(1440/(1440-len(constrain)))
     for t in range(1440):
-        if hh[t] > p:
+        if hh[t] > p and (t not in constrain or p<limit):
             over += hh[t]/60
     return over
 
-def flatten_v2g(hh,eV):
+def flatten_v2g(hh,eV,constrain=[],limit=0):
     e0 = sum(hh)/60 + eV
     delta = 0
     for i in range(10):
-        over = v2g_eval(hh,e0,delta)
+        over = v2g_eval(hh,e0,delta,constrain,limit)
         delta = over*(1/0.81-1)
 
-    return [over,[(e0+delta)/24]*1440]
+    out = []
+    for t in range(1440):
+        if t in constrain:
+            if (e0+delta)/24 > limit and limit != 0:
+                out.append(limit)
+            else:
+                out.append(hh[t])
+        else:
+            out.append((e0+delta)/24)
 
-def g2v_fill(tot,y):
+    out = filt.gaussian_filter1d(out,40)
+
+    return [over,out]
+
+def g2v_fill(tot,y,constrain=[],limit=0):
     en = 0
     for t in range(1440):
-        if tot[t] < y:
+        if tot[t] < y and (t not in constrain or y<limit):
             en += (y-tot[t])/60
             tot[t] = y
 
     return [tot,en]
 
-def flatten_g2v(hh,eV):
+def flatten_g2v(hh,eV,constrain=[],limit=0):
     total = copy.deepcopy(hh)
     p = min(total)+0.1
     while eV > 0:
-        [total,en] = g2v_fill(total,p)
+        [total,en] = g2v_fill(total,p,constrain,limit)
         eV -= en
         p += 0.01
 
     return total
-
 
 # First we gotta get vehicle usage and household demand.
 
@@ -139,18 +154,49 @@ for h in chosenH:
     for t in range(1440):
         totalH[t] += p[t]
 
+plt.figure(figsize=(3,2))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
+t_ = np.linspace(0,24,num=1440)
+
+eV = nH*6
+[over,tot1] = flatten_v2g(totalH,eV/0.9)
+tot2 = flatten_g2v(totalH,eV/0.9)
+plt.plot(t_,totalH,c='k',ls=':')
+plt.plot(t_,tot2,c='b',label='G2V')
+plt.plot(t_,tot1,c='r',ls='--',label='V2G')
+plt.ylim(0,1.4*max(totalH))
+plt.xticks([4,12,20],['04:00','12:00','20:00'])
+plt.xlim(0,24)
+plt.ylabel('Power (kW)')
+plt.grid()
+plt.legend(ncol=2)
+
+plt.tight_layout()
+plt.savefig('../../../Dropbox/papers/V2G/img/profiles.eps',dpi=1000,
+            format='eps')
+
 plt.figure(figsize=(6,4))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '9'
 # then get the vehicles
 pn = 1
 t_ = np.linspace(0,24,num=1440)
-for pen in [1.0,0.75,0.5,0.25]:
+for pen in [1.0,0.5,0.25,0.1]:
     nV = int(nH*pen)
-    eV = nV*5
+    eV = nV*9
+    lim = None
+    if pen == 0.25:
+        constrain = list(range(657,900))
+        lim = 386
+    elif pen == 0.1:
+        constrain = list(range(471,603))+list(range(671,900))
+        lim = 287
+    else:
+        constrain = []
 
-    [over,tot1] = flatten_v2g(totalH,eV/0.9)
-    tot2 = flatten_g2v(totalH,eV/0.9)
+    [over,tot1] = flatten_v2g(totalH,eV/0.9,constrain,limit=lim)
+    tot2 = flatten_g2v(totalH,eV/0.9,constrain,limit=lim)
     
     plt.subplot(2,2,pn)
     plt.plot(t_,totalH,c='k',ls=':',label='Base')
@@ -167,7 +213,7 @@ for pen in [1.0,0.75,0.5,0.25]:
 plt.legend(ncol=2)
 
 plt.tight_layout()
-plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,
-            format='eps')
+#plt.savefig('../../../Dropbox/papers/PES-GM-19/img/profiles.eps',dpi=1000,
+#            format='eps')
 plt.show()
 

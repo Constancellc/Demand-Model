@@ -149,7 +149,6 @@ for pen in [2,4,6,8,10,12,14,16,18,20,22,25,30,40,50,60,70,80,90,100]:
     v2g = []
     # For each MC simulation
     for mc in range(nMC):
-        print(mc)
         chosenH = []
         while len(chosenH) < nH:
             ranH = int(random.random()*len(hhProfiles))
