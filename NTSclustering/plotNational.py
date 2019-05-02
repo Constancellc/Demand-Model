@@ -3,298 +3,105 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import copy
+import datetime
 
-
+day0 = datetime.datetime(2018,1,1)
 stem = '../../Documents/simulation_results/NTS/national/'
 
-base = [29065,
-        28666,
-        28749,
-        28838,
-        28809,
-        28789,
-        28772,
-        28773,
-        29077,
-        29370,
-        29540,
-        29569,
-        29569,
-        29631,
-        29891,
-        29912,
-        29852,
-        29806,
-        29785,
-        29646,
-        29504,
-        29345,
-        29220,
-        29049,
-        28994,
-        28917,
-        29056,
-        29179,
-        29166,
-        29119,
-        29029,
-        28968,
-        29089,
-        29146,
-        29030,
-        28911,
-        28750,
-        28740,
-        29054,
-        29072,
-        29000,
-        28921,
-        28856,
-        28766,
-        28704,
-        28575,
-        28463,
-        28351,
-        28340,
-        28359,
-        28396,
-        28411,
-        28453,
-        28459,
-        28464,
-        28477,
-        28507,
-        28454,
-        28443,
-        28506,
-        28545,
-        28586,
-        28840,
-        28934,
-        28968,
-        29321,
-        29591,
-        29610,
-        29527,
-        29752,
-        29907,
-        30217,
-        30595,
-        30932,
-        31645,
-        32415,
-        32761,
-        33026,
-        33662,
-        33662,
-        33925,
-        34451,
-        34985,
-        35542,
-        36230,
-        36767,
-        37303,
-        38222,
-        39069,
-        39715,
-        40178,
-        40456,
-        40617,
-        40906,
-        41192,
-        41337,
-        41337,
-        41323,
-        41344,
-        41520,
-        41678,
-        41693,
-        41641,
-        41593,
-        41627,
-        41602,
-        41642,
-        41571,
-        41571,
-        41635,
-        41763,
-        41901,
-        42061,
-        42145,
-        42074,
-        42071,
-        42022,
-        41889,
-        41812,
-        41777,
-        41663,
-        41505,
-        41391,
-        41315,
-        41132,
-        41073,
-        40905,
-        40798,
-        40786,
-        40758,
-        40693,
-        40412,
-        40412,
-        40414,
-        40447,
-        40414,
-        40265,
-        40180,
-        40007,
-        40007,
-        40059,
-        40051,
-        40037,
-        40082,
-        40082,
-        40160,
-        40169,
-        40154,
-        40196,
-        40230,
-        40111,
-        40192,
-        40350,
-        40191,
-        40191,
-        40174,
-        40049,
-        40020,
-        40338,
-        40509,
-        40558,
-        40632,
-        40630,
-        40579,
-        40632,
-        40705,
-        40666,
-        40710,
-        40738,
-        40757,
-        40924,
-        41035,
-        40989,
-        40940,
-        41120,
-        41322,
-        41250,
-        41332,
-        41268,
-        41327,
-        41368,
-        41476,
-        41582,
-        41716,
-        41800,
-        42009,
-        42091,
-        42389,
-        42710,
-        43019,
-        43025,
-        43328,
-        43592,
-        43555,
-        43261,
-        43717,
-        44188,
-        44532,
-        44789,
-        45091,
-        45585,
-        46455,
-        47140,
-        47663,
-        47965,
-        48117,
-        48136,
-        48232,
-        48271,
-        48425,
-        48544,
-        48604,
-        48695,
-        48657,
-        48542,
-        48591,
-        48467,
-        48377,
-        48364,
-        48277,
-        48249,
-        48072,
-        47914,
-        47722,
-        47720,
-        47714,
-        47496,
-        47367,
-        47168,
-        47008,
-        47223,
-        47318,
-        47124,
-        46840,
-        46492,
-        46230,
-        46260,
-        45991,
-        45525,
-        45185,
-        44806,
-        44694,
-        44749,
-        44653,
-        44365,
-        44042,
-        43681,
-        43187,
-        42767,
-        42441,
-        42072,
-        41934,
-        41843,
-        41584,
-        41274,
-        40930,
-        40428,
-        40059,
-        39693,
-        39366,
-        39029,
-        38528,
-        38172,
-        37880,
-        37521,
-        37241,
-        36902,
-        36533,
-        36096,
-        35752,
-        35365,
-        34857,
-        34667,
-        34403,
-        34018,
-        33630,
-        33270,
-        32756,
-        32659,
-        32493,
-        32417,
-        32278,
-        32071,
-        31782,
-        31550,
-        31476,
-        31352,
-        31217]
+stem2 = '../../Documents/elec_demand/'
+
+def fill(p,new):
+    p_ = copy.deepcopy(p)
+    while new > 0:
+        lwst = np.argmin(p_)
+        p_[lwst] += 0.01
+        new -= 0.01
+
+    return p_
+
+tm = ['sp','su','au','wt']
+ttls = ['Spring','Summer','Autumn','Winter']
+u = {'sp':[0.0]*288,'su':[0.0]*288,'wt':[0.0]*288,'au':[0.0]*288}
+d = {'sp':[0.0]*288,'su':[0.0]*288,'wt':[0.0]*288,'au':[0.0]*288}
+
+for fg in tm:
+    with open(stem+'uncontrolled_'+fg+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            try:
+                d[fg][int(int(row[0])/5)] += float(row[1])/5000000
+                u[fg][int(int(row[0])/5)] += float(row[2])/5000000
+            except:
+                print(row[0])
+
+av = {'sp':[0.0]*288,'su':[0.0]*288,'wt':[0.0]*288,'au':[0.0]*288}
+
+ttls = ['Spring','Summer','Autumn','Winter']
+
+for fg in range(4):
+    profiles = {}
+    lgst = 0
+    with open(stem2+tm[fg]+'.csv','rU') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            dt = row[1].replace(' ','')
+            day = datetime.datetime(int(dt[:4]),int(dt[5:7]),int(dt[8:10]))
+            dayN = (day-day0).days
+            if dayN < 1:
+                continue
+            elif day.isoweekday() > 5:
+                continue
+            elif dayN not in profiles:
+                profiles[dayN] = [0.0]*288
+
+            t = int((60*int(dt[10:12])+int(dt[13:15]))/5)
+
+            profiles[dayN][t]+=float(row[2])/1000
+
+    for da in profiles:
+        if sum(profiles[da]) > lgst:
+            lgst = sum(profiles[da])
+            for t in range(288):
+                av[tm[fg]][t] = profiles[da][t]#/len(profiles)
+                if t > 1:
+                    if abs(av[tm[fg]][t]-av[tm[fg]][t-1]) > 2:
+                        av[tm[fg]][t] = av[tm[fg]][t-1]
+
+plt.figure(figsize=(6.5,4.5))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 9
+for f in range(4):
+    plt.subplot(2,2,f+1)
+    plt.plot(av[tm[f]],c='k',ls=':',label='Current')
+    plt.plot(fill(av[tm[f]],sum(u[tm[f]])),label='Controlled',c='r',ls='--')
+
+    for t in range(288):
+        u[tm[f]][t] += av[tm[f]][t]
+        d[tm[f]][t] += av[tm[f]][t]
+    
+    plt.title(ttls[f])
+    #plt.plot(d[tm[f]],label='Uncontrolled (a)',c='g',ls='--')
+    plt.plot(u[tm[f]],label='Uncontrolled',c='b')
+
+    if f in [0,2]:
+        plt.ylabel('Power (GW)')
+    elif f == 1:
+        plt.legend(ncol=1)
+    plt.xticks(np.linspace(23,263,num=5),['02:00','07:00','12:00','17:00','22:00'])
+    #plt.xticks(np.linspace(47,239,num=5),['04:00','08:00','12:00','16:00','20:00'])
+    plt.ylim(20,60)
+    plt.grid()
+    plt.xlim(0,287)
+
+plt.tight_layout()
+
+#plt.savefig('../../Dropbox/thesis/chapter5/img/national.eps', format='eps',
+#            dpi=1000, bbox_inches='tight', pad_inches=0)
+plt.savefig('../../Dropbox/papers/Nature/img/national.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
+plt.show()
 
 dumb = []
 l = []
@@ -309,7 +116,7 @@ for t in range(1440):
     f = float(t%5)/5
     base_.append((1-f)*base[p1]/1000+f*base[p2]/1000)
 base = base_
-with open(stem+'uncontrolled.csv','rU') as csvfile:
+with open(stem+'uncontrolled_smr.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
@@ -317,12 +124,14 @@ with open(stem+'uncontrolled.csv','rU') as csvfile:
         m.append(float(row[2])/1000000+base[int(row[0])])
         l.append(float(row[3])/1000000+base[int(row[0])])
         u.append(float(row[4])/1000000+base[int(row[0])])
-    
+
+print(sum(dumb))
+print(sum(base))
 plt.figure()
 plt.plot(m)
 plt.plot(dumb)
 plt.plot(base,c='k',ls=':')
-plt.fill_between(range(1440),l,u,alpha=0.2)
+#plt.fill_between(range(1440),l,u,alpha=0.2)
 plt.xticks()
 plt.ylim(0,70)
 plt.xlim(0,1439)
@@ -330,5 +139,6 @@ plt.ylabel('Power (GW)')
 plt.xticks([2*60,6*60,10*60,14*60,18*60,22*60],
            ['02:00','06:00','10:00','14:00','18:00','22:00'])
 plt.grid()
+plt.tight_layout()
 plt.show()
 

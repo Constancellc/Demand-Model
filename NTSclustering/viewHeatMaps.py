@@ -23,8 +23,8 @@ for i in range(3):
             s += 1
 
     im = axs[i].imshow(heatmap,aspect='auto',vmin=0,vmax=100,cmap='magma')
-    axs[i].set_yticks([-0.5,2.5,5.5])
-    axs[i].set_yticklabels(['100%','50%','0%'])
+    axs[i].set_yticks([0,2,4])
+    axs[i].set_yticklabels(['6','4','2'])
     axs[i].set_xticks([7.5,15.5,23.5,31.5,39.5])
     axs[i].set_ylabel('SOC')
     if i == 2:
@@ -56,8 +56,8 @@ for i in range(3):
             s += 1
     #plt.subplot(3,1,i+1)
     im = axs[i].imshow(heatmap,aspect='auto',vmin=0,vmax=100,cmap='magma')
-    axs[i].set_yticks([-0.5,2.5,5.5])
-    axs[i].set_yticklabels(['100%','50%','0%'])
+    axs[i].set_yticks([0,2,4])
+    axs[i].set_yticklabels(['6','4','2'])
     axs[i].set_xticks([7.5,15.5,23.5,31.5,39.5])
     axs[i].set_ylabel('SOC')
     if i == 2:
@@ -87,8 +87,8 @@ with open(stem+'jointPdfW_.csv','rU') as csvfile:
             heatmap[5-s][t] = float(row[t])*100
         s += 1
 axs3[0].imshow(heatmap,aspect='auto',vmin=0,vmax=20,cmap='magma')
-axs3[0].set_yticks([-0.5,2.5,5.5])
-axs3[0].set_yticklabels(['100%','50%','0%'])
+axs3[0].set_yticks([0,2,4])
+axs3[0].set_yticklabels(['6','4','2'])
 axs3[0].set_xticks([7.5,15.5,23.5,31.5,39.5])
 axs3[0].set_ylabel('SOC')
 axs3[0].set_xticklabels(['','','','',''])
@@ -104,8 +104,8 @@ with open(stem+'jointPdfWE_.csv','rU') as csvfile:
             heatmap[5-s][t] = float(row[t])*100
         s += 1
 im = axs3[1].imshow(heatmap,aspect='auto',vmin=0,vmax=20,cmap='magma')
-axs3[1].set_yticks([-0.5,2.5,5.5])
-axs3[1].set_yticklabels(['100%','50%','0%'])
+axs3[1].set_yticks([0,2,4])
+axs3[1].set_yticklabels(['6','4','2'])
 axs3[1].set_ylabel('SOC')
 axs3[1].set_xticks([7.5,15.5,23.5,31.5,39.5])
 axs3[1].set_xticklabels(['04:00','08:00','12:00','16:00','20:00'])
