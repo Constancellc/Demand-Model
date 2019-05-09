@@ -5,6 +5,9 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+stem = '../../Documents/simulation_results/NTS/national/'
+
 profiles = {}
 for m in range(12):
     profiles[str(m+1)] = {}

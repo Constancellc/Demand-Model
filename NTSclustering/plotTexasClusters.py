@@ -4,9 +4,10 @@ import random
 import numpy as np
 import copy
 
-# UK
-data = '../../Documents/UKDA-5340-tab/constance-trips.csv'
+# Texas
+data = '../../Documents/NHTS/constance/texas-trips.csv'
 labels =  '../../Documents/simulation_results/NTS/clustering/labels2/'
+
 
 wProfiles = {}
 weProfiles = {} #weekend analysis would be a good extension
@@ -18,29 +19,27 @@ with open(data,'rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        vehicle = row[2]
+        vehicle = row[0]
         
         if vehicle == '':
             continue
         elif vehicle == ' ':
             continue
 
-        weekday = int(row[6])
+        weekday = row[2]
 
-        vehicle += row[6]
-
-        if weekday < 6:
-            profiles = wProfiles
-        else:
+        if weekday in ['6','7']:
             profiles = weProfiles
+        else:
+            profiles = wProfiles
             
         try:
-            start = int(row[9])
-            end = int(row[10])
+            start = int(row[5])
+            end = int(row[6])
         except:
             continue
 
-        distance = float(row[11])
+        distance = float(row[7])
         
         if vehicle not in profiles:
             profiles[vehicle] = [0]*48
@@ -69,16 +68,22 @@ for k in range(3):
 
 NTS = {}
 # get the labels for both data types
-with open(labels+'NTSlabels.csv','rU') as csvfile:
+with open(labels+'texasLabels.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        NTS[row[0]] = int(row[1])
+        try:
+            NTS[row[0]] = int(row[1])
+        except:
+            continue
 
 # get the labels for both data types
-with open(labels+'NTSlabelsWE.csv','rU') as csvfile:
+with open(labels+'texasLabelsWE.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        NTS[row[0]] = int(row[1])
+        try:
+            NTS[row[0]] = int(row[1])
+        except:
+            continue
 
 for v in wProfiles:
     if v not in NTS:
@@ -126,7 +131,7 @@ for k in range(3):
 
     plt.fill_between(np.arange(0.5,48.5),lower,upper,color=clrs2[str(k)])
 
-    plt.ylim(0,30)
+    plt.ylim(0,40)
     if k == 0:
         plt.ylabel('Average Speed (mph)')
     plt.title(str(k+1),y=0.7)
@@ -134,7 +139,7 @@ for k in range(3):
     plt.xticks(x,x_ticks)
     plt.grid(ls=':')
 plt.tight_layout()
-#plt.savefig('../../Dropbox/papers/uncontrolled/img/weekday_clusters.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/thesis/chapter6/img/texas_weekday_clusters.eps', format='eps', dpi=1000)
 
 
 plt.figure(figsize=(5,1.35))
@@ -155,7 +160,7 @@ for k in range(3):
 
     plt.fill_between(np.arange(0.5,48.5),lower,upper,color=clrs2[str(k)])
 
-    plt.ylim(0,30)
+    plt.ylim(0,40)
     if k == 0:
         plt.ylabel('Average Speed (mph)')
     plt.title(str(k+1),y=0.7)
@@ -163,7 +168,7 @@ for k in range(3):
     plt.xticks(x,x_ticks)
     plt.grid(ls=':')
 plt.tight_layout()
-#plt.savefig('../../Dropbox/papers/uncontrolled/img/weekend_clusters.eps', format='eps', dpi=1000)
+plt.savefig('../../Dropbox/thesis/chapter6/img/texas_weekend_clusters.eps', format='eps', dpi=1000)
 
 
 plt.show()

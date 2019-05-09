@@ -1,6 +1,5 @@
 import csv
 
-
 trips9 = '../../Documents/NHTS/2009/DAYV2PUB.csv'
 trips17 = '../../Documents/NHTS/2017/trippub.csv'
 households9 = '../../Documents/NHTS/2009/HHV2PUB.csv'
