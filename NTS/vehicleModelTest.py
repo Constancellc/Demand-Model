@@ -1,4 +1,4 @@
-8# packages
+# packages
 import csv
 import random
 import copy
@@ -12,6 +12,18 @@ from cvxopt import matrix, spdiag, solvers, sparse
 sys.path.append('../')
 from vehicleModel import Drivecycle, Vehicle
 
+cars = {}
+with open('../../EPA-Code/EVmodelParameters.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        name = row[0]+row[1]
+        cars[name] = Vehicle(float(row[3]),float(row[4])/
+                             4.44822,
+                             float(row[5])/9.9503,
+                             float(row[6])/22.258,
+                             float(row[7]),float(row[2]))
+'''
 cars = {'nissanLeafS':Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0),
         'nissanLeafSL':Vehicle(1647.7,29.61,0.0738,0.02195,0.86,30.0),
         'nissanLeafSV':Vehicle(1704.5,29.92,0.076,0.02195,0.847,30.0),
@@ -42,7 +54,7 @@ cars = {'nissanLeafS':Vehicle(1647.7,29.97,0.0713,0.02206,0.84,24.0),
         'mercedesSmart':Vehicle(1079.5,32.869,-0.1639,0.028583,0.786,17.6),
         'hondaFit':Vehicle(1647.7,19.06,0.407,0.01499,0.813,20.0),
         'mitsubishiMiEV':Vehicle(1306.8,19.484,0.43515,0.016133,0.752,16.0)}
-
+'''
 
 results = {}
 for v in cars:

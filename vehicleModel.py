@@ -75,7 +75,7 @@ class Vehicle:
         self.eff = eff
         self.capacity = cap # kWh
         self.battery = cap
-        self.p0 = 587.0 #1170.8 # This is the constant power loss in J/s
+        self.p0 = 1310#587.0 #1170.8 # This is the constant power loss in J/s
 
     def getEnergyExpenditure(self,cycle,accessoryLoad):
         # accesroy load in kW, cycle a Drivecycle object
