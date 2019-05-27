@@ -4,68 +4,163 @@ import random
 import csv
 import datetime
 
-results = []
-#distances = []
-#energies = []
+# first fi
+distances = {'w':{},'we':{}}
+nTrips = {'w':{},'we':{}}
 
-distances = {}
+avTrip = {'w':[0]*48,'we':[0]*48}
 
-startDates = {}
+def normalise(p):
+    p2 = [0]*len(p)
+    s = sum(p)
+    for i in range(len(p)):
+        p2[i] = p[i]/s
+    return p2
 
-# first finding participants and start dates
-
-with open('../../Documents/My_Electric_avenue_Technical_Data/Participants.csv') as csvfile:
+with open('../../Documents/My_Electric_avenue_Technical_Data/constance/trips.csv',
+          'rU') as csvfile:
     reader = csv.reader(csvfile)
-    reader.next()
+    next(reader)
     for row in reader:
-        ID = row[0]
-        
-        try:
-            delivery = datetime.datetime(int(row[6][:4]),int(row[6][5:7]),
-                                     int(row[6][8:10]))
-        except:
-            delivery = 'NULL'
-            print row[6][:4],
-            print row[6][5:7],
-            print row[6][8:10]
-        startDates[ID] = delivery
-        
-cars = []
-
-with open('../../Documents/My_Electric_avenue_Technical_Data/EVTripData.csv') as csvfile:
-    reader = csv.reader(csvfile)
-    reader.next()
-    for row in reader:
-        userID = row[0]
-        if startDates[userID] == 'NULL':
-            continue
-        if userID not in distances:
-            distances[userID] = {}
+        if row[-1] == '1':
+            ty = 'we'
+        else:
+            ty = 'w'
             
-        date = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
-                                      int(row[1][8:10]))
-        distance = float(row[3])*0.000621 # m -> mi
-        energy = float(row[4]) # Wh
+        userID = row[0]+'_'+row[1]
+        if userID not in nTrips[ty]:
+            nTrips[ty][userID] = 1
+            distances[ty][userID] = float(row[4])/1609
+        else:
+            nTrips[ty][userID] += 1
+            distances[ty][userID] += float(row[4])/1609
 
-        weekNo = (date-startDates[userID]).days/7
+        for t in range(int(row[2]),int(row[3])):
+            if t < 1440:
+                avTrip[ty][int(t/30)] += 1
+            else:
+                avTrip[ty][int((t-1440)/30)] += 1
 
-        if weekNo not in distances[userID]:
-            distances[userID][weekNo] = 0.0
+distances2 = {'w':{},'we':{}}
+nTrips2 = {'w':{},'we':{}}
 
-        distances[userID][weekNo] += distance
+avTrip2 = {'w':[0]*48,'we':[0]*48}
 
-y = [0]*1000
-zeros = [0]*1000
-x = range(0,1000)
-
-for ID in distances:
-    for week in distances[ID]:
-        n = int(distances[ID][week])
-        if n == 0:
+with open('../../Documents/UKDA-5340-tab/constance-trips.csv','rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        if row[2] == '':
             continue
-        y[n] += 1
+        if int(row[6]) > 5:
+            ty = 'we'
+        else:
+            ty = 'w'
+            
+        userID = row[2]+'_'+row[6]
+        if userID not in nTrips2[ty]:
+            nTrips2[ty][userID] = 1
+            distances2[ty][userID] = float(row[-4])
+        else:
+            nTrips2[ty][userID] += 1
+            distances2[ty][userID] += float(row[-4])
 
-plt.figure(1)
-plt.fill_between(x,y,zeros)
+        try:
+            s = int(row[-6])
+            e = int(row[-5])
+        except:
+            continue
+        if e < s:
+            e += 1440
+
+        for t in range(s,e):
+            if t < 1440:
+                avTrip2[ty][int(t/30)] += 1
+            else:
+                avTrip2[ty][int((t-1440)/30)] += 1
+                
+_dist = {'w':[0]*20,'we':[0]*20}
+_nTrips = {'w':[0]*15,'we':[0]*15}
+_dist2 = {'w':[0]*20,'we':[0]*20}
+_nTrips2 = {'w':[0]*15,'we':[0]*15}
+
+for t in ['w','we']:
+    for v in distances[t]:
+        try:
+            _nTrips[t][int(nTrips[t][v])] += 1
+        except:
+            continue
+        try:
+            _dist[t][int(float(distances[t][v])/5)] += 1
+        except:
+            continue
+    for v in distances2[t]:
+        try:
+            _nTrips2[t][int(nTrips2[t][v])] += 1
+        except:
+            continue
+        try:
+            _dist2[t][int(float(distances2[t][v])/5)] += 1
+        except:
+            continue
+    _dist[t] = normalise(_dist[t])
+    _dist2[t] = normalise(_dist2[t])
+    _nTrips2[t] = normalise(_nTrips2[t])
+    _nTrips[t] = normalise(_nTrips[t])
+    avTrip[t] = normalise(avTrip[t])
+    avTrip2[t] = normalise(avTrip2[t])
+
+
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 12
+
+pn = {'w':1,'we':2}
+pt = {'w':'Weekday','we':'Weekend'}
+for t in ['w','we']:
+    plt.figure(1,figsize=(8.5,3))
+    plt.subplot(1,2,pn[t])
+    plt.bar(np.arange(0,15)-0.2,_nTrips2[t],width=0.4,label='NTS')
+    plt.bar(np.arange(0,15)+0.2,_nTrips[t],width=0.4,label='MEA')
+    plt.xlabel('Number of Trips per Day')
+    plt.xlim(0,12)
+    if t == 'w':
+        plt.ylabel('Probability')
+    plt.title(pt[t],y=0.85)
+    plt.grid()
+    if t == 'we':
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig('../../Dropbox/thesis/chapter3/img/mea_nts_trips.eps',
+                    format='eps',dpi=1000, bbox_inches='tight', pad_inches=0.)
+        
+    plt.figure(2,figsize=(8.5,3))
+    plt.subplot(1,2,pn[t])
+    plt.bar(np.arange(0,100,5)+4,_dist2[t],width=2,label='NTS')
+    plt.bar(np.arange(0,100,5)+6,_dist[t],width=2,label='MEA')
+    plt.xlabel('Daily Distance (miles)')
+    plt.xlim(0,104)
+    if t == 'w':
+        plt.ylabel('Probability')
+    plt.title(pt[t],y=0.85)
+    plt.grid()
+    if t == 'we':
+        plt.tight_layout()
+        plt.savefig('../../Dropbox/thesis/chapter3/img/mea_nts_dist.eps',
+                    format='eps',dpi=1000, bbox_inches='tight', pad_inches=0.)
+    
+    plt.figure(3,figsize=(8.5,3))
+    plt.subplot(1,2,pn[t])
+    if t == 'w':
+        plt.ylabel('Likelihood')
+    plt.title(pt[t],y=0.85)
+    plt.grid()
+    plt.plot(np.linspace(0,24,num=48),avTrip2[t])
+    plt.plot(np.linspace(0,24,num=48),avTrip[t])
+    plt.xticks([4,12,20],['04:00','12:00','20:00'])
+    plt.xlim(0,24)
+    plt.ylim(0,0.07)
+    if t == 'we':
+        plt.tight_layout()
+        plt.savefig('../../Dropbox/thesis/chapter3/img/mea_nts_prof.eps',
+                    format='eps',dpi=1000, bbox_inches='tight', pad_inches=0.)
 plt.show()
-

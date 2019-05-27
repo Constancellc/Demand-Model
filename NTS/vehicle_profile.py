@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 
-rawData = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
+rawData = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
 profiles = {}
 vehicles = []
@@ -12,20 +12,17 @@ chosen = ['2014007827','2014008246','2014004729']
 
 with open(rawData,'rU') as csvfile:
     reader = csv.reader(csvfile)
-    reader.next()
     for row in reader:
-        if row[7] != '2014':
+        if row[8] != '2014':
             continue
 
         vehicle = row[2]
 
         if vehicle not in chosen:
             continue
-
-
         try:
-            start = int(row[8])+(int(row[5])-1)*24*60
-            end = int(row[9])+(int(row[5])-1)*24*60
+            start = int(row[9])+(int(row[6])-2)*24*60
+            end = int(row[10])+(int(row[6])-2)*24*60
         except:
             continue
 
@@ -51,7 +48,6 @@ with open(rawData,'rU') as csvfile:
 num_plot = 3
 
 plotted_profiles = {}
-plt.figure(1)
 plt.rcParams["font.family"] = 'serif'
 t = np.linspace(0,24*7,num=24*60*7)
 x = np.linspace(120,1320,num=6)
@@ -72,21 +68,14 @@ for i in range(0,num_plot):
         for k in range(0,1440):
             heatmap[j][k] = profiles[ID][c]
             c += 1
-    plt.grid()
+    plt.grid(ls=':')
     plt.imshow(heatmap,aspect=60,cmap='Blues')
     plt.yticks(range(0,7),y_ticks)
     plt.xticks(x,x_ticks)
     plt.ylabel('Weekday')
-    if i == 2:
-        plt.xlabel('Time')
     
     #plt.title(ID)
-
-
-    #data = go.Heatmap(z=heatmap,x=np.linspace(0,24,num=24*60),y=range(0,7))
-
-plt.figure(2)
-for i in range(0,num_plot):
-    plt.subplot(num_plot,1,i+1)
-    plt.plot(plotted_profiles[i])
+plt.tight_layout()
+plt.savefig('../../Dropbox/thesis/chapter3/img/example_nts.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()

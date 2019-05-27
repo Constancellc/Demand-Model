@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import random
 import datetime
 import csv
-import plotly
-import plotly.plotly as py
-import plotly.graph_objs as go
+#import plotly
+#import plotly.plotly as py
+#import plotly.graph_objs as go
 
 #py.sign_in('constancellc','grM8GaLZ6QaGd4vyooJe')
 
@@ -19,7 +19,7 @@ dates = {}
 
 with open(ranges,'rU') as csvfile:
     reader = csv.reader(csvfile)
-    reader.next()
+    next(reader)
     for row in reader:
         user = row[0]
         startDay = datetime.datetime(int(row[1][:4]),int(row[1][5:7]),
@@ -41,7 +41,7 @@ def createHeatmap(vehicle):
     for j in range(0,2):
         with open(data[j]) as csvfile:
             reader = csv.reader(csvfile)
-            reader.next()
+            next(reader)
             for row in reader:
                 userID =  row[0]
 
@@ -55,18 +55,16 @@ def createHeatmap(vehicle):
 
                 if end < 24*60:
                     for i in range(start,end):
-                        heatmap[i][dayNo] = labels[j]
+                        heatmap[24*60-1-i][dayNo] = labels[j]
 
                 else:
                     for i in range(start,24*60):
-                        heatmap[i][dayNo] = labels[j]
+                        heatmap[24*60-1-i][dayNo] = labels[j]
                     for i in range(24*60,end):
-                        heatmap[i-24*60][dayNo+1] = labels[j]
+                        heatmap[24*60-1-(i-24*60)][dayNo+1] = labels[j]
 
     # generating axis
     date_list = [dates[vehicle][0] + datetime.timedelta(days=x) for x in range(0,dates[vehicle][1]+2)]
-    print date_list[0]
-    print date_list[-1]
     return heatmap, date_list
 
 
@@ -84,7 +82,7 @@ date_list = run[1]
 y = np.linspace(0,24*60,num=7)
 x = np.linspace(1,len(date_list),num=10)
                 
-y_ticks = ['00:00','04:00','08:00','12:00','16:00','20:00','23:59']
+y_ticks = ['23:59','20:00','16:00','12:00','08:00','04:00','00:00']
 x_ticks = ['Jan\n\'14','Mar\n\'14','May\n\'14','Jul\n\'14','Sep\n\'14',
            'Nov\n\'14','Jan\n\'15','Mar\n\'15','May\n\'15','Jul\n\'15']
 
@@ -94,12 +92,9 @@ plt.rcParams["font.family"] = 'serif'
 plt.imshow(heatmap, cmap='bwr', aspect=0.2, interpolation='nearest')
 plt.yticks(y,y_ticks)
 plt.xticks(x,x_ticks)
-
+plt.grid(ls=':')
+plt.tight_layout()
+plt.savefig('../../Dropbox/thesis/chapter3/img/example_mea.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()
-'''
-data = [go.Heatmap(z=heatmap,x=date_list,y=time_list,colorscale='Viridis')]
-layout = go.Layout(title=vehicle, yaxis=dict(ticks = '', nticks=12))
-fig = go.Figure(data=data, layout=layout)
-        
-plotly.offline.plot(fig, filename='basic-heatmap.html')
-'''
+

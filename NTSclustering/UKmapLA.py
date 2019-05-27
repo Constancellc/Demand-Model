@@ -11,7 +11,7 @@ plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 8
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
 # setup mercator map projection.
-m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=58.7,\
+m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.,urcrnrlat=58.7,\
             resolution='h',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 

@@ -1,83 +1,59 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from NTSenergyPrediction2 import NationalEnergyPrediction, CornwallEnergyPrediction
-from fitDistributions import Inference
+import csv
 import copy
 
-run = NationalEnergyPrediction('2','1')#,solar=True)
-d = run.getDumbCharging(3.5,nHours=16+48)
+file = '../../Documents/UKDA-7553-tab/constance/hh-loc.csv'
+file2 = '../../Documents/census/dwellingType-MSOA.csv'
 
-[op,to,ba] = run.getStochasticOptimalLoadFlatteningProfile()
+m2l = {}
+file3 = '../../Documents/census/Output_Area_to_Lower_Layer_Super_Output_Area_to_Middle_Layer_Super_Output_Area_to_Local_Authority_District_December_2017_Lookup_in_Great_Britain__Classification_Version_2.csv'
+with open(file3,'rU',encoding='utf-8') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        msoa = row[7]
+        la = row[9]
+        m2l[msoa] = la
 
-t = np.linspace(0,len(d),num=len(op[0]))
+LAs = {}
+with open(file,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    for row in reader:
+        la = row[2]
+        if la not in LAs:
+            LAs[la] = 1
+        else:
+            LAs[la] += 1
 
-for i in range(len(d)):
-    d[i] += run.baseLoad[i]
-    
-plt.figure(1)
-#plt.plot(d)
-for p in to:
-    plt.plot(p)
-for b in ba:
-    plt.plot(b,ls=':')
-plt.show()
+LAs2 = {}
+with open(file2,'rU') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    next(reader)
+    for row in reader:
+        if len(row) < 2:
+            continue
+        m = row[0][:9]
+        try:
+            la = m2l[m]
+        except:
+            continue
+        if la not in LAs:
+            continue
+        if la not in LAs2:
+            LAs2[la] = 0
+        LAs2[la] += float(row[1])
 
-
-'''
-run = NationalEnergyPrediction('2','1')
-[a,t] = run.testDemandTurnUp(3.5,run.baseLoad,12*60)
-[a1,t1] = run.testDemandTurnUp(3.5,run.baseLoad,16*60)
-[a2,t2] = run.testDemandTurnUp(3.5,run.baseLoad,20*60)
-
-x_ticks = ['02:00','08:00','14:00','20:00','02:00','08:00']
-x = [1440+2*60,1440+8*60,1440+14*60,1440+20*60,1440+26*60,1440+32*60]
-y_ticks = [20,40,60]
-y = [2e7,4e7,6e7]
-
-plt.figure(1)
-plt.subplot(3,1,1)
-plt.plot(a,label='Original')
-plt.plot(t,label='After DTU')
-plt.xlim(1440,3600)
-plt.legend()
-plt.xticks(x,x_ticks)
-plt.yticks(y,y_ticks)
-plt.ylabel('Power (GW)')
-plt.grid()
-plt.title('12PM',y=0.8)
-plt.subplot(3,1,2)
-plt.plot(a1)
-plt.plot(t1)
-plt.xlim(1440,3600)
-plt.xticks(x,x_ticks)
-plt.yticks(y,y_ticks)
-plt.ylabel('Power (GW)')
-plt.grid()
-plt.title('4PM',y=0.8)
-plt.subplot(3,1,3)
-plt.plot(a2)
-plt.plot(t2)
-plt.xlim(1440,3600)
-plt.xticks(x,x_ticks)
-plt.yticks(y,y_ticks)
-plt.ylabel('Power (GW)')
-plt.grid()
-plt.title('8PM',y=0.8)
-plt.show()
-#d = run.getDumbCharging(3.5)
-
-p = run.getApproximateLoadFlattening(16)
-o = run.getOptimalLoadFlattening(3)
-
-for i in range(len(p)):
-    p[i] += run.baseLoad[i]
-for i in range(len(o)):
-    o[i] += run.baseLoad[i*10]
-
-plt.figure(1)
-plt.plot(p)
-plt.plot(np.linspace(0,len(p)-1,num=len(o)),o)
-plt.plot(run.baseLoad)
-plt.show()
-
-'''
+for la in LAs2:
+    print(100*LAs[la]/LAs2[la])
+        
+            
