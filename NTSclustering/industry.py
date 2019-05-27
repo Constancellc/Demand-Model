@@ -140,7 +140,7 @@ for fg in range(4):
 
     plt.figure(2)
     plt.subplot(2,2,fg+1)
-    plt.plot(av[tm[fg]],c='k',ls=':',label='Current')
+    plt.plot(av[tm[fg]],c='k',ls=':',label='No Charging')
 
     for t in range(48):
         u[tm[fg]][t] += av[tm[fg]][t]

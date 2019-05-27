@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import copy
-
+from scipy.stats.stats import pearsonr   
 outstem = '../../Documents/simulation_results/NTS/clustering/power/'
 
 def get_error(a,true):
@@ -15,7 +15,19 @@ def get_error(a,true):
         total += true[t]
     print(diff)
     print(100*np.sqrt(diff/total))
-    
+
+def stretch(a,l):
+    b = [0.0]*len(a)
+    for i in range(len(a)):
+        for j in range(l):
+            if i+j < len(b):
+                b[i+j] = a[i]
+            else:
+                b[i+j-len(a)] = a[i]
+    s = sum(b)
+    for i in range(len(b)):
+        b[i] = b[i]/s
+    return b
 
 d = []
 dW = []
@@ -43,8 +55,18 @@ plt.subplot(2,1,1)
 plt.plot(d,c='b',label='After final journey')
 plt.plot(u,c='r',ls='--',label='Proposed model')
 plt.plot(t,ls=':',c='k',label='Ground truth')
-get_error(d,t)
-get_error(u,t)
+print('')
+print(pearsonr(d,t))
+print(pearsonr(u,t))
+print('')
+u = stretch(u,2)
+t = stretch(t,2)
+d = stretch(d,2)
+
+print('')
+print(pearsonr(d,t))
+print(pearsonr(u,t))
+print('')
 plt.xlim(0,47)
 plt.xticks([7,15,23,31,39],['04:00','08:00','12:00','16:00','20:00'])
 plt.grid()

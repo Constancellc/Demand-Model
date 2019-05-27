@@ -25,7 +25,7 @@ hh = []
 with open(hh_data,'rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        if row[2] not in smr:
+        if row[2] not in wtr:
             continue
         if row[1] in ['6','7']:
             continue
@@ -46,20 +46,21 @@ c2 = [0.0]*1440
 for t in range(2880):
     m2[t%1440] += m[t]
     c2[t%1440] += c[t]
-sf = sum(c)/sum(m)
+sf = sum(c2)/sum(m2)
 for t in range(1440):
-    m2[t] = c2[t]*sf
+    m2[t] = m2[t]*sf
     
-plt.plot(m)
-plt.plot(c)
-plt.show()
+plt.plot(m2)
+plt.plot(c2)
 print('done2')
 for t in range(1440):
     new[t] += m2[t]*households/len(hh)
     old[t] += c2[t]*households/len(hh)
 
-with open(outstem+'uncontrolled_smr.csv','w') as csvfile:
+with open(outstem+'uncontrolled_wt.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['t','old','new','new-','new+'])
     for t in range(1440):
         writer.writerow([t,old[t],new[t],new_l[t],new_u[t]])
+
+plt.show()

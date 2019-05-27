@@ -61,7 +61,7 @@ fig=plt.figure()
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
 
-titles = ['Current','Uncontrolled','Controlled']
+titles = ['No Charging','Uncontrolled','Controlled']
 for pn in range(3):
     plt.subplot(1,3,pn+1)
     plt.title(titles[pn])
@@ -103,6 +103,6 @@ for pn in range(3):
     plt.colorbar(im, cax=cax)
     
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/ADMD.eps', format='eps', dpi=1000,
+plt.savefig('../../Dropbox/papers/Nature/img/ADMD.eps', format='eps', dpi=1000,
             bbox_inches='tight', pad_inches=0)
 plt.show()

@@ -58,18 +58,42 @@ class Vehicle:
             F[i] += (self.mass+self.load)*a[i] # N
 
             if v[i] > 0:
-                T += t[i]
+                T += 1#t[i]
                 
             if a[i] >= 0:
-                E += (F[i]*v[i]/self.eff)*t[i]
+                E += (F[i]*v[i]/self.eff)#*t[i]
             else:
-                E += (F[i]*v[i]*self.eff)*t[i]
+                E += (F[i]*v[i]*self.eff)#*t[i]
 
 
         E += self.p0*T
         energy = E*2.77778e-7 # J -> kWh
 
         #energy += len(v)*(accessoryLoad)/3600 # add accesory load 
+
+        return energy
+    
+    def getEnergyExpenditurePerSecond(self,cycle):#,accessoryLoad):
+        # accesroy load in kW, cycle a Drivecycle object
+        
+        v = cycle.velocity # m/s
+        a = cycle.acceleration # m/s2
+        t = cycle.time
+
+        F = []
+        for value in v:
+            F.append(self.Ta + self.Tb*value + self.Tc*value*value)
+
+        energy = []
+        for i in range(0,len(a)):
+            F[i] += (self.mass+self.load)*a[i] # N
+                
+            if a[i] >= 0:
+                E = (F[i]*v[i]/self.eff)#*t[i]
+            else:
+                E = (F[i]*v[i]*self.eff)#*t[i]
+
+            energy.append((E+self.p0)*2.77778e-7)
 
         return energy
 
