@@ -20,6 +20,15 @@ days_recorded = [15,19,9,12]
 
 for ii in range(4):
     vehicle = vehicles[ii]
+    plt.figure(figsize=(5,3))
+    plt.rcParams["font.family"] = 'serif'
+    plt.rcParams["font.size"] = '8'
+    plt.title(vehicle)
+    plt.grid(ls=':')
+    plt.ylim(0,100)
+    plt.xlim(0,24)
+    plt.ylabel('SOC (%)')
+    
     time0 = datetime.datetime(2016,11,int(start_day[ii]))
     results = []
     for day in range(days_recorded[ii]):
@@ -27,7 +36,6 @@ for ii in range(4):
         sl =[]
         earliest = 86400
         latest = 0
-        ts = 0
         try:
             with open(stem+vehicle+'_on_2016-11-'+str(16+day)+'_elv.csv',
                       'rU') as csvfile:
@@ -44,21 +52,45 @@ for ii in range(4):
                         latest = t
                     v.append(float(row[-4]))
                     sl.append(float(row[-1]))
-                    ts += float(row[-1])
                     
         except:
             continue
         dc = Drivecycle(v,sl)
-        energy = car.getEnergyExpenditure(dc)
+        energy = car.getEnergyExpenditurePerSecond(dc)
+        '''
+        plt.figure()
+        plt.subplot(3,1,1)
+        plt.plot(v)
+        plt.subplot(3,1,2)
+        plt.plot(sl)
+        plt.subplot(3,1,3)
+        plt.plot(energy)
+        plt.show()'''
+
+        # so this will be a vector of kWh consumed per second
+
+        capacity = 60
+
+        
+        
+        
+
+        SOC = [100]
+        for t in range(len(energy)):
+            SOC.append(SOC[-1]-100*energy[t]/capacity)
+        plt.plot(np.linspace(0,24,num=len(SOC)),SOC,
+                 label=str(time0+datetime.timedelta(day))[:10])
+            
+        '''
         results.append([time0+datetime.timedelta(days=day,seconds=earliest),
                         time0+datetime.timedelta(days=day,seconds=latest),
-                        energy])
+                        energy])'''
+    plt.xticks([2,6,10,14,18,22],['02:00','06:00','10:00','14:00','18:00',
+                                  '22:00'])
+    plt.legend(ncol=3)
+    plt.tight_layout()
+    plt.savefig(stem+'/predicted/'+str(vehicle)+'.pdf',format='pdf')
 
-    with open(stem+'/predicted/'+vehicle+'.csv','w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['Start','End','Consumption (kWh)'])
-        for row in results:
-            writer.writerow(row)
 '''
 log = {}
 sts = []

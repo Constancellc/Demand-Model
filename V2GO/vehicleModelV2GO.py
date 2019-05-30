@@ -3,7 +3,12 @@ import csv
 import random
 
 class Drivecycle:
-    def __init__(self, vt):
+    def __init__(self, vt,slope=None):
+
+        if slope == None:
+            self.slope = [0.0]*len(vt)
+        else:
+            self.slope = slope
 
         v = []
         t = []
@@ -47,17 +52,20 @@ class Vehicle:
         v = cycle.velocity # m/s
         a = cycle.acceleration # m/s2
         t = cycle.time
+        s = cycle.slope
 
         F = []
         for value in v:
             F.append(self.Ta + self.Tb*value + self.Tc*value*value)
+        for i in range(len(v)):
+            F[i] += self.mass*9.81*np.sin(s[i])
 
         E = 0
         T = 0
         for i in range(0,len(a)):
             F[i] += (self.mass+self.load)*a[i] # N
 
-            if v[i] > 0:
+            if v[i] > 0.1:
                 T += 1#t[i]
                 
             if a[i] >= 0:
@@ -79,10 +87,13 @@ class Vehicle:
         v = cycle.velocity # m/s
         a = cycle.acceleration # m/s2
         t = cycle.time
+        s = cycle.slope
 
         F = []
         for value in v:
             F.append(self.Ta + self.Tb*value + self.Tc*value*value)
+        for i in range(len(v)):
+            F[i] += self.mass*9.81*np.sin(s[i])
 
         energy = []
         for i in range(0,len(a)):
@@ -93,7 +104,10 @@ class Vehicle:
             else:
                 E = (F[i]*v[i]*self.eff)#*t[i]
 
-            energy.append((E+self.p0)*2.77778e-7)
+            if v[i] < 1 and abs(a[i]) < 1:
+                energy.append(0.0)
+            else:
+                energy.append((E+self.p0)*2.77778e-7)
 
         return energy
 

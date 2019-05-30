@@ -85,7 +85,7 @@ plt.savefig('../../Dropbox/thesis/chapter3/img/texas_uk_comp.eps',
             format='eps', dpi=1000)
 
 plt.figure(figsize=(5,3))
-plt.bar(np.arange(3)-0.16,we['u'],width=0.3,label='NTS')
+plt.bar(np.arange(3)-0.16,we['u'],width=0.3,label='UK')
 plt.bar(np.arange(3)+0.16,we['t'],width=0.3,label='Texas')
 plt.xticks([0,1,2],[1,2,3])
 plt.grid(ls=':')
@@ -100,7 +100,7 @@ plt.savefig('../../Dropbox/thesis/chapter3/img/texas_uk_comp_we.eps',
 plt.figure(figsize=(5,3))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams["font.size"] = '14'
-plt.bar(np.arange(3)-0.16,w['u'],width=0.3,label='UK')
+plt.bar(np.arange(3)-0.16,w['u'],width=0.3,label='NTS')
 plt.bar(np.arange(3)+0.16,w['m'],width=0.3,label='MEA')
 plt.xticks([0,1,2],[1,2,3])
 plt.grid(ls=':')
@@ -112,7 +112,7 @@ plt.savefig('../../Dropbox/thesis/chapter3/img/meaVnts.eps',
             format='eps', dpi=1000)
 
 plt.figure(figsize=(5,3))
-plt.bar(np.arange(3)-0.16,we['u'],width=0.3,label='UK')
+plt.bar(np.arange(3)-0.16,we['u'],width=0.3,label='NTS')
 plt.bar(np.arange(3)+0.16,we['m'],width=0.3,label='MEA')
 plt.xticks([0,1,2],[1,2,3])
 plt.grid(ls=':')
