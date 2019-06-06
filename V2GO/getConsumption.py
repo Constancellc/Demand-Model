@@ -43,7 +43,7 @@ for ii in range(4):
                     if t > latest:
                         latest = t
                     v.append(float(row[-4]))
-                    sl.append(float(row[-1]))
+                    sl.append(0)#float(row[-1]))
                     ts += float(row[-1])
                     
         except:
@@ -54,7 +54,7 @@ for ii in range(4):
                         time0+datetime.timedelta(days=day,seconds=latest),
                         energy])
 
-    with open(stem+'/predicted/'+vehicle+'.csv','w') as csvfile:
+    with open(stem+'/predicted/'+vehicle+'_no_elev.csv','w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Start','End','Consumption (kWh)'])
         for row in results:

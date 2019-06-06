@@ -51,7 +51,7 @@ for ii in range(4):
                     if t > latest:
                         latest = t
                     v.append(float(row[-4]))
-                    sl.append(float(row[-1]))
+                    sl.append(0)#float(row[-1]))
                     
         except:
             continue
@@ -89,7 +89,7 @@ for ii in range(4):
                                   '22:00'])
     plt.legend(ncol=3)
     plt.tight_layout()
-    plt.savefig(stem+'/predicted/'+str(vehicle)+'.pdf',format='pdf')
+    plt.savefig(stem+'/predicted/'+str(vehicle)+'_no_elev.pdf',format='pdf')
 
 '''
 log = {}

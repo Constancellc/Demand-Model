@@ -97,7 +97,10 @@ for d in range(1,8):
     totalsWD[str(d)] = [0]*3
 for v in NTS:
     d = wDays[v]
-    k = NTS[v]
+    if int(d) < 6:
+        k = KM[NTS[v]]
+    else:
+        k = KM2[NTS[v]]
     totalsWD[d][k] += 1
 
 c1 = [0.0]*7
