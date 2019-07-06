@@ -17,7 +17,7 @@ plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
 # setup mercator map projection.
 m = Basemap(llcrnrlon=-7,llcrnrlat=49.9,urcrnrlon=2.2,urcrnrlat=59,\
-            resolution='h',projection='merc',\
+            resolution='l',projection='merc',\
             lat_0=40.,lon_0=-20.,lat_ts=20.)
 m.drawcoastlines()
 #net = pn.GBnetwork()
@@ -70,8 +70,12 @@ for i in range(len(lines)):
     a = bus_loc[int(lines.from_bus[i])]
     b = bus_loc[int(lines.to_bus[i])]
     if [a,b] in found:
-        a_ = [a[0]+0.05,a[1]+10000]
-        b_ = [b[0]+0.05,b[1]+10000]
+        phi = np.arctan((b[0]-a[0])/(b[1]-a[1]))
+        phi += np.pi/2
+        a_ = [a[0]+10000*np.sin(phi),a[1]+10000*np.cos(phi)]
+        b_ = [b[0]+10000*np.sin(phi),b[1]+10000*np.cos(phi)]
+        #a_ = [a[0]+10000,a[1]+10000]
+        #b_ = [b[0]+10000,b[1]+10000]
             
         lineAB[i] = [a_,b_]
     else:        
@@ -101,7 +105,6 @@ for i in range(29):
 print(total)
 
 
-pandapower.runopp(net)
 
 
 #print(lines.max_i_ka[14])
@@ -113,19 +116,38 @@ pandapower.runopp(net)
 #pplt.simple_plot(net)
 
 
-res = net.res_line
 tot = 0
 for i in range(86):
     tot += res.pl_kw[i]
 print(tot)
 
+'''
+bad = []
+for li in range(86):
+    lines.in_service[li] = False
+
+    pandapower.runopp(net)
+    res = net.res_line
+        
+    for i in range(86):
+        if int(res.loading_percent[i]) >= 100:
+            bad.append(i)
+    lines.in_service[li] = True
+print(bad)
+'''
+bad = [1, 0, 3, 2, 9, 8, 15, 14]
+
 loading = {}
 losses = {}
 for i in range(86):
-    loading[i] = int(res.loading_percent[i])
-    losses[i] = 100*(float(res.p_from_kw[i])+float(res.p_to_kw[i]))/\
-                float(res.p_from_kw[i])
+    loading[i] = 0
+    losses[i] = 0
 
+pandapower.runopp(net)
+for i in range(86):
+    loading[i] = int(res.loading_percent[i])
+    #losses[i] = 100*(float(res.p_from_kw[i])+float(res.p_to_kw[i]))/\
+    #                float(res.p_from_kw[i])
 #plt.figure()
 
 bus_gen = {}
@@ -162,8 +184,8 @@ plt.scatter([670000],[1400000],s=250,color='r',alpha=0.2)
 plt.scatter([670000],[1300000],s=250,color='b',alpha=0.2)
 plt.annotate('2 GW Gen',(710000,1385000))
 plt.annotate('2 GW Load',(710000,1285000))
-plt.savefig('../../../Dropbox/papers/Nature/img/transmission.pdf',
-            bbox_inches='tight')
+#plt.savefig('../../../Dropbox/papers/Nature/img/transmission.pdf',
+#            bbox_inches='tight')
 
 fig=plt.figure(figsize=(5,8))
 plt.rcParams["font.family"] = 'serif'
@@ -181,7 +203,11 @@ for i in range(len(lineAB)):
     a = lineAB[i][0]
     b = lineAB[i][1]
     if i < 86:
+            #plt.plot([a[1],b[1]],[a[0],b[0]],lw=6,c='#FF9999',zorder=1)
         plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(loading[i]/100))
+        if i in bad:
+            plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='o',c='None',
+                        edgecolor='r',s=30,zorder=3)
     else:
         plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(0.5))
 
