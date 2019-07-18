@@ -105,8 +105,8 @@ def find_nearest(p1):
     return best
 
 # make these smaller to increase the resolution
-x = np.arange(-7,3,0.5)
-y = np.arange(49,59,0.5)
+x = np.arange(-7,3,0.05)
+y = np.arange(49,59,0.05)
 
 Z = np.zeros((len(x),len(y)))
 X = np.zeros((len(x),len(y)))

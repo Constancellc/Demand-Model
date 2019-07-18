@@ -14,7 +14,7 @@ locXY = '../../Documents/census/centroids-LSOA.csv'
 locLatLon = '../../Documents/census/centroids-LSOA-LatLon.csv'
 
 # create new figure, axes instances.
-fig=plt.figure(figsize=(10,8))
+fig=plt.figure()#figsize=(8,6))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
 ax=fig.add_axes([0.1,0.1,0.8,0.8])
@@ -78,6 +78,8 @@ def find_nearest(p1):
 
 
 # make these smaller to increase the resolution
+#x = np.arange(-1.7,-0.8,0.1)
+#y = np.arange(51.4,52.2,0.1)
 x = np.arange(-1.74,-0.8,0.005)
 y = np.arange(51.45,52.19,0.005)
 
@@ -99,13 +101,15 @@ for i in range(len(x)):
         Y[i,j] = ypt
         Z[i,j] = z[best]
 
-im = plt.imread('../../Downloads/oxfordshire.png')
 
-plt.imshow(im,extent=[int(x_l),int(x_h),int(y_l),int(y_h)])
-m.pcolor(X,Y,Z,vmax=50,cmap='OrRd',alpha=0.5)
+im = plt.imread('../../Downloads/oxfordshire.png')
+plt.imshow(im,extent=[int(x_l),int(x_h),int(y_l),int(y_h)],alpha=0.3,zorder=3,
+           cmap='Greys_r')
+m.pcolor(X,Y,Z,vmin=0,vmax=40,cmap='Blues',zorder=2)
+#ax2=fig.add_axes([x_h*1.05,y_l*1.05,0.025,0.08])
+plt.colorbar()#cax=ax2)
 plt.xlim(x_l+1,x_h-1)
 plt.ylim(y_l+1,y_h-1)
-plt.savefig('../../Documents/Oxfordshire.pdf', format='pdf',
+plt.savefig('../../Dropbox/thesis/chapter6/img/Oxfordshire.pdf', format='pdf',
             dpi=1000, bbox_inches='tight', pad_inches=0)
-plt.colorbar()
 plt.show()
