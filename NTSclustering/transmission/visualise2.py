@@ -92,13 +92,12 @@ for i in range(len(tran)):
 
 bus_ld = {}
 for i in range(len(lds)):
-    lds.p_kw[i] = lds.p_kw[i]*52/56*ld_inc[lds.bus[i]]
-    lds.q_kvar[i] = lds.q_kvar[i]*52/56*ld_inc[lds.bus[i]]
+    lds.p_kw[i] = lds.p_kw[i]*52/56#*ld_inc[lds.bus[i]]
+    lds.q_kvar[i] = lds.q_kvar[i]*52/56#*ld_inc[lds.bus[i]]
     bus = lds.bus[i]
     if bus not in bus_ld:
         bus_ld[bus] = 0
     bus_ld[bus] += lds.p_kw[i]/1000
-    
 total = 0
 for i in range(29):
     total += lds.p_kw[i]
@@ -116,11 +115,17 @@ print(total)
 #pplt.simple_plot(net)
 
 
+loading = {}
+losses = {}
+for i in range(86):
+    loading[i] = 0
+    losses[i] = 0
+
+
 tot = 0
 for i in range(86):
     tot += res.pl_kw[i]
 print(tot)
-'''
 bad = []
 for li in range(86):
     lines.in_service[li] = False
@@ -129,19 +134,16 @@ for li in range(86):
     res = net.res_line
         
     for i in range(86):
-        if int(res.loading_percent[i]) >= 100:
-            bad.append(i)
+        if int(res.loading_percent[i]) >= loading[i]:
+            loading[i] = int(res.loading_percent[i])
+            if loading[i] > 100:
+                bad.append(i)
     lines.in_service[li] = True
-print(bad)
+#print(bad)
 '''
-bad = [1, 0, 3, 2, 8, 15, 14]
-bad2 = [3, 2]
+#bad = [1, 0, 3, 2, 8, 15, 14]
+bad = [3, 2]
 
-loading = {}
-losses = {}
-for i in range(86):
-    loading[i] = 0
-    losses[i] = 0
 
 pandapower.runopp(net)
 for i in range(86):
@@ -149,7 +151,7 @@ for i in range(86):
     #losses[i] = 100*(float(res.p_from_kw[i])+float(res.p_to_kw[i]))/\
     #                float(res.p_from_kw[i])
 #plt.figure()
-
+'''
 bus_gen = {}
 tg = 0
 for i in range(len(gen)):
@@ -205,12 +207,15 @@ for i in range(len(lineAB)):
     if i < 86:
             #plt.plot([a[1],b[1]],[a[0],b[0]],lw=6,c='#FF9999',zorder=1)
         plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(loading[i]/100))
+        
         if i in bad:
             plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='o',c='None',
-                        edgecolor='r',s=30,zorder=3)
+                        edgecolor='r',s=40,zorder=3)
+        '''
         if i in bad2:
             plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='o',c='None',
                         edgecolor='b',s=30,zorder=3)
+        '''
     else:
         plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(0.5))
 
@@ -218,14 +223,17 @@ for i in bus_loc:
     plt.scatter(bus_loc[i][1],bus_loc[i][0],color='k',zorder=3)
 
 
-plt.scatter([5e5],[1.55e6],marker='o',c='None',edgecolor='b',s=30)
+plt.scatter([6.3e5],[1.55e6],marker='o',c='None',edgecolor='r',s=40)
+plt.annotate('N-1 Violation',(6.65e5,1.54e6))
+'''
 plt.scatter([5e5],[1.5e6],marker='o',c='None',edgecolor='r',s=30)
-plt.annotate('N-1 Violation (No EVs)',(5.35e5,1.54e6))
 plt.annotate('N-1 Violation (With EVs)',(5.35e5,1.49e6))
-plt.plot([4.7e5,9.4e5],[1.58e6,1.58e6],c='gray',lw=1)
-plt.plot([4.7e5,4.7e5],[1.47e6,1.58e6],c='gray',lw=1)
-plt.plot([4.7e5,9.4e5],[1.47e6,1.47e6],c='gray',lw=1)
-plt.plot([9.4e5,9.4e5],[1.47e6,1.58e6],c='gray',lw=1)
+'''
+plt.plot([6e5,9e5],[1.58e6,1.58e6],c='gray',lw=1)
+plt.plot([6e5,6e5],[1.52e6,1.58e6],c='gray',lw=1)
+plt.plot([6e5,9e5],[1.52e6,1.52e6],c='gray',lw=1)
+plt.plot([9e5,9e5],[1.52e6,1.58e6],c='gray',lw=1)
+
 top = 1400000
 btm = 610000
 
@@ -239,6 +247,6 @@ for i in range(5):
     y_ = btm+(top-btm)*(i/4)-10000
     plt.annotate('- '+tcks[i],(810000,y_))
     
-plt.savefig('../../../Dropbox/papers/Nature/img/transmission2.pdf',
+plt.savefig('../../../Dropbox/thesis/chapter5/img/transmission3.pdf',
             bbox_inches='tight')
 plt.show()
