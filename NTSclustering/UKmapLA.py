@@ -3,6 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.cbook
 import csv
+from matplotlib import cm
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+
+blues = cm.get_cmap('Blues', 1000)
+new = blues(np.linspace(0, 1, 1000))
+new[:1,:] =  np.array([1,1,1,1])
+blue2 = ListedColormap(new)
 
 stem = '../../Documents/simulation_results/NTS/clustering/power/locationsLA_/'
 # create new figure, axes instances.
@@ -88,7 +95,7 @@ for i in range(len(x)):
         else:
             continue
 
-m.pcolor(X,Y,Z,vmax=limZ)#,cmap='inferno')
+m.pcolor(X,Y,Z,vmax=limZ,cmap=blue2)#,cmap='inferno')
 #m.pcolormesh(x,y,Z,latlon=True)
 #m.drawmapboundary(fill_color='#99ffff')
 #m.drawlsmask(land_color='coral',ocean_color='aqua')

@@ -4,6 +4,62 @@ import numpy as np
 import csv
 import random
 
+
+def interpolate(f):
+    f2 = []
+    for i in range(23):
+        f2.append(f[i])
+        f2.append((f[i]+f[i+1])/2)
+    f2.append(f[23])
+    f2.append((f[23]+f[0])/2)
+    return f2
+
+def getHighest(month):
+    hi = [0]*24
+    profiles = {}
+    with open('../Documents/elec_demand/Native_Load_2018.csv','r') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            m = str(int(row[0][:2]))
+            if m != month:
+                continue
+            d = int(row[0][3:5])
+            h = int(row[0][11:13])-1
+
+            if d not in profiles:
+                profiles[d] = [0]*24
+
+            profiles[d][h] = float(row[-1].replace(',',''))/1000
+    for d in profiles:
+        if sum(profiles[d]) > sum(hi):
+            hi = profiles[d]
+
+    return interpolate(hi)
+
+def getLowest(month):
+    hi = [1e10]*24
+    profiles = {}
+    with open('../Documents/elec_demand/Native_Load_2018.csv','r') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            m = str(int(row[0][:2]))
+            if m != month:
+                continue
+            d = int(row[0][3:5])
+            h = int(row[0][11:13])-1
+
+            if d not in profiles:
+                profiles[d] = [0]*24
+
+            profiles[d][h] = float(row[-1].replace(',',''))/1000
+    for d in profiles:
+        if sum(profiles[d]) < sum(hi):
+            hi = profiles[d]
+
+    return interpolate(hi)
+            
 def getBaseLoad(day,month):
 
     # find right date for day of the week
@@ -40,12 +96,17 @@ def getBaseLoad(day,month):
     return profile
 
 def getNewLoads(m):
-
+    
+    tm = ['sp','su','au','wt']
     profileA = []
     profileB = []
     profileC = []
 
-    with open('../Documents/simulation_results/NTS/national/wed/'+m+'.csv',
+    p = getHighest(m)
+    for i in range(48):
+        profileA.append(
+
+    with open('../Documents/simulation_results/NHTS/national/wed/'+m+'.csv',
               'rU') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
@@ -89,11 +150,11 @@ class FuelMix:
         _solar = 12760
         _renew_oth = 5964
 
-        self.flat_renewable = _renew_oth+_hydro_flow
-        self.flat_fossil = _steam+_combined+_gas
-        self.flat_nuclear = _nuclear
-        self.wind_capacity = _wind
-        self.solar_capacity = _solar
+        self.flat_renewable = 980
+        self.flat_fossil = _46000
+        self.flat_nuclear = 4700
+        self.wind_capacity = 22600
+        self.solar_capacity = 2900
 
         self.wind = {}
         self.solar = {}
@@ -162,7 +223,21 @@ class Simulation:
         self.best = FuelMix()
         self.worst = FuelMix()
 
-    def set_renew(self,bestSolar,worstSolar,bestWind,worstWind):
+    def set_renew(self,solarShape,_bestWind,_worstWind):
+        # first rescale
+        sc = max(solarShape)
+        wc = max(_bestWind)
+        bestSolar = []
+        bestWind = []
+        worstSolar = []
+        worstWind = []
+
+        for i in range(48):
+            bestSolar.append(solarShape[i]*0.95/sc)
+            worstSolar.append(solarShape[i]*0.25/sc)
+            bestWind.append(_bestWind[i]/wc)
+            worstWind.append(_worstWind[i]/wc)
+        
         self.best.set_renewable_shapes(bestSolar,bestWind)
         self.worst.set_renewable_shapes(worstSolar,worstWind)
 
@@ -228,54 +303,44 @@ class Simulation:
         plt.show()
 
 # get the best and worst solar
-
-best_solar = {}
+solar_shape = [0]
 with open('pv/best_solar.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        m = row[0]
         p = []
         for i in range(1,len(row)):
             p.append(float(row[i]))
-        best_solar[m] = p
-        
-worst_solar = {}
-with open('pv/worst_solar.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)
-    for row in reader:
-        m = row[0]
-        p = []
-        for i in range(1,len(row)):
-            p.append(float(row[i]))
-        worst_solar[m] = p
+        if sum(p) > sum(solar_shape):
+            solar_shape = p
+            
 
-best_wind = {}
+
+best_wind = [0]
 with open('pv/best_wind.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        m = row[0]
         p = []
         for i in range(1,len(row)):
             p.append(float(row[i]))
-        best_wind[m] = p
+        if sum(p) > sum(best_wind):
+            best_wind = p
         
-worst_wind = {}
-with open('pv/worst_wind.csv','rU') as csvfile:
+worst_wind = [1e100]
+with open('pv/w0orst_wind.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     next(reader)
     for row in reader:
-        m = row[0]
         p = []
         for i in range(1,len(row)):
             p.append(float(row[i]))
-        worst_wind[m] = p
+        if sum(p) < sum(worst_wind):
+            worst_wind = p
 
 # Now instantiate class
 sim = Simulation()
-sim.set_renew(best_solar,worst_solar,best_wind,worst_wind)
+sim.set_renew(solar_shape,best_wind,worst_wind)
 sim.plot_mixes(['1','7'])
 
 baseH = []
