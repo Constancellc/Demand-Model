@@ -28,22 +28,13 @@ gen = net.gen
 buses = net.bus
 lds = net.load
 
-stor = []
+
 ld_inc = {}
 with open('substation_predictions.csv','rU') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
-        stor.append(float(row[1])/100)
         ld_inc[int(row[0])-1] = 1+(float(row[1])/100)
 
-ld_inc2 = {}
-with open('2030_substation.csv','rU') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        s = int(row[0])-1
-        ld_inc2[s] = 1+(stor[s]*float(row[1])/100)
-
-print(ld_inc2)
 gen_bus = {}
 
 total = 0
@@ -107,6 +98,7 @@ for i in range(len(lds)):
     if bus not in bus_ld:
         bus_ld[bus] = 0
     bus_ld[bus] += lds.p_kw[i]/1000
+    
 total = 0
 for i in range(29):
     total += lds.p_kw[i]
@@ -124,18 +116,13 @@ print(total)
 #pplt.simple_plot(net)
 
 
-loading = {}
-losses = {}
-for i in range(86):
-    loading[i] = 0
-    losses[i] = 0
-
-
 tot = 0
 for i in range(86):
     tot += res.pl_kw[i]
 print(tot)
+
 '''
+
 bad = []
 for li in range(86):
     lines.in_service[li] = False
@@ -144,18 +131,19 @@ for li in range(86):
     res = net.res_line
         
     for i in range(86):
-        if int(res.loading_percent[i]) >= loading[i]:
-            loading[i] = int(res.loading_percent[i])
-            if loading[i] > 100:
-                bad.append(i)
+        if int(res.loading_percent[i]) >= 100:
+            bad.append(i)
     lines.in_service[li] = True
 print(bad)
-'''
-#bad = [1, 0, 3, 2, 8, 15, 14]
-bad = [2,3]
-bad30 = [8]
-bad100 = [1,0]
 
+'''
+bad = [1, 0, 3, 2, 9, 8, 15, 14]
+
+loading = {}
+losses = {}
+for i in range(86):
+    loading[i] = 0
+    losses[i] = 0
 
 pandapower.runopp(net)
 for i in range(86):
@@ -177,33 +165,30 @@ for i in range(len(gen)):
 for i in range(len(lineAB)):
     a = lineAB[i][0]
     b = lineAB[i][1]
-    plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',alpha=0.5,zorder=0)
+    plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',alpha=0.5)
     '''
     if i < 86:
         plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',lw=loading[i]/20,alpha=0.5)
     else:
         plt.plot([a[1],b[1]],[a[0],b[0]],c='gray',ls='--',alpha=0.5)'''
 
-#for i in bus_loc:
-    #plt.scatter(bus_loc[i][1],bus_loc[i][0],color='k')
+for i in bus_loc:
+    plt.scatter(bus_loc[i][1],bus_loc[i][0],color='k')
     #plt.annotate(i+1, (bus_loc[i][1],bus_loc[i][0]))
 '''
 for bus in bus_gen:
     plt.scatter(bus_loc[bus][1],bus_loc[bus][0],color='r',s=bus_gen[bus]/8,
-                alpha=0.2)'''
+                alpha=0.2)
 for bus in bus_ld:
-    plt.scatter(bus_loc[bus][1],bus_loc[bus][0],color='#CCCCFF',s=bus_ld[bus]/10,
-                zorder=2,edgecolor='b')
-    plt.scatter(bus_loc[bus][1],bus_loc[bus][0],color='#FFCCCC',
-                s=bus_ld[bus]*(ld_inc[bus]-1)/10,edgecolor='r',zorder=2)
-
-plt.scatter([645000],[1400000],s=250,color='#CCCCFF',edgecolor='b')
-plt.scatter([645000],[1300000],s=250,color='#FFCCCC',edgecolor='r')
-plt.annotate('Total Demand',(700000,1385000))
-plt.annotate('EV Charging',(700000,1285000))
-plt.savefig('../../../Dropbox/papers/Nature/img/transmission.pdf',
-            bbox_inches='tight',dpi=300)
-
+    plt.scatter(bus_loc[bus][1],bus_loc[bus][0],color='b',s=bus_ld[bus]/8,
+                alpha=0.2)'''
+#plt.scatter([670000],[1400000],s=250,color='r',alpha=0.2)
+#plt.scatter([670000],[1300000],s=250,color='b',alpha=0.2)
+#plt.annotate('2 GW Gen',(710000,1385000))
+#plt.annotate('2 GW Load',(710000,1285000))
+plt.savefig('GBtransmission.pdf',
+            bbox_inches='tight')
+plt.show()
 fig=plt.figure(figsize=(5,8))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 9
@@ -221,67 +206,30 @@ for i in range(len(lineAB)):
     b = lineAB[i][1]
     if i < 86:
             #plt.plot([a[1],b[1]],[a[0],b[0]],lw=6,c='#FF9999',zorder=1)
-        if loading[i] < 50:
-            plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(0))
-        else:
-            plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,
-                     c=cm.viridis(2*loading[i]/100-1))
-        
+        plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(loading[i]/100))
         if i in bad:
             plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='o',c='None',
-                        edgecolor='r',s=40,zorder=3,linewidth=2)
-        
-        if i in bad30:
-            plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='s',c='None',
-                        edgecolor='r',s=50,zorder=3,linewidth=2)
-        
-        if i in bad100:
-            plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='d',c='None',
-                        edgecolor='r',s=40,zorder=3,linewidth=2)
-        '''
-        if i in bad2:
-            plt.scatter([(a[1]+b[1])/2],[(a[0]+b[0])/2],marker='o',c='None',
-                        edgecolor='b',s=30,zorder=3)
-        '''
+                        edgecolor='r',s=30,zorder=3)
     else:
-        plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(0.1))
+        plt.plot([a[1],b[1]],[a[0],b[0]],lw=2,c=cm.viridis(0.5))
 
 for i in bus_loc:
     plt.scatter(bus_loc[i][1],bus_loc[i][0],color='k',zorder=3)
 
 
-plt.scatter([6.3e5],[1.54e6],marker='o',c='None',edgecolor='r',s=40,
-            linewidth=2)
-plt.annotate('No Charging',(6.65e5,1.53e6))
-plt.annotate('N-1 Violations',(6.3e5,1.59e6),weight='bold')
-plt.scatter([6.3e5],[1.49e6],marker='s',c='None',edgecolor='r',s=40,
-            linewidth=2)
-plt.annotate('2030 EVs',(6.65e5,1.48e6))
-plt.scatter([6.3e5],[1.44e6],marker='d',c='None',edgecolor='r',s=40,
-            linewidth=2)
-plt.annotate('100% EVs',(6.65e5,1.43e6))
-'''
-plt.scatter([5e5],[1.5e6],marker='o',c='None',edgecolor='r',s=30)
-plt.annotate('N-1 Violation (With EVs)',(5.35e5,1.49e6))
-'''
-plt.plot([6e5,9e5],[1.57e6,1.57e6],c='gray',lw=1)
-plt.plot([6e5,6e5],[1.415e6,1.57e6],c='gray',lw=1)
-plt.plot([6e5,9e5],[1.415e6,1.415e6],c='gray',lw=1)
-plt.plot([9e5,9e5],[1.415e6,1.57e6],c='gray',lw=1)
-
-top = 1350000
-btm = 615000
+top = 1500000
+btm = 610000
 
 for i in range(100):
     y1 = btm+(top-btm)*(i/100)
     y2 = btm+(top-btm)*((i+1)/100)
-    plt.plot([800000,800000],[y1,y2],lw=6,c=cm.viridis(2*i/100-0.5))
+    plt.plot([800000,800000],[y1,y2],lw=6,c=cm.viridis(i/100))
 
-tcks = ['<50%','60%','70%','80%','90%','100%']
-for i in range(6):
-    y_ = btm+(top-btm)*(i/5)-10000
+tcks = ['0%','25%','50%','75%','100%']
+for i in range(5):
+    y_ = btm+(top-btm)*(i/4)-10000
     plt.annotate('- '+tcks[i],(810000,y_))
     
-plt.savefig('../../../Dropbox/papers/nature/img/transmission2.pdf',
+plt.savefig('../../../Dropbox/papers/Nature/img/transmission2.pdf',
             bbox_inches='tight')
 plt.show()

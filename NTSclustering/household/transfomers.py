@@ -47,6 +47,7 @@ c471 = {0:[0]*8,1:[0]*8,2:[0]*8}
 for s in sizes:
     for i in range(3):
         nCust[i][s] = [0]*80
+tt = 0
 with open(data,'rU',encoding='ISO-8859-1') as csvfile:
     reader = csv.reader(csvfile)
     for i in range(4):
@@ -59,6 +60,7 @@ with open(data,'rU',encoding='ISO-8859-1') as csvfile:
             nrn = row[61].replace('_',' ')[:-3]
         except:
             continue
+        tt += 1
         if n > 20:
             if nrn not in pc:
                 continue
@@ -75,11 +77,11 @@ with open(data,'rU',encoding='ISO-8859-1') as csvfile:
                 nCust[t][rating][int(n/10)] += 1
             else:
                 continue
-            if n > 175 and n < 225:
+            if n > 150 and n < 250:
                 c200[0][ri[rating]] += 1
-            if n > 50 and n < 78:
+            if n > 50 and n < 80:
                 c64[0][ri[rating]] += 1
-            if n > 450 and n < 500:
+            if n > 400 and n < 600:
                 c471[0][ri[rating]] += 1
             '''
             print(rating/n)
@@ -89,17 +91,51 @@ with open(data,'rU',encoding='ISO-8859-1') as csvfile:
             except:
                 print(' ')
             '''
-plt.figure()
+print(tt)
+for k in [c64,c200,c471]:
+    c = k[0]
+    s = sum(c)/100
+    for i in range(len(c)):
+        c[i] = c[i]/s
+s = range(len(sizes))
+plt.figure(figsize=(8,5))
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams['font.size'] = 11
 plt.subplot(3,1,1)
 plt.bar(sizes,c200[0],width=10)
+plt.xticks(sizes,sizes,rotation=90)
+plt.grid(ls=':')
+plt.ylabel('Networks (%)')
+plt.title('50-80',y=0.65)
+plt.xlim(90,810)
+plt.ylim(0,70)
 plt.subplot(3,1,2)
 plt.bar(sizes,c64[0],width=10)
+plt.grid(ls=':')
+plt.ylabel('Networks (%)')
+plt.title('150-250',y=0.65)
+plt.xlim(90,810)
+plt.ylim(0,70)
+plt.xticks(sizes,sizes,rotation=90)
 plt.subplot(3,1,3)
 plt.bar(sizes,c471[0],width=10)
+plt.xticks(sizes,sizes,rotation=90)
+plt.grid(ls=':')
+plt.ylabel('Networks (%)')
+plt.title('400-600',y=0.65)
+plt.xlim(90,810)
+plt.ylim(0,70)
+
+plt.xlabel('Transformer Rating (kVA)')
+plt.tight_layout()
+plt.savefig('../../../Dropbox/thesis/appendix1/img/transformers.eps',
+            format='eps', dpi=300,
+            bbox_inches='tight', pad_inches=0)
 plt.show()
 plt.figure()
 for i in range(8):
     plt.subplot(4,2,i+1)
+    plt.xticks()
     plt.title(str(sizes[i])+' kVA',y=0.6)
     for j in range(3):
         plt.plot(np.arange(0,800,10),nCust[j][sizes[i]])

@@ -121,6 +121,13 @@ for fg in range(4):
     #plt.yticks([0,10000,20000,30000,40000],[0,10,20,30,40])
     plt.grid()
 
+    if fg == 3:
+        with open('winter.csv','w') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['domestic']+dom)
+            writer.writerow(['industry']+ind)
+            writer.writerow(['with EV']+u[tm[fg]])
+
     pk_dom = max(dom)
     sm_dom = sum(dom)
     sm_new = sm_dom+135*2

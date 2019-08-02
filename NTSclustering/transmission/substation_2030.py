@@ -40,5 +40,22 @@ with open('2030.csv','rU') as csvfile:
             i += 1
         l = [float(lat),float(lon)]
         b = get_nearest(l)
-        print(b)
+
+        if b not in c:
+            c[b] = 0
+            _2030[b] = 0
+
+        _2030[b] += float(row[1])
+        c[b] += 1
+
+with open('2030_substation.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    for i in range(1,30):
+        try:
+            writer.writerow([i,_2030[str(i)]/c[str(i)]])
+        except:
+            writer.writerow([i,0])
+            
+
+
     
