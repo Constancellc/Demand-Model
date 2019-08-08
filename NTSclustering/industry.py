@@ -148,6 +148,7 @@ for fg in range(4):
     plt.figure(2)
     plt.subplot(2,2,fg+1)
     plt.plot(av[tm[fg]],c='k',ls=':',label='No Charging')
+    print(av[tm[fg]])
 
     for t in range(48):
         u[tm[fg]][t] += av[tm[fg]][t]
@@ -166,6 +167,6 @@ for fg in range(4):
     #plt.yticks([0,10000,20000,30000,40000],[0,10,20,30,40])
     plt.grid()
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/Nature/img/national2.eps', format='eps',
-            dpi=1000, bbox_inches='tight', pad_inches=0)
+#plt.savefig('../../Dropbox/papers/Nature/img/national2.eps', format='eps',
+#            dpi=1000, bbox_inches='tight', pad_inches=0)
 plt.show()

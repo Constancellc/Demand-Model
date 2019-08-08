@@ -53,7 +53,9 @@ with open(file2,'rU') as csvfile:
             LAs2[la] = 0
         LAs2[la] += float(row[1])
 
+sf = {}
 for la in LAs2:
-    print(100*LAs[la]/LAs2[la])
+    sf[la] = LAs2[la]/LAs[la]
+    print(sf[la])
         
             
