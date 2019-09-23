@@ -54,12 +54,12 @@ for s in slr:
         x2 = optimise(scen2,en)
 
         p = []
-        for t in range(48):
-            p.append((actual[t]+x[t])/1000)
+        for tt in range(48):
+            p.append((actual[tt]+x[tt])/1000)
         f0 += np.linalg.norm(p)
         p = []
-        for t in range(48):
-            p.append((actual[t]+x2[t])/1000)
+        for tt in range(48):
+            p.append((actual[tt]+x2[tt])/1000)
         f1 += np.linalg.norm(p)
 
         res.append([r,t,solar,f0,f1])
@@ -67,6 +67,8 @@ for s in slr:
 with open('res.csv','w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['r','t','solar','f0','f1'])
+    for row in res:
+        writer.writerow(row)
 
 '''
 _f0 = [441907,437595,433627,429358,425112,420890,416695,412528,408401,404301,
