@@ -184,7 +184,7 @@ for k in range(3):
     plt.fill_between(np.arange(0.5,48.5),lower,upper,color=clrs2[str(KM[k])])
 
     plt.ylim(0,40)
-    if k == 0:
+    if KM[k] == 0:
         plt.ylabel('Average Speed (mph)')
     plt.title(str(KM[k]+1),y=0.7)
     plt.xlim(0,48)
@@ -213,7 +213,7 @@ for k in range(3):
     plt.fill_between(np.arange(0.5,48.5),lower,upper,color=clrs2[str(KM2[k])])
 
     plt.ylim(0,40)
-    if k == 0:
+    if KM2[k] == 0:
         plt.ylabel('Average Speed (mph)')
     plt.title(str(KM2[k]+1),y=0.7)
     plt.xlim(0,48)

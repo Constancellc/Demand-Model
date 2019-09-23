@@ -2,6 +2,7 @@ import csv
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+import scipy.ndimage.filters as filt
 
 rawData = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 
@@ -98,7 +99,20 @@ for i in range(3):
     plt.ylim(0,0.6)
 plt.tight_layout()
 plt.savefig('../../Dropbox/thesis/chapter3/img/example_dist_prob.eps', format='eps',
-            dpi=1000, bbox_inches='tight', pad_inches=0)
+            dpi=300, bbox_inches='tight', pad_inches=0)
+plt.figure(figsize=(9,2))
+ttls = ['(a)','(b)','(c)']
+for i in range(3):
+    plt.subplot(1,3,i+1)
+    plt.bar(range(1,49),filt.gaussian_filter1d(p[i],1))
+    plt.title(ttls[i],y=0.8)
+    plt.grid()
+    plt.xlim(0.5,48.5)
+    plt.xticks([1,12,24,36,48])
+    plt.ylim(0,0.4)
+plt.tight_layout()
+plt.savefig('../../Dropbox/thesis/chapter3/img/example_dist_prob2.eps', format='eps',
+            dpi=300, bbox_inches='tight', pad_inches=0)
 plt.show()
 num_plot = 3
 plotted_profiles = {}

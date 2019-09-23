@@ -83,28 +83,31 @@ for t in range(48):
 frs = 30
 lim = 820
 fes = 14000
-plt.figure(figsize=(10,5))
+plt.figure(figsize=(7,8.5))
 plt.rcParams["font.family"] = 'serif'
 plt.rcParams['font.size'] = 12
-plt.subplot(2,3,1)
-plt.plot(goal,c='b')
+plt.subplot(3,2,1)
+plt.plot(goal,c='b',label='National EVs')
+plt.legend()
 plt.ylim(0,19)
 plt.ylabel('Power (GW)')
-plt.subplot(2,3,2)
+plt.subplot(3,2,2)
 sg = []
 for i in range(48):
     sg.append(goal[i]*fes/sum(goal))
 sg_old = copy.deepcopy(sg)
-plt.fill_between(range(48),[0]*48,sg,color='#CCCCFF')
+plt.fill_between(range(48),[0]*48,sg,color='#CCCCFF',label='Local EVs')
+plt.legend()
 plt.ylim(0,800)
 plt.ylabel('Power (MW)')
 for t in range(48):
     sg[t] += frs*res[t]
-plt.subplot(2,3,3)
-plt.plot(frs*np.array(res),c='k',ls=':')
+plt.subplot(3,2,3)
+plt.plot(frs*np.array(res),c='k',ls=':',label='Existing Demand')
 plt.fill_between(range(48),frs*np.array(res),sg,color='#CCCCFF')
-plt.plot(range(48),[lim]*48,c='r',ls='--')
+plt.plot(range(48),[lim]*48,c='r',ls='--',label='Transformer Limit')
 plt.ylim(0,1190)
+plt.legend(loc=8)
 plt.yticks([0,200,400,600,800,1000],['0.0','0.2','0.4','0.6','0.8','1.0'])
 plt.ylabel('Power (GW)')
 
@@ -115,7 +118,7 @@ for t in range(48):
         sg[t] = lim
 sg = fill(sg,ov,stp=1)
 
-plt.subplot(2,3,4)
+plt.subplot(3,2,4)
 plt.plot(frs*np.array(res),c='k',ls=':')
 plt.fill_between(range(48),frs*np.array(res),sg,color='#CCCCFF')
 plt.plot(range(48),[lim]*48,c='r',ls='--')
@@ -126,13 +129,14 @@ plt.ylabel('Power (GW)')
 for t in range(48):
     sg[t] -= frs*res[t]
 
-plt.subplot(2,3,5)
+plt.subplot(3,2,5)
 plt.fill_between(range(48),[0]*48,sg,color='#CCCCFF')
-plt.plot(sg_old,c='gray',ls='--')
+plt.plot(sg_old,c='gray',ls='--',label='Old version')
+plt.legend()
 plt.ylim(0,800)
 plt.ylabel('Power (MW)')
 
-plt.subplot(2,3,6)
+plt.subplot(3,2,6)
 plt.plot(goal,c='gray',ls='--')
 plt.ylim(0,19)
 plt.ylabel('Power (GW)')
@@ -142,11 +146,11 @@ plt.plot(goal,c='b')
 
     
 for i in range(1,7):
-    plt.subplot(2,3,i)
+    plt.subplot(3,2,i)
     plt.xlim(0,47)
     plt.xticks([7.5,23.5,39.5],['04:00','12:00','20:00'])
     plt.grid(ls=':')
-    plt.title(str(i),y=0.8)
+    plt.title(str(i),y=0.7)
 plt.tight_layout()
 plt.savefig('../../Dropbox/thesis/chapter7/img/diag_heuristic.eps', format='eps',
             dpi=300, bbox_inches='tight', pad_inches=0.0)
