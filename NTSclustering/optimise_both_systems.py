@@ -116,6 +116,10 @@ y2 = []
 for t in range(48):
     y1.append(ind[t]+res[t])
     y2.append(ind[t]+res[t]+res_evs[t])
+    
+plt.figure()
+plt.rcParams["font.family"] = 'serif'
+plt.rcParams["font.size"] = '9'
 
 plt.fill_between(range(48),[0]*48,ind,color='b',alpha=0.5,label='Industry')
 plt.fill_between(range(48),y1,ind,color='g',alpha=0.5,label='Domestic')
@@ -124,13 +128,13 @@ plt.fill_between(range(48),y1,y2,color='r',alpha=0.5,label='Charging')
 plt.legend(ncol=3)
 plt.xlim(0,47)
 plt.ylim(0,60)
-plt.xticks([12,24,36],['06:00','12:00','18:00'])
+plt.xticks([8,16,24,32,40],['04:00','08:00','12:00','16:00','20:00'])
 plt.grid()
 plt.ylabel('Power (GW)')
-plt.show()        
 
-    # otherwise we want to maybe scale the resultant profile until the peak
-    # demand limit is reached
+# would also be good to show the headroom while we're at it
+
+plt.show()        
     
     
     
