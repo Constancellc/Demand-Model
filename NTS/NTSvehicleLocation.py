@@ -7,7 +7,7 @@ import numpy as np
 
 # these are the csv files containing the data
 # households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
-trips = '../../Documents/UKDA-5340-tab/csv/tripsUseful.csv'
+trips = '../../Documents/UKDA-5340-tab/constance-trips.csv'
 households = '../../Documents/UKDA-5340-tab/tab/householdeul2015.tab'
 
 class LocationPrediction:
@@ -82,9 +82,9 @@ class LocationPrediction:
                     continue
 
                 try:
-                    tripStart = int(row[8])+1440*dayNo
-                    tripEnd = int(row[9])+1440*dayNo
-                    tripPurpose = row[12]
+                    tripStart = int(row[9])+1440*dayNo
+                    tripEnd = int(row[10])+1440*dayNo
+                    tripPurpose = row[13]
 
                 except:
                     if self.tripLog[vehicle] == []:

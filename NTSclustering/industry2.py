@@ -148,7 +148,6 @@ for fg in range(4):
     plt.figure(2)
     plt.subplot(2,2,fg+1)
     plt.plot(av[tm[fg]],c='k',ls=':',label='No Charging')
-    print(av[tm[fg]])
 
     for t in range(48):
         u[tm[fg]][t] += av[tm[fg]][t]
@@ -166,7 +165,23 @@ for fg in range(4):
     #plt.xticks(np.linspace(0,47,num=5),['0:00','06:00','12:00','18:00','23:59'])
     #plt.yticks([0,10000,20000,30000,40000],[0,10,20,30,40])
     plt.grid()
+
 plt.tight_layout()
-#plt.savefig('../../Dropbox/papers/Nature/img/national2.eps', format='eps',
-#            dpi=1000, bbox_inches='tight', pad_inches=0)
+
+plt.figure(3)
+plt.rcParams['font.size'] = 16
+plt.plot(av[tm[fg]],c='k',ls=':',label='No Charging')
+plt.plot(u[tm[fg]],label='Uncontrolled',c='b')
+plt.plot(tot_new,label='Controlled (D)',c='r',ls='--')
+plt.xlim(0,47)
+plt.plot(fill(av[tm[fg]],sum(u[tm[fg]])-sum(av[tm[fg]])),c='g',ls=':',
+         label='Controlled (T)')
+plt.legend(ncol=2)
+plt.ylim(20,60)
+plt.grid(zorder=0)
+plt.xticks(np.linspace(3,43,num=5),['02:00','07:00','12:00','17:00','22:00'])
+plt.ylabel('Power (GW)')
+plt.tight_layout()
+plt.savefig('../../Dropbox/papers/Nature/img/national2.eps', format='eps',
+            dpi=1000, bbox_inches='tight', pad_inches=0.1)
 plt.show()
