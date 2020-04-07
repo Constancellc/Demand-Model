@@ -28,11 +28,11 @@ def optimise(scen,en):
 
     return x
 
+res = []
 day0 = datetime.datetime(2013,1,1)
 slr = [12,16,20,24,28,32,36,40,44,48,52,56,60]
-'''
-n = 0
 for s in slr:
+    print(s)
     solar = s*1000
     f0 = 0
     f1 = 0
@@ -46,8 +46,7 @@ for s in slr:
         except:
             #print(day)
             continue
-        n += 1
-
+        
         scen = generate(r,t,solar=solar,skip=day)
         scen2 = generate_control(solar=solar,skip=day)
 
@@ -55,27 +54,31 @@ for s in slr:
         x2 = optimise(scen2,en)
 
         p = []
-        for t in range(48):
-            p.append((actual[t]+x[t])/1000)
+        for tt in range(48):
+            p.append((actual[tt]+x[tt])/1000)
         f0 += np.linalg.norm(p)
         p = []
-        for t in range(48):
-            p.append((actual[t]+x2[t])/1000)
+        for tt in range(48):
+            p.append((actual[tt]+x2[tt])/1000)
         f1 += np.linalg.norm(p)
 
-    print(f0)
-    print(f1)
-    print('')'''
+        res.append([r,t,solar,f0,f1])
 
+with open('res.csv','w') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['r','t','solar','f0','f1'])
+    for row in res:
+        writer.writerow(row)
 
+'''
 _f0 = [441907,437595,433627,429358,425112,420890,416695,412528,408401,404301,
        400248,396227,392250]
 _f1 = [442074,437798,433874,429656,425470,421316,417199,413120,409091,405099,
        401165,397272,393434]
 diff = []
 for i in range(len(_f0)):
-    _f0[i] = _f0[i]/800
-    _f1[i] = _f1[i]/800
+    _f0[i] = _f0[i]/1539
+    _f1[i] = _f1[i]/1539
     diff.append(_f1[i]-_f0[i])
 
 plt.figure()

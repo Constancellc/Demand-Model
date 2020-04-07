@@ -45,6 +45,12 @@ for i in range(len(rain)):
     rain[i] = (rain[i]-mr)/np.sqrt(vr)
     temp[i] = (temp[i]-mt)/np.sqrt(vt)
 
+print(mr)
+print(mt)
+print(np.sqrt(vr))
+print(np.sqrt(vt))
+jdshfk
+
 max_d = 0.5
 test = [2,-1]
 plt.figure(figsize=(6,3))

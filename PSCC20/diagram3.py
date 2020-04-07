@@ -9,7 +9,7 @@ from cvxopt import matrix, spdiag, sparse, solvers, spmatrix
 
 day = datetime.datetime(2016,7,12)
 
-solar = 12000
+solar = 60000
 en = 200000
 r,t,actual = get_single(day,solar=solar)
 
@@ -67,22 +67,22 @@ p = []
 for t in range(48):
     p.append(actual[t]+x[t])
 plt.plot(p,label='Weighted Scenarios',c='b')
-print(np.linalg.norm(p))
+print(np.linalg.norm(p)/1000)
 p = []
 for t in range(48):
     p.append(actual[t]+x2[t])
 plt.plot(p,label='Un-weighted Scenarios',c='r',ls='--')
-print(np.linalg.norm(p))
+print(np.linalg.norm(p)/1000)
 plt.legend()
 plt.xlim(0,47)
-plt.yticks([20000,30000,40000,50000],['20','30','40','50'])
+plt.yticks([10000,20000,30000,40000,50000],['10','20','30','40','50'])
 plt.xticks([7.5,23.5,39.5],['04:00','12:00','20:00'])
-plt.ylim(20000,40000)
+plt.ylim(10000,50000)
 plt.grid(ls=':')
 plt.ylabel('Power (GW)')
 plt.title(str(day)[:10])
 plt.tight_layout()
-plt.savefig('../../Dropbox/papers/PSCC-20/img/single_day.eps', format='eps', dpi=300,
+plt.savefig('../../Dropbox/papers/PSCC-20/img/single_day2.eps', format='eps', dpi=300,
             bbox_inches='tight', pad_inches=0)
 plt.show()
 #def optimise(scenarios,en):
